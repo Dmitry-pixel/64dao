@@ -1,0 +1,33 @@
+# ── Web framework ──────────────────────────────────────────────────────────────
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+
+# ── Database ───────────────────────────────────────────────────────────────────
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+# ── Auth / Security ────────────────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.12
+
+# ── Validation ─────────────────────────────────────────────────────────────────
+pydantic==2.10.3
+pydantic-settings==2.6.1
+email-validator==2.2.0
+
+# ── Email (SMTP) ───────────────────────────────────────────────────────────────
+aiosmtplib==3.0.2
+
+# ── PDF (Playwright) ───────────────────────────────────────────────────────────
+playwright==1.49.0
+
+# ── Utilities ──────────────────────────────────────────────────────────────────
+python-dotenv==1.0.1
+aiofiles==24.1.0
+
+# Rate limiting (in-memory; переключить на Redis заменив storage_uri в main.py)
+slowapi==0.1.9
+limits==3.14.0
+bcrypt==4.0.1

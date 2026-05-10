@@ -1,0 +1,30 @@
+[Unit]
+Description=64dao Next.js Frontend
+After=network.target
+
+[Service]
+Type=exec
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/64dao/frontend
+
+EnvironmentFile=/var/www/64dao/frontend/.env.local
+Environment=NODE_ENV=production
+Environment=PORT=3000
+
+ExecStart=/usr/bin/node node_modules/.bin/next start -p 3000
+
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=64dao-frontend
+
+[Install]
+WantedBy=multi-user.target

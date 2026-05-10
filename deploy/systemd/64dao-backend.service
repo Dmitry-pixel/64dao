@@ -1,0 +1,64 @@
+# ============================================================
+# 64dao-backend.service — FastAPI/uvicorn без Docker
+# Установка:
+#   cp deploy/systemd/64dao-backend.service /etc/systemd/system/
+#   systemctl daemon-reload
+#   systemctl enable --now 64dao-backend
+# ============================================================
+
+[Unit]
+Description=64dao FastAPI Backend (uvicorn)
+Documentation=https://64dao.ru
+After=network.target postgresql.service
+Wants=postgresql.service
+
+# Перезапускаем бэкенд если БД перезапустилась
+BindsTo=postgresql.service
+
+[Service]
+Type=exec
+User=dao64
+Group=dao64
+WorkingDirectory=/var/www/64dao/backend
+
+# Все переменные окружения из файла
+EnvironmentFile=/var/www/64dao/backend/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+
+# 2 воркера оптимально для VPS с 2 CPU + 4 GB RAM
+# При увеличении RAM можно поднять до 4
+ExecStart=/var/www/64dao/venv/bin/uvicorn app.main:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --workers 2 \
+    --loop asyncio \
+    --proxy-headers \
+    --forwarded-allow-ips="127.0.0.1" \
+    --access-log \
+    --log-level info
+
+# Graceful shutdown — ждём завершения текущих запросов
+ExecStop=/bin/kill -SIGTERM $MAINPID
+TimeoutStopSec=30
+
+# Перезапуск при падении, но не при ручной остановке
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+# Безопасность
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/www/64dao/uploads /tmp
+ProtectHome=yes
+
+# Логи (просмотр: journalctl -u 64dao-backend -f)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=64dao-backend
+
+[Install]
+WantedBy=multi-user.target

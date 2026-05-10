@@ -1,0 +1,46 @@
+# ============================================================
+# 64dao-frontend.service — Next.js без Docker
+# ============================================================
+
+[Unit]
+Description=64dao Next.js Frontend
+Documentation=https://64dao.ru
+After=network.target 64dao-backend.service
+Wants=64dao-backend.service
+
+[Service]
+Type=exec
+User=dao64
+Group=dao64
+WorkingDirectory=/var/www/64dao/frontend
+
+EnvironmentFile=/var/www/64dao/frontend/.env.local
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+
+ExecStart=/usr/bin/node \
+    node_modules/.bin/next start \
+    --port 3000 \
+    --hostname 127.0.0.1
+
+ExecStop=/bin/kill -SIGTERM $MAINPID
+TimeoutStopSec=30
+
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/www/64dao/frontend/.next /tmp
+ProtectHome=yes
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=64dao-frontend
+
+[Install]
+WantedBy=multi-user.target

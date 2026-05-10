@@ -1,0 +1,41 @@
+# ── Секреты — НИКОГДА не коммитить ────────────────────────────
+backend/.env
+frontend/.env.local
+.env
+.env.local
+.env.*.local
+
+# ── Python ─────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+.python-version
+*.egg-info/
+dist/
+build/
+
+# ── Node / Next.js ─────────────────────────────────────────────
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-error.log*
+*.log
+
+# ── Docker ─────────────────────────────────────────────────────
+# docker-compose.override.yml допустим для локальных переопределений
+docker-compose.override.yml
+
+# ── Uploads (генерируемые файлы, не хранить в git) ────────────
+uploads/
+
+# ── OS ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/

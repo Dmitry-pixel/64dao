@@ -1,0 +1,26 @@
+# ============================================================
+# 64dao-nginx.service — Nginx без Docker (опционально)
+# Используйте если Nginx установлен на хосте, а не в Docker
+# ============================================================
+
+[Unit]
+Description=64dao Nginx Reverse Proxy
+After=network.target 64dao-backend.service 64dao-frontend.service
+
+[Service]
+Type=forking
+PIDFile=/var/run/nginx.pid
+ExecStartPre=/usr/sbin/nginx -t -c /etc/nginx/nginx.conf
+ExecStart=/usr/sbin/nginx -c /etc/nginx/nginx.conf
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStop=/bin/kill -QUIT $MAINPID
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=64dao-nginx
+
+[Install]
+WantedBy=multi-user.target

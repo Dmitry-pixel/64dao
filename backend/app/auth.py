@@ -1,0 +1,145 @@
+import secrets
+from datetime import datetime, timedelta, timezone
+
+from fastapi import Request, Response, HTTPException, Depends
+from jose import jwt, JWTError
+from passlib.context import CryptContext
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import get_settings
+from app.db import get_db
+from app.models import User, OtpCode
+
+settings = get_settings()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+# ── Password ──────────────────────────────────────────────────────────────────
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
+
+
+# ── JWT ───────────────────────────────────────────────────────────────────────
+
+def create_token(user_id: str, email: str, role: str) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(days=settings.jwt_expire_days)
+    payload = {
+        "sub":   user_id,
+        "email": email,
+        "role":  role,
+        "exp":   expire,
+    }
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+
+def set_auth_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key="auth-token",
+        value=token,
+        httponly=True,
+        secure=True,                        # только HTTPS
+        samesite="lax",
+        path="/",
+        max_age=settings.jwt_expire_days * 86400,
+    )
+
+
+def clear_auth_cookie(response: Response) -> None:
+    response.delete_cookie(key="auth-token", path="/")
+
+
+def _decode_token(token: str) -> dict:
+    try:
+        return jwt.decode(
+            token,
+            settings.jwt_secret,
+            algorithms=[settings.jwt_algorithm],
+        )
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+# ── Dependencies ──────────────────────────────────────────────────────────────
+
+async def get_current_user(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """FastAPI dependency — возвращает текущего пользователя из JWT-куки."""
+    token = request.cookies.get("auth-token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    payload = _decode_token(token)
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    return user
+
+
+async def require_admin(user: User = Depends(get_current_user)) -> User:
+    """FastAPI dependency — только для администраторов."""
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+
+# ── OTP ───────────────────────────────────────────────────────────────────────
+
+def generate_otp(length: int = 5) -> str:
+    """Криптографически безопасный цифровой OTP."""
+    return "".join(str(secrets.randbelow(10)) for _ in range(length))
+
+
+async def create_otp_code(user_id: str, db: AsyncSession) -> str:
+    """Инвалидирует старые коды и создаёт новый."""
+    # Помечаем все активные коды как использованные
+    await db.execute(
+        update(OtpCode)
+        .where(OtpCode.user_id == user_id, OtpCode.used.is_(False))
+        .values(used=True)
+    )
+
+    code = generate_otp()
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.otp_expire_minutes)
+
+    otp = OtpCode(user_id=user_id, code=code, expires_at=expires_at, used=False)
+    db.add(otp)
+    await db.flush()  # получаем id без коммита (commit в get_db)
+
+    return code
+
+
+async def verify_otp_code(user_id: str, code: str, db: AsyncSession) -> bool:
+    """Проверяет OTP. При успехе помечает как использованный."""
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(OtpCode)
+        .where(
+            OtpCode.user_id == user_id,
+            OtpCode.code    == code,
+            OtpCode.used    == False,       # noqa: E712
+            OtpCode.expires_at > now,
+        )
+        .order_by(OtpCode.created_at.desc())
+        .limit(1)
+    )
+    otp = result.scalar_one_or_none()
+
+    if not otp:
+        return False
+
+    otp.used = True
+    return True
