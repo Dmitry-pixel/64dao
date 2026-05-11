@@ -3,7 +3,7 @@
  * credentials: 'include' обязательно для передачи httpOnly-куки auth-token.
  */
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost'
 
 // ── Base ──────────────────────────────────────────────────────────────────────
 

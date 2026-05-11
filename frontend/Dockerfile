@@ -3,6 +3,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --quiet
 COPY . .
+ARG NEXT_PUBLIC_API_URL=http://localhost
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 ARG NEXT_PUBLIC_API_URL=https://64dao.ru
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
