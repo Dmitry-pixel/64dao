@@ -189,4 +189,3 @@ const S: Record<string, React.CSSProperties> = {
   btnGhost: { background: 'none', color: '#1a2540', border: '1px solid rgba(26,37,64,0.2)', borderRadius: 6, padding: '7px 14px', fontFamily: 'sans-serif', fontSize: 12, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' },
   btnSoft: { background: 'rgba(26,37,64,0.06)', color: '#1a2540', border: 'none', borderRadius: 6, padding: '7px 14px', fontFamily: 'sans-serif', fontSize: 12, cursor: 'pointer' },
 }
-                              
