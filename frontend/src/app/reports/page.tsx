@@ -97,9 +97,9 @@ export default function ReportsPage() {
                     </div>
                     <div style={S.cardTitle}>
                       {a.status === 'completed' || a.status === 'paid'
-                        ? (a.method === 'method2'
-                            ? `Бизнес-модель${a.company_name ? ' · ' + a.company_name : ''}`
-                            : `Стратегический отчёт${a.company_name ? ' · ' + a.company_name : (a.method1_combination ? ' · ' + a.method1_combination : '')}`)
+                        ? (a.method2_data !== null
+                            ? `Бизнес-модель${a.method1_combination ? ' · ' + a.method1_combination : ''}`
+                            : `Стратегический отчёт${a.method1_combination ? ' · ' + a.method1_combination : ''}`)
                         : 'Незавершённая диагностика'}
                     </div>
                     <div style={S.cardDetail}>
