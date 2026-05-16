@@ -139,9 +139,19 @@ export const adminApi = {
 
   setup: (d: { setup_key: string; email: string; password: string; full_name: string }) =>
     request('/api/admin/setup', { method: 'POST', body: JSON.stringify(d) }),
+
+  impersonate:     (userId: string) => request(`/api/admin/impersonate/${userId}`, { method: 'POST' }),
+  stopImpersonate: ()               => request('/api/admin/impersonate/stop', { method: 'POST' }),
+  impersonateStatus: ()             => request<ImpersonateStatus>('/api/admin/impersonate/status'),
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface ImpersonateStatus {
+  active: boolean
+  target_user: { id: string; email: string; full_name: string | null; role: string } | null
+  admin_id: string | null
+}
 
 export interface AuthUser {
   id: string
