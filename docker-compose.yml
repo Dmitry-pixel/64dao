@@ -71,7 +71,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost
+        NEXT_PUBLIC_API_URL: https://64dao.ru
     container_name: dao64_frontend
     restart: unless-stopped
     env_file:
