@@ -33,3 +33,17 @@ export const getMe = () =>
 
 export const logout = () =>
   request('/auth/logout', { method: 'POST' })
+
+// ── Impersonation ──────────────────────────────────────────────────────────────
+
+export interface ImpersonateStatus {
+  active: boolean
+  target_user: { id: string; email: string; full_name: string | null; role: string } | null
+  admin_id: string | null
+}
+
+export const getImpersonateStatus = () =>
+  request<ImpersonateStatus>('/admin/impersonate/status')
+
+export const stopImpersonation = () =>
+  request<{ success: boolean; message: string }>('/admin/impersonate/stop', { method: 'POST' })
