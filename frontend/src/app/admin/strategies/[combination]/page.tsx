@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 const HEXAGRAM_DATA = [
@@ -94,11 +94,11 @@ const EMPTY = {
   scenario_focus: '',
 };
 
-type Params = { params: Promise<{ combination: string }> };
+type Params = { params: { combination: string } };
 
 export default function StrategyEditorPage({ params }: Params) {
   const router = useRouter();
-  const { combination } = use(params);
+  const { combination } = params;
   const hex = HEXAGRAM_MAP[combination];
   const [form, setForm] = useState({ ...EMPTY });
   const [loading, setLoading] = useState(true);

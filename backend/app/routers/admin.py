@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File
+from pydantic import BaseModel, field_validator
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -200,6 +201,36 @@ async def upload_strategy_image(
     await db.flush()
 
     return SuccessResponse(message="Изображение загружено")
+
+
+# ── User role management ──────────────────────────────────────────────────────
+
+class SetRoleRequest(BaseModel):
+    role: str
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v: str) -> str:
+        if v not in ("user", "admin"):
+            raise ValueError("role must be 'user' or 'admin'")
+        return v
+
+
+@router.patch("/users/{user_id}/role", response_model=SuccessResponse)
+async def set_user_role(
+    user_id: str,
+    body: SetRoleRequest,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if str(admin.id) == user_id:
+        raise HTTPException(status_code=400, detail="Нельзя изменить свою роль")
+    user = await db.scalar(select(User).where(User.id == user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    user.role = body.role
+    await db.flush()
+    return SuccessResponse(message=f"Роль изменена на {body.role}")
 
 
 # ── Reports list ──────────────────────────────────────────────────────────────

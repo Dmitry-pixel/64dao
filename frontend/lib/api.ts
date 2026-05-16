@@ -143,6 +143,9 @@ export const adminApi = {
   impersonate:     (userId: string) => request(`/api/admin/impersonate/${userId}`, { method: 'POST' }),
   stopImpersonate: ()               => request('/api/admin/impersonate/stop', { method: 'POST' }),
   impersonateStatus: ()             => request<ImpersonateStatus>('/api/admin/impersonate/status'),
+
+  setUserRole: (userId: string, role: 'user' | 'admin') =>
+    request(`/api/admin/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
