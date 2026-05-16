@@ -54,7 +54,7 @@ def clear_auth_cookie(response: Response) -> None:
     response.delete_cookie(key="auth-token", path="/")
 
 
-def _decode_token(token: str) -> dict:
+def decode_token(token: str) -> dict:
     try:
         return jwt.decode(
             token,
@@ -63,6 +63,28 @@ def _decode_token(token: str) -> dict:
         )
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+# backward-compat alias
+_decode_token = decode_token
+
+
+def create_impersonation_token(
+    target_user_id: str,
+    target_email: str,
+    target_role: str,
+    admin_id: str,
+) -> str:
+    """JWT от лица target_user, с полем impersonated_by=admin_id. TTL — 4 ч."""
+    expire = datetime.now(timezone.utc) + timedelta(hours=4)
+    payload = {
+        "sub":             target_user_id,
+        "email":           target_email,
+        "role":            target_role,
+        "impersonated_by": admin_id,
+        "exp":             expire,
+    }
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
 # ── Dependencies ──────────────────────────────────────────────────────────────

@@ -180,6 +180,14 @@ class AdminStats(BaseModel):
     recent_assessments:   list[AssessmentOut]
 
 
+# ── Impersonation ─────────────────────────────────────────────────────────────
+
+class ImpersonateStatus(BaseModel):
+    active:        bool
+    target_user:   UserOut | None = None
+    admin_id:      uuid.UUID | None = None
+
+
 # ── Generic ───────────────────────────────────────────────────────────────────
 
 class SuccessResponse(BaseModel):

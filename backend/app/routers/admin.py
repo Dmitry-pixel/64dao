@@ -1,18 +1,18 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_admin, hash_password
+from app.auth import require_admin, get_current_user, hash_password, create_impersonation_token, create_token, decode_token, set_auth_cookie
 from app.config import get_settings
 from app.db import get_db
 from app.models import User, Assessment, Report, Strategy
 from app.schemas import (
     AdminSetupRequest, AdminStats,
     StrategyCreate, StrategyUpdate, StrategyOut, StrategyListItem,
-    UserOut, AssessmentOut, SuccessResponse,
+    UserOut, AssessmentOut, ImpersonateStatus, SuccessResponse,
 )
 
 settings = get_settings()
@@ -215,3 +215,78 @@ async def list_all_assessments(
         .limit(100)
     )
     return result.scalars().all()
+
+
+# ── Impersonation ─────────────────────────────────────────────────────────────
+
+@router.post("/impersonate/{user_id}", response_model=SuccessResponse)
+async def start_impersonation(
+    user_id: str,
+    response: Response,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Админ входит в систему от лица указанного пользователя."""
+    target = await db.scalar(select(User).where(User.id == user_id))
+    if not target:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if target.role == "admin":
+        raise HTTPException(status_code=400, detail="Нельзя имперсонировать администратора")
+
+    token = create_impersonation_token(
+        str(target.id), target.email, target.role, str(admin.id)
+    )
+    set_auth_cookie(response, token)
+    return SuccessResponse(message=f"Вы вошли как {target.email}")
+
+
+@router.post("/impersonate/stop", response_model=SuccessResponse)
+async def stop_impersonation(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """Возврат из режима имперсонации обратно в аккаунт администратора."""
+    token = request.cookies.get("auth-token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    payload = decode_token(token)
+    admin_id = payload.get("impersonated_by")
+    if not admin_id:
+        raise HTTPException(status_code=400, detail="Нет активной имперсонации")
+
+    admin = await db.scalar(select(User).where(User.id == admin_id))
+    if not admin or admin.role != "admin":
+        raise HTTPException(status_code=404, detail="Администратор не найден")
+
+    new_token = create_token(str(admin.id), admin.email, admin.role)
+    set_auth_cookie(response, new_token)
+    return SuccessResponse(message="Вернулись в аккаунт администратора")
+
+
+@router.get("/impersonate/status", response_model=ImpersonateStatus)
+async def impersonation_status(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Статус текущей сессии: активна ли имперсонация и от чьего лица."""
+    token = request.cookies.get("auth-token")
+    if not token:
+        return ImpersonateStatus(active=False)
+
+    try:
+        payload = decode_token(token)
+    except Exception:
+        return ImpersonateStatus(active=False)
+
+    admin_id = payload.get("impersonated_by")
+    if not admin_id:
+        return ImpersonateStatus(active=False)
+
+    target = await db.scalar(select(User).where(User.id == payload.get("sub")))
+    return ImpersonateStatus(
+        active=True,
+        target_user=target,
+        admin_id=admin_id,
+    )
