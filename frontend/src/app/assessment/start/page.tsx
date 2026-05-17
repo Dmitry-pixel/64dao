@@ -20,7 +20,7 @@ export default function AssessmentStartPage() {
           <div
             className="card"
             style={{ cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s' }}
-            onClick={() => router.push('/assessment/method1')}
+            onClick={() => router.push('/assessment?method=1')}
           >
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
               <span style={{ fontFamily: 'Georgia, serif', fontSize: 48, color: 'var(--blue)', lineHeight: 1 }}>䷀</span>
@@ -42,7 +42,7 @@ export default function AssessmentStartPage() {
           <div
             className="card"
             style={{ cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s' }}
-            onClick={() => router.push('/assessment/method2')}
+            onClick={() => router.push('/assessment?method=2')}
           >
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
               <span style={{ fontFamily: 'Georgia, serif', fontSize: 48, color: 'var(--blue)', lineHeight: 1 }}>䷿</span>
