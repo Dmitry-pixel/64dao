@@ -235,7 +235,7 @@ export default function StrategyEditorPage({ params }: Params) {
     </div>
   );
 
-  const targetHex = HEXAGRAM_MAP[hex.target_combo];
+  const targetHex = null;
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 880, margin: '0 auto' }}>
@@ -247,7 +247,7 @@ export default function StrategyEditorPage({ params }: Params) {
             Стратегия №{hex.n} · {combination}
           </span>
           <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, margin: '4px 0 4px', color: '#1a2540', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 40 }}>{hex.char}</span>{form.title || hex.name}
+            <span style={{ fontSize: 40 }}>{comboToHex(combination)}</span>{form.title || hex.name}
           </h1>
           <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.5)', margin: 0 }}>Стадия: {hex.stage}</p>
         </div>
@@ -265,7 +265,7 @@ export default function StrategyEditorPage({ params }: Params) {
 
       {/* Визуал комбинации + целевая */}
       <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(26,37,64,0.1)', padding: '18px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 56, lineHeight: 1, color: '#1e3a8a', flexShrink: 0 }}>{hex.char}</span>
+        <span style={{ fontSize: 56, lineHeight: 1, color: '#1e3a8a', flexShrink: 0 }}>{comboToHex(combination)}</span>
         <div style={{ flex: 1, minWidth: 200 }}>
           <div style={{ display: 'flex', gap: 5, marginBottom: 8 }}>
             {combination.split('').map((c, i) => (
@@ -282,9 +282,8 @@ export default function StrategyEditorPage({ params }: Params) {
         {targetHex && (
           <div style={{ textAlign: 'center', flexShrink: 0, padding: '10px 16px', background: 'rgba(26,37,64,0.03)', borderRadius: 8, border: '1px solid rgba(26,37,64,0.08)' }}>
             <div style={{ fontFamily: 'sans-serif', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, color: 'rgba(26,37,64,0.4)', marginBottom: 4 }}>Целевая →</div>
-            <span style={{ fontSize: 28, color: '#1e3a8a', display: 'block', lineHeight: 1, marginBottom: 4 }}>{targetHex.char}</span>
-            <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(26,37,64,0.5)', marginBottom: 2 }}>{hex.target_combo}</div>
-            <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: '#1a2540', fontWeight: 600 }}>{hex.target_name}</div>
+            <span style={{ fontSize: 28, color: '#1e3a8a', display: 'block', lineHeight: 1, marginBottom: 4 }}>{comboToHex(form.transition_title || '')}</span>
+            <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(26,37,64,0.5)', marginBottom: 2 }}>{form.transition_title}</div>
           </div>
         )}
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -329,10 +328,10 @@ export default function StrategyEditorPage({ params }: Params) {
 
       <Sec label="Переход" title="Целевое состояние" help="Куда компании двигаться — предзаполнено из таблицы соответствия.">
         <div style={{ background: 'rgba(30,58,138,0.04)', border: '1px solid rgba(30,58,138,0.12)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.6)' }}>
-          По таблице: <strong style={{ color: '#1a2540' }}>{hex.target_combo}</strong> — «{hex.target_name}». Можно изменить вручную.
+          Укажите комбинацию и название целевой стратегии, к которой должна перейти компания.
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <FI label="Название перехода" k="transition_title" ph={hex.target_name} />
+          <FI label="Название перехода" k="transition_title" ph="Название целевой стратегии" />
           <div>
             <label style={lbl}>Стадия целевого состояния</label>
             <select value={(form as any).transition_lifecycle_stage} onChange={e => set('transition_lifecycle_stage', e.target.value)} style={inp}>
@@ -361,4 +360,4 @@ export default function StrategyEditorPage({ params }: Params) {
     </div>
   );
 }
-                                                                                                                          
+                                                                                                                                                                                       
