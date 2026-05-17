@@ -93,7 +93,7 @@ export default function AdminStrategiesPage() {
                     </td>
                     <td>
                       <div className="row-actions">
-                        <button onClick={e => { e.stopPropagation(); router.push(`/admin/strategies/${s.id}`) }}>
+                        <button onClick={e => { e.stopPropagation(); router.push(`/admin/strategies/${s.combination}`) }}>
                           Редактировать
                         </button>
                       </div>
