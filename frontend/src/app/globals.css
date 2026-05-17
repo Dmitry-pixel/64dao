@@ -28,9 +28,9 @@ a { color: inherit; text-decoration: none; }
 /* AppNav */
 .appnav { display: flex; align-items: center; justify-content: space-between; padding: 14px 40px; background: var(--nav-bg); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
 .appnav-links { display: flex; align-items: center; gap: 4px; font-family: sans-serif; font-size: 13px; }
-.appnav-links button { padding: 7px 14px; border: none; background: none; cursor: pointer; font-family: sans-serif; font-size: 13px; color: rgba(26,37,64,0.65); border-radius: 4px; }
-.appnav-links button:hover { color: var(--dark); }
-.appnav-links button.on { color: var(--dark); background: rgba(26,37,64,0.06); }
+.appnav-links button, .appnav-links a { padding: 7px 14px; border: none; background: none; cursor: pointer; font-family: sans-serif; font-size: 13px; color: rgba(26,37,64,0.65); border-radius: 4px; text-decoration: none; }
+.appnav-links button:hover, .appnav-links a:hover { color: var(--dark); }
+.appnav-links button.on, .appnav-links a.on { color: var(--dark); background: rgba(26,37,64,0.06); }
 .appnav-user { display: flex; align-items: center; gap: 12px; font-family: sans-serif; font-size: 13px; }
 .avatar { width: 32px; height: 32px; border-radius: 50%; background: rgba(30,58,138,0.12); color: var(--blue); display: flex; align-items: center; justify-content: center; font-family: sans-serif; font-size: 12px; font-weight: 600; }
 

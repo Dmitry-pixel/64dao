@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getMe, logout, type AuthUser } from '@/lib/api'
+import { getMe, type AuthUser } from '@/lib/api'
+import { AppNav } from '@/components/AppNav'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
 
@@ -40,11 +41,6 @@ export default function PurchasesPage() {
       .finally(() => setLoading(false))
   }, [router])
 
-  async function handleLogout() {
-    await logout()
-    router.push('/login')
-  }
-
   function statusLabel(status: string) {
     return { pending: 'Ожидает', paid: 'Оплачен', failed: 'Ошибка', refunded: 'Возврат' }[status] ?? status
   }
@@ -67,25 +63,7 @@ export default function PurchasesPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
-      {/* Навигация */}
-      <nav style={S.nav}>
-        <div style={S.navInner}>
-          <div style={S.navLogo} onClick={() => router.push('/dashboard')}>
-            <span style={S.logo64}>64</span><span style={S.logoDao}> ДАО</span>
-          </div>
-          <div style={S.navLinks}>
-            <button style={S.navLink} onClick={() => router.push('/dashboard')}>Личный кабинет</button>
-            <button style={S.navLink} onClick={() => router.push('/reports')}>Мои отчёты</button>
-            <button style={{ ...S.navLink, ...S.navLinkOn }}>Мои покупки</button>
-            <button style={S.navLink} onClick={() => router.push('/profile')}>Профиль</button>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={S.navEmail}>{user?.email}</span>
-            <div style={S.avatar}>{(user?.full_name || user?.email || 'U')[0].toUpperCase()}</div>
-            <button style={S.navLogout} onClick={handleLogout}>Выйти</button>
-          </div>
-        </div>
-      </nav>
+      <AppNav />
 
       {/* Hero */}
       <div style={S.hero}>
