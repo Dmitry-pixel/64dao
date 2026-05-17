@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { logout, getMe } from '@/lib/api'
 import { useEffect, useState } from 'react'
 
@@ -20,8 +20,16 @@ interface AppNavProps {
 
 export function AppNav({ current, role = 'user' }: AppNavProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
+
+  // Определяем активный пункт по URL, пропс current как запасной вариант
+  const isActive = (path: string) => {
+    if (pathname === path) return true
+    if (path !== '/' && pathname.startsWith(path)) return true
+    return false
+  }
 
   useEffect(() => {
     getMe().then(me => {
@@ -41,10 +49,10 @@ export function AppNav({ current, role = 'user' }: AppNavProps) {
     <nav className="appnav">
       <Logo />
       <div className="appnav-links">
-        <Link href="/dashboard" className={current === 'dashboard' ? 'on' : ''}>Мои отчёты</Link>
-        <Link href="/assessment/start" className="">Новая диагностика</Link>
-        <Link href="/purchases" className={current === 'purchases' ? 'on' : ''}>Мои покупки</Link>
-        <Link href="/profile" className={current === 'profile' ? 'on' : ''}>Профиль</Link>
+        <Link href="/dashboard" className={isActive('/dashboard') ? 'on' : ''}>Мои отчёты</Link>
+        <Link href="/assessment/start" className={isActive('/assessment') ? 'on' : ''}>Новая диагностика</Link>
+        <Link href="/purchases" className={isActive('/purchases') ? 'on' : ''}>Мои покупки</Link>
+        <Link href="/profile" className={isActive('/profile') ? 'on' : ''}>Профиль</Link>
       </div>
       <div className="appnav-user">
         <span style={{ color: 'rgba(26,37,64,0.55)', fontFamily: 'sans-serif', fontSize: 13 }}>{email}</span>
