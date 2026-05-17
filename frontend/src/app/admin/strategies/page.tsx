@@ -4,7 +4,12 @@ import { useRouter } from 'next/navigation'
 import { adminApi, getMe } from '@/lib/api'
 import { AdminNav, AdminSide } from '@/components/AdminNav'
 
-const HEX_TRIGRAMS = ['䷀','䷁','䷂','䷃','䷄','䷅','䷆','䷇','䷈','䷉','䷊','䷋','䷌','䷍','䷎','䷏','䷐','䷑','䷒','䷓','䷔','䷕','䷖','䷗','䷘','䷙','䷚','䷛','䷜','䷝','䷞','䷟','䷠','䷡','䷢','䷣','䷤','䷥','䷦','䷧','䷨','䷩','䷪','䷫','䷬','䷭','䷮','䷯','䷰','䷱','䷲','䷳','䷴','䷵','䷶','䷷','䷸','䷹','䷺','䷻','䷼','䷽','䷾','䷿']
+// A=0 (сплошная, Ян), B=1 (прерывистая, Инь) → 6-битный индекс → Unicode U+4DC0
+function comboToHex(combo: string): string {
+  if (!combo || combo.length !== 6) return '?'
+  const offset = parseInt(combo.replace(/A/g, '0').replace(/B/g, '1'), 2)
+  return String.fromCodePoint(0x4DC0 + offset)
+}
 
 export default function AdminStrategiesPage() {
   const router = useRouter()
@@ -66,6 +71,7 @@ export default function AdminStrategiesPage() {
           <table className="tbl">
             <thead>
               <tr>
+                <th style={{ width: 40 }}>№</th>
                 <th style={{ width: 60 }}>Гекс.</th>
                 <th style={{ width: 100 }}>Комбинация</th>
                 <th>Заголовок</th>
@@ -75,12 +81,13 @@ export default function AdminStrategiesPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((s, i) => {
-                const hexIdx = HEX_TRIGRAMS.findIndex((_, idx) => idx === i)
+              {filtered.map((s) => {
+                const num = strategies.indexOf(s) + 1
                 return (
                   <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/admin/strategies/${s.combination}`)}>
+                    <td style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)', textAlign: 'center' }}>{num}</td>
                     <td>
-                      <span className="hex hex-sm">{HEX_TRIGRAMS[i % 64]}</span>
+                      <span className="hex hex-sm">{comboToHex(s.combination)}</span>
                     </td>
                     <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{s.combination}</td>
                     <td><strong>{s.title ?? '—'}</strong></td>
