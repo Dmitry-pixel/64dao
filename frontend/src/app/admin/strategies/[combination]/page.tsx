@@ -121,8 +121,6 @@ export default function StrategyEditorPage({ params }: Params) {
       ...f,
       title: hex.name,
       lifecycle_stage: hex.stage,
-      transition_title: hex.target_name,
-      transition_lifecycle_stage: HEXAGRAM_MAP[hex.target_combo]?.stage || '',
     }));
     fetch(`/api/strategies/${combination}`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
@@ -363,3 +361,4 @@ export default function StrategyEditorPage({ params }: Params) {
     </div>
   );
 }
+                                                                                                                          
