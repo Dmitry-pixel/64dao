@@ -5,7 +5,7 @@ Seed script: создаёт шаблоны всех 64 стратегий в Б�
 """
 import asyncio
 import uuid
-from app.db import async_session_maker
+from app.db import AsyncSessionLocal as async_session_maker
 from app.models import Strategy
 from sqlalchemy import select
 
