@@ -78,7 +78,7 @@ export default function AdminStrategiesPage() {
               {filtered.map((s, i) => {
                 const hexIdx = HEX_TRIGRAMS.findIndex((_, idx) => idx === i)
                 return (
-                  <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/admin/strategies/${s.id}`)}>
+                  <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/admin/strategies/${s.combination}`)}>
                     <td>
                       <span className="hex hex-sm">{HEX_TRIGRAMS[i % 64]}</span>
                     </td>
