@@ -22,8 +22,8 @@ export function ImpersonationBanner() {
     setStopping(true)
     try {
       await adminApi.stopImpersonate()
-      router.push('/admin')
-      router.refresh()
+      // Полная перезагрузка — чтобы middleware подхватил новый cookie администратора
+      window.location.href = '/admin'
     } catch {
       setStopping(false)
     }

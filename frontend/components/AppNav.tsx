@@ -43,6 +43,7 @@ export function AppNav({ current, role = 'user' }: AppNavProps) {
       <div className="appnav-links">
         <Link href="/dashboard" className={current === 'dashboard' ? 'on' : ''}>Мои отчёты</Link>
         <Link href="/assessment/start" className="">Новая диагностика</Link>
+        <Link href="/purchases" className={current === 'purchases' ? 'on' : ''}>Мои покупки</Link>
         <Link href="/profile" className={current === 'profile' ? 'on' : ''}>Профиль</Link>
       </div>
       <div className="appnav-user">
