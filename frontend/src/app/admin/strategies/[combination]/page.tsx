@@ -394,4 +394,3 @@ export default function StrategyEditorPage({ params }: Params) {
     </div>
   );
 }
-                                
