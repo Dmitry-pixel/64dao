@@ -80,6 +80,26 @@ const HEXAGRAM_DATA = [
 const HEXAGRAM_MAP: Record<string, typeof HEXAGRAM_DATA[0]> = {};
 HEXAGRAM_DATA.forEach(h => { HEXAGRAM_MAP[h.combo] = h; });
 
+// Таблица соответствия: номер текущей гексаграммы → номер целевой
+const TARGET_HEXAGRAM: Record<number, number> = {
+   1:  9,  2: 62,  3: 49,  4:  7,  5: 63,  6:  6,  7: 62,  8: 23,
+   9: 37, 10: 25, 11: 36, 12:  9, 13: 37, 14: 26, 15: 11, 16: 54,
+  17: 63, 18: 64, 19: 34, 20: 33, 21: 64, 22: 18, 23: 56, 24: 19,
+  25: 37, 26: 22, 27:  4, 28: 44, 29:  3, 30: 22, 31: 43, 32: 44,
+  33:  1, 34:  1, 35: 64, 36: 37, 37: 63, 38: 21, 39:  5, 40: 46,
+  41: 27, 42:  3, 43:  5, 44: 33, 45: 58, 46: 57, 47: 44, 48: 47,
+  49: 63, 50: 18, 51: 25, 52: 18, 53: 39, 54: 11, 55: 36, 56: 14,
+  57: 44, 58:  5, 59: 44, 60: 43, 61: 42, 62: 33, 63: 17, 64: 40,
+};
+
+function getTargetHex(combo: string) {
+  const cur = HEXAGRAM_MAP[combo];
+  if (!cur) return null;
+  const targetN = TARGET_HEXAGRAM[cur.n];
+  if (!targetN) return null;
+  return HEXAGRAM_DATA.find(h => h.n === targetN) || null;
+}
+
 // Поля точно соответствуют модели Strategy в БД
 const EMPTY = {
   title: '',
@@ -235,7 +255,7 @@ export default function StrategyEditorPage({ params }: Params) {
     </div>
   );
 
-  const targetHex = null;
+  const targetHex = getTargetHex(combination);
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 880, margin: '0 auto' }}>
@@ -282,8 +302,9 @@ export default function StrategyEditorPage({ params }: Params) {
         {targetHex && (
           <div style={{ textAlign: 'center', flexShrink: 0, padding: '10px 16px', background: 'rgba(26,37,64,0.03)', borderRadius: 8, border: '1px solid rgba(26,37,64,0.08)' }}>
             <div style={{ fontFamily: 'sans-serif', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, color: 'rgba(26,37,64,0.4)', marginBottom: 4 }}>Целевая →</div>
-            <span style={{ fontSize: 28, color: '#1e3a8a', display: 'block', lineHeight: 1, marginBottom: 4 }}>{comboToHex(form.transition_title || '')}</span>
-            <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(26,37,64,0.5)', marginBottom: 2 }}>{form.transition_title}</div>
+            <span style={{ fontSize: 28, color: '#1e3a8a', display: 'block', lineHeight: 1, marginBottom: 4 }}>{String.fromCodePoint(0x4DC0 + targetHex.n - 1)}</span>
+            <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: '#1e3a8a', fontWeight: 600, marginBottom: 2 }}>Гексаграмма {targetHex.n}</div>
+            <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.6)' }}>{targetHex.name}</div>
           </div>
         )}
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -326,10 +347,23 @@ export default function StrategyEditorPage({ params }: Params) {
         <FA label="" k="management_text" rows={6} ph="Опишите управленческие рекомендации…" />
       </Sec>
 
-      <Sec label="Переход" title="Целевое состояние" help="Куда компании двигаться — предзаполнено из таблицы соответствия.">
-        <div style={{ background: 'rgba(30,58,138,0.04)', border: '1px solid rgba(30,58,138,0.12)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.6)' }}>
-          Укажите комбинацию и название целевой стратегии, к которой должна перейти компания.
-        </div>
+      <Sec label="Переход" title="Целевое состояние" help="Куда компании двигаться — определено автоматически по таблице соответствия гексаграмм.">
+        {targetHex && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, background: 'rgba(192,57,43,0.04)', border: '1px solid rgba(192,57,43,0.18)', borderRadius: 10, padding: '16px 20px', marginBottom: 20 }}>
+            <div style={{ textAlign: 'center', flexShrink: 0 }}>
+              <div style={{ fontSize: 64, lineHeight: 1, color: '#1a2540', marginBottom: 4 }}>{String.fromCodePoint(0x4DC0 + targetHex.n - 1)}</div>
+              <div style={{ fontFamily: 'sans-serif', fontSize: 10, color: '#c0392b', letterSpacing: 1, fontWeight: 700, textTransform: 'uppercase' }}>Гексаграмма {targetHex.n}</div>
+              <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)', marginTop: 2 }}>{targetHex.name}</div>
+              <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)', marginTop: 2 }}>{targetHex.stage}</div>
+            </div>
+            <div>
+              <div style={{ fontFamily: 'sans-serif', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(26,37,64,0.4)', marginBottom: 4 }}>Целевая гексаграмма</div>
+              <div style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: '#1a2540', marginBottom: 4 }}>{targetHex.name}</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#1e3a8a', letterSpacing: 2, marginBottom: 4 }}>{targetHex.combo}</div>
+              <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)' }}>Стадия: {targetHex.stage}</div>
+            </div>
+          </div>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <FI label="Название перехода" k="transition_title" ph="Название целевой стратегии" />
           <div>
@@ -360,3 +394,4 @@ export default function StrategyEditorPage({ params }: Params) {
     </div>
   );
 }
+                                
