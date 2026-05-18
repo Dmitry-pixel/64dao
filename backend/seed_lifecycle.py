@@ -7,7 +7,7 @@
 
 import asyncio
 from sqlalchemy import select, update
-from app.db import async_session_maker
+from app.db import AsyncSessionLocal as async_session_maker
 from app.models import Strategy
 
 # Описания для каждой позиции (A/B) и каждого из 6 вопросов

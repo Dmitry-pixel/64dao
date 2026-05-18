@@ -34,21 +34,32 @@ async def create_assessment(
     db.add(assessment)
     await db.flush()
 
+    # Снимаем скалярные данные пока сессия открыта
+    assessment_id = str(assessment.id)
+    company_name = user.company_name or "Компания"
+    user_name    = user.full_name or ""
+    user_id      = user.id
+
     # Запускаем генерацию PDF в фоне — не блокируем ответ
     if body.status == "completed":
         asyncio.create_task(
             _generate_report_background(
-                assessment_id=str(assessment.id),
-                user=user,
+                assessment_id=assessment_id,
+                user_id=user_id,
+                company_name=company_name,
+                user_name=user_name,
                 combination=body.method1_combination,
                 method2_data=assessment.method2_data or {},
-                db_session=db,
             )
         )
 
-    # Загружаем с reports для корректного response_model
-    await db.refresh(assessment)
-    return assessment
+    # Перезагружаем с reports для корректного response_model
+    result = await db.execute(
+        select(Assessment)
+        .where(Assessment.id == assessment.id)
+        .options(selectinload(Assessment.reports))
+    )
+    return result.scalar_one()
 
 
 @router.get("", response_model=list[AssessmentOut])
@@ -90,14 +101,14 @@ async def get_assessment(
 
 async def _generate_report_background(
     assessment_id: str,
-    user: User,
+    user_id,
+    company_name: str,
+    user_name: str,
     combination: str,
     method2_data: dict,
-    db_session: AsyncSession,
 ) -> None:
     """Фоновая генерация PDF — не блокирует API-ответ."""
     try:
-        # Открываем отдельную сессию для фоновой задачи
         from app.db import AsyncSessionLocal
         async with AsyncSessionLocal() as bg_db:
             # Загружаем стратегию
@@ -115,8 +126,8 @@ async def _generate_report_background(
                 "November", "ноября").replace("December", "декабря")
 
             html = build_report_html(
-                company_name=user.company_name or "Компания",
-                user_name=user.full_name or "",
+                company_name=company_name,
+                user_name=user_name,
                 date_str=date_str,
                 combination=combination,
                 strategy=strategy,
@@ -124,14 +135,14 @@ async def _generate_report_background(
             )
 
             filename = f"{assessment_id}-{int(datetime.now().timestamp())}.pdf"
-            output_path = str(Path(settings.uploads_dir) / str(user.id) / filename)
+            output_path = str(Path(settings.uploads_dir) / str(user_id) / filename)
 
             await generate_pdf(html, output_path)
 
             # Сохраняем запись отчёта
             report = Report(
                 assessment_id=assessment_id,
-                user_id=user.id,
+                user_id=user_id,
                 pdf_path=output_path,
                 pdf_filename=filename,
                 generated_at=datetime.now(timezone.utc),
