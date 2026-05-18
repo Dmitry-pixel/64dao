@@ -256,6 +256,55 @@ def get_target_hexagram_info(combination: str) -> tuple[int, str, str] | None:
     return target_num, target_name, target_symbol
 
 
+_ASSUMPTION_FIELDS = [
+    ("assm_planning",    "Планирование"),
+    ("assm_growth",      "Рост и производительность"),
+    ("assm_advertising", "Реклама"),
+    ("assm_feedback",    "Братная связь"),
+    ("assm_risk",        "Риск"),
+    ("assm_product",     "Выбор продукта"),
+    ("assm_service",     "Сервис"),
+    ("assm_startup",     "Стартап"),
+    ("assm_investment",  "Инвестиции и финансы"),
+    ("assm_contracts",   "Договора и соглашения"),
+    ("assm_sync",        "Синхронизация"),
+    ("assm_creative",    "Творческий вклад"),
+    ("assm_interaction", "Взаимодействие"),
+]
+
+def _assumptions_block(strategy: Any) -> str:
+    """HTML-блок 'Предположения, лежащие в основе принятия решения. Связи с будущим'."""
+    if not strategy:
+        return ""
+    items = ""
+    for field, label in _ASSUMPTION_FIELDS:
+        val = getattr(strategy, field, None)
+        if val:
+            items += (
+                '<div style="margin-bottom:16px;">'
+                '<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;'
+                'text-transform:uppercase;color:#c0392b;font-family:Arial,sans-serif;margin-bottom:4px;">'
+                + e(label) +
+                '</div>'
+                '<p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;'
+                'margin:0;font-family:Arial,sans-serif;">'
+                + e(val) +
+                '</p>'
+                '</div>'
+            )
+    if not items:
+        return ""
+    return (
+        '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:24px 0 12px;">'
+        'Предположения, лежащие в основе принятия решения. Связи с будущим'
+        '</h2>'
+        '<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:24px;'
+        'background:rgba(255,255,255,0.4);">'
+        + items +
+        '</div>'
+    )
+
+
 def _transition_block(strategy: Any, target_hex_info: tuple | None) -> str:
     """HTML-блок 'Целевое состояние' с символом и названием целевой гексаграммы."""
     if not strategy or not strategy.transition_title:
@@ -354,6 +403,8 @@ def build_report_html(
           </div>
         </div>"""
 
+    # Блок "Предположения" — строим до page2, чтобы вставить простой переменной
+    assumptions_html = _assumptions_block(strategy)
     # Блок "Целевое состояние" — строим до page2, чтобы вставить простой переменной
     transition_html = _transition_block(strategy, target_hex_info)
 
@@ -380,6 +431,7 @@ def build_report_html(
           {f'<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Описание стратегии</h2><div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);"><p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">{e(strategy.scenario_text)}</p></div>' if strategy.scenario_text else ""}
           {f'<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Маркетинг</h2><div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);"><p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">{e(strategy.marketing_text)}</p></div>' if strategy.marketing_text else ""}
           {f'<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Управление</h2><div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);"><p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">{e(strategy.management_text)}</p></div>' if strategy.management_text else ""}
+          {assumptions_html}
           {transition_html}
           <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
                       display:flex;justify-content:space-between;font-family:Arial,sans-serif;

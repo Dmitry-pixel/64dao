@@ -116,6 +116,20 @@ class StrategyCreate(BaseModel):
     transition_title:           str | None = None
     transition_lifecycle_stage: str | None = None
     transition_description:     str | None = None
+    # Предположения для связи с будущим
+    assm_planning:              str | None = None
+    assm_growth:                str | None = None
+    assm_advertising:           str | None = None
+    assm_feedback:              str | None = None
+    assm_risk:                  str | None = None
+    assm_product:               str | None = None
+    assm_service:               str | None = None
+    assm_startup:               str | None = None
+    assm_investment:            str | None = None
+    assm_contracts:             str | None = None
+    assm_sync:                  str | None = None
+    assm_creative:              str | None = None
+    assm_interaction:           str | None = None
     is_published:               bool = False
 
     @field_validator("combination")
@@ -148,6 +162,20 @@ class StrategyOut(BaseModel):
     transition_lifecycle_stage: str | None
     transition_description:     str | None
     image_url:                  str | None
+    # Предположения для связи с будущим
+    assm_planning:              str | None
+    assm_growth:                str | None
+    assm_advertising:           str | None
+    assm_feedback:              str | None
+    assm_risk:                  str | None
+    assm_product:               str | None
+    assm_service:               str | None
+    assm_startup:               str | None
+    assm_investment:            str | None
+    assm_contracts:             str | None
+    assm_sync:                  str | None
+    assm_creative:              str | None
+    assm_interaction:           str | None
     is_published:               bool
     updated_at:                 datetime
 

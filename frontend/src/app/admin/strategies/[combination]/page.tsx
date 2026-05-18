@@ -109,6 +109,20 @@ const EMPTY = {
   scenario_text: '',
   marketing_text: '',
   management_text: '',
+  // Предположения для связи с будущим
+  assm_planning: '',
+  assm_growth: '',
+  assm_advertising: '',
+  assm_feedback: '',
+  assm_risk: '',
+  assm_product: '',
+  assm_service: '',
+  assm_startup: '',
+  assm_investment: '',
+  assm_contracts: '',
+  assm_sync: '',
+  assm_creative: '',
+  assm_interaction: '',
   transition_title: '',
   transition_lifecycle_stage: '',
   transition_description: '',
@@ -157,6 +171,19 @@ export default function StrategyEditorPage({ params }: Params) {
           scenario_text: data.scenario_text || '',
           marketing_text: data.marketing_text || '',
           management_text: data.management_text || '',
+          assm_planning: data.assm_planning || '',
+          assm_growth: data.assm_growth || '',
+          assm_advertising: data.assm_advertising || '',
+          assm_feedback: data.assm_feedback || '',
+          assm_risk: data.assm_risk || '',
+          assm_product: data.assm_product || '',
+          assm_service: data.assm_service || '',
+          assm_startup: data.assm_startup || '',
+          assm_investment: data.assm_investment || '',
+          assm_contracts: data.assm_contracts || '',
+          assm_sync: data.assm_sync || '',
+          assm_creative: data.assm_creative || '',
+          assm_interaction: data.assm_interaction || '',
           transition_title: data.transition_title || f.transition_title,
           transition_lifecycle_stage: data.transition_lifecycle_stage || f.transition_lifecycle_stage,
           transition_description: data.transition_description || '',
@@ -186,6 +213,19 @@ export default function StrategyEditorPage({ params }: Params) {
         scenario_text: form.scenario_text,
         marketing_text: form.marketing_text,
         management_text: form.management_text,
+        assm_planning: form.assm_planning,
+        assm_growth: form.assm_growth,
+        assm_advertising: form.assm_advertising,
+        assm_feedback: form.assm_feedback,
+        assm_risk: form.assm_risk,
+        assm_product: form.assm_product,
+        assm_service: form.assm_service,
+        assm_startup: form.assm_startup,
+        assm_investment: form.assm_investment,
+        assm_contracts: form.assm_contracts,
+        assm_sync: form.assm_sync,
+        assm_creative: form.assm_creative,
+        assm_interaction: form.assm_interaction,
         transition_title: form.transition_title,
         transition_lifecycle_stage: form.transition_lifecycle_stage,
         transition_description: form.transition_description,
@@ -345,6 +385,22 @@ export default function StrategyEditorPage({ params }: Params) {
 
       <Sec label="Управление" title="Рекомендации по управлению" help="Как организовать команду и принятие решений.">
         <FA label="" k="management_text" rows={6} ph="Опишите управленческие рекомендации…" />
+      </Sec>
+
+      <Sec label="Предположение для связи с будущим" title="Предположения, лежащие в основе принятия решения" help="Тематические блоки — отображаются в отчёте после раздела «Управление».">
+        <FA label="Планирование" k="assm_planning" rows={3} ph="Предположения по планированию…" />
+        <FA label="Рост и производительность" k="assm_growth" rows={3} ph="Предположения по росту и производительности…" />
+        <FA label="Реклама" k="assm_advertising" rows={3} ph="Предположения по рекламе…" />
+        <FA label="Братная связь" k="assm_feedback" rows={3} ph="Предположения по братной связи…" />
+        <FA label="Риск" k="assm_risk" rows={3} ph="Предположения по рискам…" />
+        <FA label="Выбор продукта" k="assm_product" rows={3} ph="Предположения по выбору продукта…" />
+        <FA label="Сервис" k="assm_service" rows={3} ph="Предположения по сервису…" />
+        <FA label="Стартап" k="assm_startup" rows={3} ph="Предположения по стартапу…" />
+        <FA label="Инвестиции и финансы" k="assm_investment" rows={3} ph="Предположения по инвестициям и финансам…" />
+        <FA label="Договора и соглашения" k="assm_contracts" rows={3} ph="Предположения по договорам и соглашениям…" />
+        <FA label="Синхронизация" k="assm_sync" rows={3} ph="Предположения по синхронизации…" />
+        <FA label="Творческий вклад" k="assm_creative" rows={3} ph="Предположения по творческому вкладу…" />
+        <FA label="Взаимодействие" k="assm_interaction" rows={3} ph="Предположения по взаимодействию…" />
       </Sec>
 
       <Sec label="Переход" title="Целевое состояние" help="Куда компании двигаться — определено автоматически по таблице соответствия гексаграмм.">
