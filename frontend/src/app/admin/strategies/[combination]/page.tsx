@@ -434,8 +434,8 @@ export default function StrategyEditorPage({ params }: Params) {
 
       <Sec label="Сценарий стратагемы" title="Таблица стратагемы" help="Конкретные характеристики — отображаются в блоке «Сценарий стратагемы» отчёта.">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <FI label="Инновационная стратегия" k="scenario_innovation_strategy" />
-          <FI label="Инновационный тип" k="scenario_innovation_type" />
+          <FI label="Стратегия изменений" k="scenario_innovation_strategy" />
+          <FI label="Тип изменений" k="scenario_innovation_type" />
           <FI label="Ценностная дисциплина" k="scenario_value_discipline" />
           <FI label="Принципы лидерства" k="scenario_leadership_principles" />
           <FI label="Стратегия роста" k="scenario_growth_strategy" />
