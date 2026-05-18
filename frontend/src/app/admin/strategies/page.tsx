@@ -4,14 +4,12 @@ import { useRouter } from 'next/navigation'
 import { adminApi, getMe } from '@/lib/api'
 import { AdminNav, AdminSide } from '@/components/AdminNav'
 
-// A=0 (сплошная, Ян), B=1 (прерывистая, Инь) → 6-битный индекс → Unicode U+4DC0
 function comboToHex(combo: string): string {
   if (!combo || combo.length !== 6) return '?'
   const offset = parseInt(combo.replace(/A/g, '0').replace(/B/g, '1'), 2)
   return String.fromCodePoint(0x4DC0 + offset)
 }
 
-// Правильный порядок гексаграмм 1–64 (combo → номер)
 const HEXAGRAM_ORDER: Record<string, number> = {
   'AAAAAA':1,'BBBBBB':2,'ABBBAB':3,'BABBBA':4,'AAABAB':5,'BABAAA':6,'BABBBB':7,'BBBBAB':8,
   'AAABAA':9,'AABAAA':10,'AAABBB':11,'BBBAAA':12,'ABAAAA':13,'AAAABA':14,'BBABBB':15,'BBBABB':16,
@@ -35,7 +33,6 @@ export default function AdminStrategiesPage() {
         const me = await getMe()
         if (me.role !== 'admin') { router.push('/dashboard'); return }
         const data = await adminApi.strategies() as any[]
-        // Сортируем по правильному порядку гексаграмм 1–64
         data.sort((a: any, b: any) => (HEXAGRAM_ORDER[a.combination] ?? 99) - (HEXAGRAM_ORDER[b.combination] ?? 99))
         setStrategies(data)
       } catch {
@@ -101,4 +98,26 @@ export default function AdminStrategiesPage() {
                   <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/admin/strategies/${s.combination}`)}>
                     <td style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)', textAlign: 'center' }}>{num}</td>
                     <td>
-                      <span className="hex he
+                      <span style={{ fontSize: 22 }}>{comboToHex(s.combination)}</span>
+                    </td>
+                    <td><code style={{ fontSize: 12 }}>{s.combination}</code></td>
+                    <td style={{ fontWeight: 500 }}>{s.title ?? <span className="faint">без названия</span>}</td>
+                    <td style={{ fontFamily: 'sans-serif', fontSize: 12 }}>{s.lifecycle_stage ?? '—'}</td>
+                    <td>
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: s.is_published ? '#d4edda' : '#f8d7da', color: s.is_published ? '#155724' : '#721c24' }}>
+                        {s.is_published ? 'Опубликовано' : 'Черновик'}
+                      </span>
+                    </td>
+                    <td>
+                      <button className="btn-sm" onClick={e => { e.stopPropagation(); router.push(`/admin/strategies/${s.combination}`) }}>Редактировать</button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  )
+}
