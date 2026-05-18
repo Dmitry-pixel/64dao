@@ -26,7 +26,21 @@ async def _get_browser() -> Browser:
         if _browser and _browser.is_connected():
             return _browser
 
-        # Playwright context
+        # Закрываем старые ресурсы перед перезапуском
+        try:
+            if _browser:
+                await _browser.close()
+        except Exception:
+            pass
+        try:
+            if _pw:
+                await _pw.stop()
+        except Exception:
+            pass
+        _browser = None
+        _pw = None
+
+        # Запускаем новый Playwright + Chromium
         _pw = await async_playwright().start()
         _browser = await _pw.chromium.launch(
             args=[
@@ -36,7 +50,7 @@ async def _get_browser() -> Browser:
                 "--disable-gpu",
                 "--no-first-run",
                 "--no-zygote",
-                "--single-process",
+                # --single-process убран: нестабилен в Docker, вызывает краши
             ],
         )
 
