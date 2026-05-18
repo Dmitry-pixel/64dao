@@ -5,9 +5,9 @@ import { adminApi, getMe } from '@/lib/api'
 import { AdminNav, AdminSide } from '@/components/AdminNav'
 
 function comboToHex(combo: string): string {
-  if (!combo || combo.length !== 6) return '?'
-  const offset = parseInt(combo.replace(/A/g, '0').replace(/B/g, '1'), 2)
-  return String.fromCodePoint(0x4DC0 + offset)
+  const num = HEXAGRAM_ORDER[combo]
+  if (!num) return '?'
+  return String.fromCodePoint(0x4DC0 + num - 1)
 }
 
 const HEXAGRAM_ORDER: Record<string, number> = {

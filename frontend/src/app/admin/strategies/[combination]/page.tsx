@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 
 // A=Yang (сплошная), B=Yin (прерывистая). offset = parseInt(combo, 2) где A→0, B→1
 function comboToHex(combo: string): string {
-  if (!combo || combo.length !== 6) return '?';
-  const offset = parseInt(combo.replace(/A/g, '0').replace(/B/g, '1'), 2);
-  return String.fromCodePoint(0x4DC0 + offset);
+  const entry = HEXAGRAM_DATA.find(h => h.combo === combo);
+  if (!entry) return '?';
+  return String.fromCodePoint(0x4DC0 + entry.n - 1);
 }
 
 // Данные из документа пользователя (с исправлениями дубликатов)
