@@ -11,6 +11,18 @@ function comboToHex(combo: string): string {
   return String.fromCodePoint(0x4DC0 + offset)
 }
 
+// Правильный порядок гексаграмм 1–64 (combo → номер)
+const HEXAGRAM_ORDER: Record<string, number> = {
+  'AAAAAA':1,'BBBBBB':2,'ABBBAB':3,'BABBBA':4,'AAABAB':5,'BABAAA':6,'BABBBB':7,'BBBBAB':8,
+  'AAABAA':9,'AABAAA':10,'AAABBB':11,'BBBAAA':12,'ABAAAA':13,'AAAABA':14,'BBABBB':15,'BBBABB':16,
+  'ABBAAB':17,'BAABBA':18,'AABBBB':19,'BBBBAA':20,'ABBABA':21,'ABABBA':22,'BBBBBA':23,'ABBBBB':24,
+  'ABBAAA':25,'AAABBA':26,'ABBBBA':27,'BAAAAB':28,'BABBAB':29,'ABAABA':30,'BBAAAB':31,'BAAABB':32,
+  'BBAAAA':33,'AAAABB':34,'BBBABA':35,'ABABBB':36,'ABABAA':37,'AABABA':38,'BBABAB':39,'BABABB':40,
+  'AABBBA':41,'ABBBAA':42,'AAAAAB':43,'BAAAAA':44,'BBBAAB':45,'BAABBB':46,'BABAAB':47,'BAABAB':48,
+  'ABAAAB':49,'BAAABA':50,'ABBABB':51,'BBABBA':52,'BBABAA':53,'AABABB':54,'ABAABB':55,'BBAABA':56,
+  'BABBAA':57,'AABAAB':58,'BAABAA':59,'AABBAB':60,'AABBAA':61,'BBAABB':62,'ABABAB':63,'BABABA':64,
+}
+
 export default function AdminStrategiesPage() {
   const router = useRouter()
   const [strategies, setStrategies] = useState<any[]>([])
@@ -23,6 +35,8 @@ export default function AdminStrategiesPage() {
         const me = await getMe()
         if (me.role !== 'admin') { router.push('/dashboard'); return }
         const data = await adminApi.strategies() as any[]
+        // Сортируем по правильному порядку гексаграмм 1–64
+        data.sort((a: any, b: any) => (HEXAGRAM_ORDER[a.combination] ?? 99) - (HEXAGRAM_ORDER[b.combination] ?? 99))
         setStrategies(data)
       } catch {
         router.push('/login')
@@ -82,36 +96,9 @@ export default function AdminStrategiesPage() {
             </thead>
             <tbody>
               {filtered.map((s) => {
-                const num = strategies.indexOf(s) + 1
+                const num = HEXAGRAM_ORDER[s.combination] ?? '?'
                 return (
                   <tr key={s.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/admin/strategies/${s.combination}`)}>
                     <td style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)', textAlign: 'center' }}>{num}</td>
                     <td>
-                      <span className="hex hex-sm">{comboToHex(s.combination)}</span>
-                    </td>
-                    <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{s.combination}</td>
-                    <td><strong>{s.title ?? '—'}</strong></td>
-                    <td style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'var(--text-mute)' }}>{s.lifecycle_stage ?? '—'}</td>
-                    <td>
-                      {s.is_published
-                        ? <span className="pill pill-completed">опубликовано</span>
-                        : <span className="pill pill-draft">черновик</span>
-                      }
-                    </td>
-                    <td>
-                      <div className="row-actions">
-                        <button onClick={e => { e.stopPropagation(); router.push(`/admin/strategies/${s.combination}`) }}>
-                          Редактировать
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </>
-  )
-}
+                      <span className="hex he
