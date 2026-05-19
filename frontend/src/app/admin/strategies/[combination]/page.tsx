@@ -145,7 +145,6 @@ const EMPTY = {
   scenario_text: '',
   marketing_text: '',
   management_text: '',
-  // Предположения для связи с будущим
   assm_planning: '',
   assm_growth: '',
   assm_advertising: '',
@@ -163,7 +162,6 @@ const EMPTY = {
   transition_lifecycle_stage: '',
   transition_description: '',
   is_published: false,
-  // JSONB поля (редактируем как текст, сохраняем как объект)
   scenario_innovation_strategy: '',
   scenario_innovation_type: '',
   scenario_value_discipline: '',
@@ -172,6 +170,73 @@ const EMPTY = {
   scenario_focus: '',
 };
 
+// ─── Стили (вне компонента — стабильные ссылки) ───────────────────────────────
+const INP: React.CSSProperties = {
+  width: '100%', padding: '10px 14px',
+  border: '1px solid rgba(26,37,64,0.3)', borderRadius: 6,
+  fontFamily: 'sans-serif', fontSize: 13,
+  background: '#fff', color: '#1a2540',
+  boxSizing: 'border-box',
+};
+const INP_TA: React.CSSProperties = { ...INP, resize: 'vertical', lineHeight: 1.6 };
+const LBL: React.CSSProperties = {
+  display: 'block', fontFamily: 'sans-serif', fontSize: 11,
+  fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase',
+  color: 'rgba(26,37,64,0.5)', marginBottom: 6,
+};
+
+// ─── Вспомогательные компоненты (ВНЕ основного компонента — иначе теряется фокус) ──
+type Setter = (k: string, v: string | boolean) => void;
+
+function FI({ label, fieldKey, ph = '', form, onSet }: {
+  label: string; fieldKey: string; ph?: string;
+  form: Record<string, any>; onSet: Setter;
+}) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      {label && <label style={LBL}>{label}</label>}
+      <input
+        value={form[fieldKey] || ''}
+        onChange={e => onSet(fieldKey, e.target.value)}
+        placeholder={ph}
+        style={INP}
+      />
+    </div>
+  );
+}
+
+function FA({ label, fieldKey, rows = 4, ph = '', form, onSet }: {
+  label: string; fieldKey: string; rows?: number; ph?: string;
+  form: Record<string, any>; onSet: Setter;
+}) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      {label && <label style={LBL}>{label}</label>}
+      <textarea
+        value={form[fieldKey] || ''}
+        onChange={e => onSet(fieldKey, e.target.value)}
+        rows={rows}
+        placeholder={ph}
+        style={{ ...INP_TA, fontSize: 13 }}
+      />
+    </div>
+  );
+}
+
+function Sec({ label, title, help, children }: {
+  label: string; title: string; help: string; children: React.ReactNode;
+}) {
+  return (
+    <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(26,37,64,0.1)', padding: '24px 28px', marginBottom: 20 }}>
+      <span style={{ fontFamily: 'sans-serif', fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: '#c0392b' }}>{label}</span>
+      <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: '#1a2540', margin: '6px 0 4px' }}>{title}</h3>
+      <p style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.4)', margin: '0 0 20px' }}>{help}</p>
+      {children}
+    </div>
+  );
+}
+
+// ─── Главный компонент ────────────────────────────────────────────────────────
 type Params = { params: { combination: string } };
 
 export default function StrategyEditorPage({ params }: Params) {
@@ -186,7 +251,6 @@ export default function StrategyEditorPage({ params }: Params) {
 
   useEffect(() => {
     if (!hex) { setLoading(false); return; }
-    // Pre-fill из статических данных + авто-заполнение lc_ из комбинации
     setForm(f => ({
       ...f,
       title: hex.name,
@@ -197,7 +261,6 @@ export default function StrategyEditorPage({ params }: Params) {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data || data.detail) return;
-        // Разворачиваем JSONB scenario в плоские поля
         const sc = data.scenario || {};
         setForm(f => ({
           ...f,
@@ -243,7 +306,10 @@ export default function StrategyEditorPage({ params }: Params) {
       .finally(() => setLoading(false));
   }, [combination]);
 
-  const set = (k: string, v: string | boolean) => { setForm(f => ({ ...f, [k]: v })); setSaved(false); };
+  const set: Setter = (k, v) => { setForm(f => ({ ...f, [k]: v })); setSaved(false); };
+
+  const btn = (extra: React.CSSProperties = {}) =>
+    ({ padding: '9px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontFamily: 'sans-serif', ...extra } as const);
 
   const save = async (publish: boolean) => {
     setSaving(true); setError('');
@@ -279,7 +345,6 @@ export default function StrategyEditorPage({ params }: Params) {
         transition_lifecycle_stage: form.transition_lifecycle_stage,
         transition_description: form.transition_description,
         is_published: publish,
-        // Собираем JSONB scenario
         scenario: {
           innovation_strategy: form.scenario_innovation_strategy,
           innovation_type: form.scenario_innovation_type,
@@ -288,7 +353,6 @@ export default function StrategyEditorPage({ params }: Params) {
           growth_strategy: form.scenario_growth_strategy,
           focus: form.scenario_focus,
         },
-        // current_state заполняется автоматически из комбинации
         current_state: {
           combination: combination,
           hex_name: hex?.name || '',
@@ -308,34 +372,6 @@ export default function StrategyEditorPage({ params }: Params) {
     } catch (e: any) { setError(e.message || 'Ошибка'); }
     finally { setSaving(false); }
   };
-
-  const inp = { width: '100%', padding: '10px 14px', border: '1px solid rgba(26,37,64,0.3)', borderRadius: 6, fontFamily: 'sans-serif', fontSize: 13, background: '#fff', color: '#1a2540', boxSizing: 'border-box' as const };
-  const lbl = { display: 'block', fontFamily: 'sans-serif', fontSize: 11, fontWeight: 600 as const, letterSpacing: 1, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.5)', marginBottom: 6 };
-  const btn = (extra: React.CSSProperties = {}) => ({ padding: '9px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontFamily: 'sans-serif', ...extra } as const);
-
-  const FI = ({ label, k, ph = '' }: { label: string; k: string; ph?: string }) => (
-    <div style={{ marginBottom: 16 }}>
-      {label && <label style={lbl}>{label}</label>}
-      <input value={(form as any)[k] || ''} onChange={e => set(k, e.target.value)} placeholder={ph} style={inp} />
-    </div>
-  );
-
-  const FA = ({ label, k, rows = 4, ph = '' }: { label: string; k: string; rows?: number; ph?: string }) => (
-    <div style={{ marginBottom: 16 }}>
-      {label && <label style={lbl}>{label}</label>}
-      <textarea value={(form as any)[k] || ''} onChange={e => set(k, e.target.value)} rows={rows} placeholder={ph}
-        style={{ ...inp, resize: 'vertical', lineHeight: 1.6 }} />
-    </div>
-  );
-
-  const Sec = ({ label, title, help, children }: { label: string; title: string; help: string; children: React.ReactNode }) => (
-    <div style={{ background: '#fff', borderRadius: 10, border: '1px solid rgba(26,37,64,0.1)', padding: '24px 28px', marginBottom: 20 }}>
-      <span style={{ fontFamily: 'sans-serif', fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: '#c0392b' }}>{label}</span>
-      <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: '#1a2540', margin: '6px 0 4px' }}>{title}</h3>
-      <p style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.4)', margin: '0 0 20px' }}>{help}</p>
-      {children}
-    </div>
-  );
 
   if (loading) return <div style={{ padding: 40, fontFamily: 'sans-serif', color: 'rgba(26,37,64,0.4)' }}>Загрузка…</div>;
   if (!hex) return (
@@ -363,7 +399,7 @@ export default function StrategyEditorPage({ params }: Params) {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={() => router.push('/admin/strategies')} style={btn({ border: '1px solid rgba(26,37,64,0.2)', background: 'transparent', color: '#1a2540' })}>← К списку</button>
-          <button onClick={() => save(false)} disabled={saving} style={btn({ border: '1px solid rgba(26,37,64,0.2)', background: 'transparent', color: '#1a2540' })}>Черновик</button>
+          <button onClick={() => save(false)} disabled={saving} style={btn({ border: '1px solid rgba(26,37,64,0.2)', background: 'transparent', color: '#1a2540' })}>{saving ? 'Сохранение…' : 'Черновик'}</button>
           <button onClick={() => save(true)} disabled={saving} style={btn({ border: 'none', background: '#1a2540', color: '#fff', fontWeight: 600 })}>
             {saving ? 'Сохранение…' : 'Сохранить и опубликовать'}
           </button>
@@ -409,12 +445,12 @@ export default function StrategyEditorPage({ params }: Params) {
 
       {/* Секции */}
       <Sec label="Основное" title="Заголовок и стратагема" help="Отображается в шапке отчёта пользователя.">
-        <FI label="Заголовок стратегии" k="title" ph={hex.name} />
-        <FI label="Стратагема (название)" k="stratagema_title" ph="Краткая формулировка стратагемы" />
+        <FI label="Заголовок стратегии" fieldKey="title" ph={hex.name} form={form} onSet={set} />
+        <FI label="Стратагема (название)" fieldKey="stratagema_title" ph="Краткая формулировка стратагемы" form={form} onSet={set} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
-            <label style={lbl}>Стадия жизненного цикла</label>
-            <select value={(form as any).lifecycle_stage || hex.stage} onChange={e => set('lifecycle_stage', e.target.value)} style={inp}>
+            <label style={LBL}>Стадия жизненного цикла</label>
+            <select value={form.lifecycle_stage || hex.stage} onChange={e => set('lifecycle_stage', e.target.value)} style={INP}>
               {['Зарождение','Расцвет','Зрелость','Обновление','Упадок'].map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
@@ -427,13 +463,13 @@ export default function StrategyEditorPage({ params }: Params) {
             <div key={b.key} style={{ background: 'rgba(26,37,64,0.02)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '14px 16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <span style={{ width: 22, height: 22, borderRadius: '50%', background: combination[i] === 'A' ? '#1e3a8a' : '#e8e4db', color: combination[i] === 'A' ? '#fff' : '#1a2540', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'monospace', fontSize: 11, fontWeight: 700, flexShrink: 0, border: combination[i] === 'B' ? '1px solid rgba(26,37,64,0.2)' : 'none' }}>{combination[i]}</span>
-                <label style={{ ...lbl, margin: 0 }}>{b.label}</label>
+                <label style={{ ...LBL, margin: 0 }}>{b.label}</label>
               </div>
               <textarea
                 value={(form as any)[b.key] || ''}
                 onChange={e => set(b.key, e.target.value)}
                 rows={3}
-                style={{ ...inp, resize: 'vertical', lineHeight: 1.6, fontSize: 12 }}
+                style={{ ...INP_TA, fontSize: 12 }}
               />
             </div>
           ))}
@@ -441,31 +477,31 @@ export default function StrategyEditorPage({ params }: Params) {
       </Sec>
 
       <Sec label="Сценарий" title="Сценарий развития" help="Блок 03 отчёта — что означает эта комбинация для бизнеса.">
-        <FA label="" k="scenario_text" rows={5} ph="Опишите сценарий развития для данной комбинации…" />
+        <FA label="" fieldKey="scenario_text" rows={5} ph="Опишите сценарий развития для данной комбинации…" form={form} onSet={set} />
       </Sec>
 
       <Sec label="Маркетинг" title="Рекомендации по маркетингу" help="Что делать с продуктом, ценой, каналами и коммуникацией.">
-        <FA label="" k="marketing_text" rows={6} ph="Опишите маркетинговые рекомендации…" />
+        <FA label="" fieldKey="marketing_text" rows={6} ph="Опишите маркетинговые рекомендации…" form={form} onSet={set} />
       </Sec>
 
       <Sec label="Управление" title="Рекомендации по управлению" help="Как организовать команду и принятие решений.">
-        <FA label="" k="management_text" rows={6} ph="Опишите управленческие рекомендации…" />
+        <FA label="" fieldKey="management_text" rows={6} ph="Опишите управленческие рекомендации…" form={form} onSet={set} />
       </Sec>
 
       <Sec label="Предположение для связи с будущим" title="Предположения, лежащие в основе принятия решения" help="Тематические блоки — отображаются в отчёте после раздела «Управление».">
-        <FA label="Планирование" k="assm_planning" rows={3} ph="Предположения по планированию…" />
-        <FA label="Рост и производительность" k="assm_growth" rows={3} ph="Предположения по росту и производительности…" />
-        <FA label="Реклама" k="assm_advertising" rows={3} ph="Предположения по рекламе…" />
-        <FA label="Братная связь" k="assm_feedback" rows={3} ph="Предположения по братной связи…" />
-        <FA label="Риск" k="assm_risk" rows={3} ph="Предположения по рискам…" />
-        <FA label="Выбор продукта" k="assm_product" rows={3} ph="Предположения по выбору продукта…" />
-        <FA label="Сервис" k="assm_service" rows={3} ph="Предположения по сервису…" />
-        <FA label="Стартап" k="assm_startup" rows={3} ph="Предположения по стартапу…" />
-        <FA label="Инвестиции и финансы" k="assm_investment" rows={3} ph="Предположения по инвестициям и финансам…" />
-        <FA label="Договора и соглашения" k="assm_contracts" rows={3} ph="Предположения по договорам и соглашениям…" />
-        <FA label="Синхронизация" k="assm_sync" rows={3} ph="Предположения по синхронизации…" />
-        <FA label="Творческий вклад" k="assm_creative" rows={3} ph="Предположения по творческому вкладу…" />
-        <FA label="Взаимодействие" k="assm_interaction" rows={3} ph="Предположения по взаимодействию…" />
+        <FA label="Планирование" fieldKey="assm_planning" rows={3} ph="Предположения по планированию…" form={form} onSet={set} />
+        <FA label="Рост и производительность" fieldKey="assm_growth" rows={3} ph="Предположения по росту и производительности…" form={form} onSet={set} />
+        <FA label="Реклама" fieldKey="assm_advertising" rows={3} ph="Предположения по рекламе…" form={form} onSet={set} />
+        <FA label="Братная связь" fieldKey="assm_feedback" rows={3} ph="Предположения по братной связи…" form={form} onSet={set} />
+        <FA label="Риск" fieldKey="assm_risk" rows={3} ph="Предположения по рискам…" form={form} onSet={set} />
+        <FA label="Выбор продукта" fieldKey="assm_product" rows={3} ph="Предположения по выбору продукта…" form={form} onSet={set} />
+        <FA label="Сервис" fieldKey="assm_service" rows={3} ph="Предположения по сервису…" form={form} onSet={set} />
+        <FA label="Стартап" fieldKey="assm_startup" rows={3} ph="Предположения по стартапу…" form={form} onSet={set} />
+        <FA label="Инвестиции и финансы" fieldKey="assm_investment" rows={3} ph="Предположения по инвестициям и финансам…" form={form} onSet={set} />
+        <FA label="Договора и соглашения" fieldKey="assm_contracts" rows={3} ph="Предположения по договорам и соглашениям…" form={form} onSet={set} />
+        <FA label="Синхронизация" fieldKey="assm_sync" rows={3} ph="Предположения по синхронизации…" form={form} onSet={set} />
+        <FA label="Творческий вклад" fieldKey="assm_creative" rows={3} ph="Предположения по творческому вкладу…" form={form} onSet={set} />
+        <FA label="Взаимодействие" fieldKey="assm_interaction" rows={3} ph="Предположения по взаимодействию…" form={form} onSet={set} />
       </Sec>
 
       <Sec label="Переход" title="Целевое состояние" help="Куда компании двигаться — определено автоматически по таблице соответствия гексаграмм.">
@@ -486,25 +522,25 @@ export default function StrategyEditorPage({ params }: Params) {
           </div>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <FI label="Название перехода" k="transition_title" ph="Название целевой стратегии" />
+          <FI label="Название перехода" fieldKey="transition_title" ph="Название целевой стратегии" form={form} onSet={set} />
           <div>
-            <label style={lbl}>Стадия целевого состояния</label>
-            <select value={(form as any).transition_lifecycle_stage} onChange={e => set('transition_lifecycle_stage', e.target.value)} style={inp}>
+            <label style={LBL}>Стадия целевого состояния</label>
+            <select value={form.transition_lifecycle_stage} onChange={e => set('transition_lifecycle_stage', e.target.value)} style={INP}>
               {['','Зарождение','Расцвет','Зрелость','Обновление','Упадок'].map(s => <option key={s} value={s}>{s || '—'}</option>)}
             </select>
           </div>
         </div>
-        <FA label="Описание перехода" k="transition_description" rows={4} ph="Опишите как компании перейти к целевому состоянию…" />
+        <FA label="Описание перехода" fieldKey="transition_description" rows={4} ph="Опишите как компании перейти к целевому состоянию…" form={form} onSet={set} />
       </Sec>
 
       <Sec label="Сценарий стратагемы" title="Таблица стратагемы" help="Конкретные характеристики — отображаются в блоке «Сценарий стратагемы» отчёта.">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <FI label="Стратегия изменений" k="scenario_innovation_strategy" />
-          <FI label="Тип изменений" k="scenario_innovation_type" />
-          <FI label="Ценностная дисциплина" k="scenario_value_discipline" />
-          <FI label="Принципы лидерства" k="scenario_leadership_principles" />
-          <FI label="Стратегия роста" k="scenario_growth_strategy" />
-          <FI label="Фокус" k="scenario_focus" />
+          <FI label="Стратегия изменений" fieldKey="scenario_innovation_strategy" form={form} onSet={set} />
+          <FI label="Тип изменений" fieldKey="scenario_innovation_type" form={form} onSet={set} />
+          <FI label="Ценностная дисциплина" fieldKey="scenario_value_discipline" form={form} onSet={set} />
+          <FI label="Принципы лидерства" fieldKey="scenario_leadership_principles" form={form} onSet={set} />
+          <FI label="Стратегия роста" fieldKey="scenario_growth_strategy" form={form} onSet={set} />
+          <FI label="Фокус" fieldKey="scenario_focus" form={form} onSet={set} />
         </div>
       </Sec>
 
