@@ -2,14 +2,15 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File
 from pydantic import BaseModel, field_validator
-from sqlalchemy import select, func
+from datetime import datetime, timedelta, timezone
+from sqlalchemy import select, func, cast, Date
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_admin, get_current_user, hash_password, create_impersonation_token, create_token, decode_token, set_auth_cookie
 from app.config import get_settings
 from app.db import get_db
-from app.models import User, Assessment, Report, Strategy
+from app.models import User, Assessment, Report, Strategy, Order
 from app.schemas import (
     AdminSetupRequest, AdminStats,
     StrategyCreate, StrategyUpdate, StrategyOut, StrategyListItem,
@@ -76,6 +77,36 @@ async def get_stats(
     )
     recent_assessments = recent_assessments_res.scalars().all()
 
+    # Статистика покупок за последние 30 дней
+    since = datetime.now(timezone.utc) - timedelta(days=29)
+    orders_res = await db.execute(
+        select(
+            cast(Order.created_at, Date).label("day"),
+            func.count(Order.id).label("count"),
+            func.coalesce(func.sum(Order.amount), 0).label("amount"),
+        )
+        .where(Order.created_at >= since)
+        .group_by(cast(Order.created_at, Date))
+        .order_by(cast(Order.created_at, Date))
+    )
+    orders_by_day_raw = orders_res.all()
+
+    # Заполняем все 30 дней (включая дни без заказов)
+    all_days: dict[str, dict] = {}
+    for i in range(30):
+        d = (since + timedelta(days=i)).strftime("%Y-%m-%d")
+        all_days[d] = {"date": d, "count": 0, "amount": 0}
+    for row in orders_by_day_raw:
+        key = str(row.day)
+        if key in all_days:
+            all_days[key] = {"date": key, "count": int(row.count), "amount": float(row.amount)}
+    orders_by_day = list(all_days.values())
+
+    total_orders = await db.scalar(select(func.count(Order.id))) or 0
+    total_revenue = float(await db.scalar(
+        select(func.coalesce(func.sum(Order.amount), 0)).where(Order.status == "paid")
+    ) or 0)
+
     return AdminStats(
         total_users=total_users,
         total_assessments=total_assessments,
@@ -83,6 +114,9 @@ async def get_stats(
         published_strategies=published_strategies,
         recent_users=recent_users,
         recent_assessments=recent_assessments,
+        orders_by_day=orders_by_day,
+        total_orders=total_orders,
+        total_revenue=total_revenue,
     )
 
 

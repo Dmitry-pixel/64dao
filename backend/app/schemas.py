@@ -218,6 +218,9 @@ class AdminStats(BaseModel):
     published_strategies: int
     recent_users:         list[UserOut]
     recent_assessments:   list[AssessmentOut]
+    orders_by_day:        list[dict] = []
+    total_orders:         int = 0
+    total_revenue:        float = 0
 
 
 # ── Impersonation ─────────────────────────────────────────────────────────────
