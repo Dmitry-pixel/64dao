@@ -306,15 +306,55 @@ function Method2Report({
         </div>
       </div>
 
-      {/* BMC Blocks */}
-      {blocks.length > 0 ? blocks.map(block => (
-        <SectionBlock key={block.title} label={`${block.num} · ${block.title}`}>
-          <div style={{ marginBottom: block.text ? 14 : 0 }}>
-            <ScoreDots score={block.score} />
+      {blocks.length > 0 ? (
+        <>
+          {/* Сводка оценок — сетка 3×3 */}
+          <div style={{ marginBottom: 10 }}>
+            <div style={{
+              fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 2.5,
+              textTransform: 'uppercase', color: '#c0392b', fontWeight: 600, marginBottom: 12,
+            }}>Оценка блоков</div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 10,
+              marginBottom: 32,
+            }}>
+              {blocks.map(block => (
+                <div key={block.title} style={{
+                  background: 'rgba(255,255,255,0.72)',
+                  border: '1px solid rgba(26,37,64,0.09)',
+                  borderRadius: 10,
+                  padding: '16px 18px',
+                }}>
+                  <div style={{
+                    fontFamily: 'sans-serif', fontSize: 11, fontWeight: 600,
+                    color: '#1a2540', marginBottom: 10,
+                  }}>{block.num} · {block.title}</div>
+                  <ScoreDots score={block.score} />
+                </div>
+              ))}
+            </div>
           </div>
-          {block.text && <TextBody text={block.text} />}
-        </SectionBlock>
-      )) : (
+
+          {/* Комментарии */}
+          <div style={{
+            fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 2.5,
+            textTransform: 'uppercase', color: '#c0392b', fontWeight: 600, marginBottom: 12,
+          }}>Комментарии</div>
+          {blocks.map(block => (
+            <SectionBlock key={block.title} label={`${block.num} · ${block.title}`}>
+              <div style={{ marginBottom: block.text ? 14 : 0 }}>
+                <ScoreDots score={block.score} />
+              </div>
+              {block.text
+                ? <TextBody text={block.text} />
+                : <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.35)', margin: 0, fontStyle: 'italic' }}>Комментарий не добавлен</p>
+              }
+            </SectionBlock>
+          ))}
+        </>
+      ) : (
         <SectionBlock label="Бизнес-модель">
           <p style={{ fontFamily: 'sans-serif', fontSize: 14, color: 'rgba(26,37,64,0.5)', margin: 0 }}>
             Данные бизнес-модели не заполнены.

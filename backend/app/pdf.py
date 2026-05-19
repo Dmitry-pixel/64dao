@@ -441,20 +441,33 @@ def build_report_html(
     sc = (strategy.scenario or {}) if strategy else {}
     sc_rows = [(lbl, sc[k]) for k, lbl in SCENARIO_LABELS.items() if sc.get(k)]
 
-    # BMC блоки — ключи должны совпадать с Russian names на фронтенде
-    bmc_blocks = ""
+    # BMC: сетка оценок (только баллы, без текста)
+    bmc_score_grid = ""
+    # BMC: комментарии (только тексты, без баллов)
+    bmc_comments = ""
     for label in BMC_KEYS:
         block = method2_data.get(label, {})
         score = int(block.get("score", 0)) if block else 0
         text  = str(block.get("text", "")) if block else ""
-        bmc_blocks += f"""
+        # Карточка оценки
+        bmc_score_grid += f"""
         <div style="border:1px solid rgba(26,37,64,0.1);border-radius:5px;
                     padding:12px;background:rgba(255,255,255,0.5);">
           <div style="font-size:11px;font-weight:600;color:#1a2540;
-                      font-family:Arial,sans-serif;margin-bottom:6px;">{e(label)}</div>
+                      font-family:Arial,sans-serif;margin-bottom:8px;">{e(label)}</div>
           {_score_bar(score)}
-          <div style="font-size:11px;color:rgba(26,37,64,0.55);
-                      line-height:1.5;font-family:Arial,sans-serif;">
+        </div>"""
+        # Блок комментария
+        bmc_comments += f"""
+        <div style="border:1px solid rgba(26,37,64,0.1);border-radius:5px;
+                    padding:14px 16px;background:rgba(255,255,255,0.5);">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div style="font-size:11px;font-weight:600;color:#1a2540;
+                        font-family:Arial,sans-serif;">{e(label)}</div>
+            <div style="flex-shrink:0;">{_score_bar(score)}</div>
+          </div>
+          <div style="font-size:12px;color:rgba(26,37,64,0.7);
+                      line-height:1.6;font-family:Arial,sans-serif;">
             {e(text) if text else '<em style="opacity:0.4;">Не заполнено</em>'}
           </div>
         </div>"""
@@ -553,8 +566,8 @@ def build_report_html(
     bmc_section = ""
     if method2_data:
         bmc_section = f"""
-<!-- СТРАНИЦА {bmc_page_num}: КАНВА БИЗНЕС-МОДЕЛИ -->
-<div style="padding:40px 50px;background:#e8e4db;min-height:297mm;">
+<!-- СТРАНИЦА {bmc_page_num}: КАНВА БИЗНЕС-МОДЕЛИ — ОЦЕНКИ -->
+<div style="padding:40px 50px;background:#e8e4db;page-break-after:always;">
   <div style="display:flex;justify-content:space-between;align-items:center;
               padding-bottom:14px;border-bottom:1px solid rgba(26,37,64,0.12);margin-bottom:28px;">
     <span style="font-size:11px;font-weight:700;color:#c0392b;font-family:Arial,sans-serif;letter-spacing:2px;">64DAO</span>
@@ -566,13 +579,35 @@ def build_report_html(
               text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:6px;">
     {"бизнес-модель" if is_method2 else "метод 2 — оценка бизнес-модели"}
   </div>
-  <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin-bottom:8px;">Канва бизнес-модели</h1>
+  <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin-bottom:8px;">Оценка блоков бизнес-модели</h1>
   <p style="font-size:13px;color:rgba(26,37,64,0.55);line-height:1.7;
             font-family:Arial,sans-serif;margin-bottom:24px;">
-    Оценка текущего состояния каждого блока бизнес-модели по методологии Остервальдера.
+    Текущее состояние каждого блока по шкале 1–5.
   </p>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
-    {bmc_blocks}
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:32px;">
+    {bmc_score_grid}
+  </div>
+  <div style="margin-top:auto;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
+              display:flex;justify-content:space-between;font-family:Arial,sans-serif;
+              font-size:10px;color:rgba(26,37,64,0.3);">
+    <span>64dao.ru</span><span>© 2024 64DAO — Конфиденциально</span>
+  </div>
+</div>
+
+<!-- СТРАНИЦА {bmc_page_num + 1}: КОММЕНТАРИИ -->
+<div style="padding:40px 50px;background:#e8e4db;">
+  <div style="display:flex;justify-content:space-between;align-items:center;
+              padding-bottom:14px;border-bottom:1px solid rgba(26,37,64,0.12);margin-bottom:28px;">
+    <span style="font-size:11px;font-weight:700;color:#c0392b;font-family:Arial,sans-serif;letter-spacing:2px;">64DAO</span>
+    <span style="font-size:10px;color:rgba(26,37,64,0.3);font-family:Arial,sans-serif;">
+      {e(company_name)} · стр. {bmc_page_num + 1}
+    </span>
+  </div>
+  <div style="font-size:10px;color:rgba(26,37,64,0.3);letter-spacing:2px;
+              text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:6px;">комментарии</div>
+  <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin-bottom:24px;">Детальный анализ блоков</h1>
+  <div style="display:grid;grid-template-columns:1fr;gap:12px;">
+    {bmc_comments}
   </div>
   <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
               display:flex;justify-content:space-between;font-family:Arial,sans-serif;
