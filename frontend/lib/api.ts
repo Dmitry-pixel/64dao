@@ -152,6 +152,37 @@ export const adminApi = {
     request(`/api/admin/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
 }
 
+// ── Strategies (public/user) ──────────────────────────────────────────────────
+
+export async function getStrategyByCombo(combination: string) {
+  return request<Strategy>(`/api/strategies/${combination}`)
+}
+
+export interface Strategy {
+  id: string
+  combination: string
+  title: string | null
+  stratagema_title: string | null
+  lifecycle_stage: string | null
+  lifecycle_description: string | null
+  lc_profit: string | null
+  lc_strategy: string | null
+  lc_decisions: string | null
+  lc_consumer: string | null
+  lc_market: string | null
+  lc_value: string | null
+  scenario: Record<string, string> | null
+  scenario_text: string | null
+  marketing_text: string | null
+  management_text: string | null
+  transition_title: string | null
+  transition_lifecycle_stage: string | null
+  transition_description: string | null
+  image_url: string | null
+  is_published: boolean
+  updated_at: string
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ImpersonateStatus {
