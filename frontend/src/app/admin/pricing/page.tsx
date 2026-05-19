@@ -95,11 +95,12 @@ export default function AdminPricingPage() {
   )
 
   return (
-    <div className="app-layout">
+    <>
       <AdminNav current="pricing" />
-      <div className="admin-body">
+      <div className="admin-shell">
         <AdminSide current="pricing" />
-        <main className="admin-main" style={{ padding: '32px 40px' }}>
+        <div className="admin-main" style={{ padding: '32px 40px' }}>
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
             <div>
               <span className="label-red">Система</span>
@@ -114,68 +115,62 @@ export default function AdminPricingPage() {
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32, alignItems: 'start' }}>
+          {/* ── Редактор ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 720 }}>
 
-            {/* ── Редактор ── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-              {/* Заголовок */}
-              <div className="card" style={{ padding: '20px 24px' }}>
-                <h3 style={S.sectionTitle}>Основное</h3>
-                <label style={S.label}>Заголовок</label>
-                <input style={S.input} value={cfg.title} onChange={e => set('title', e.target.value)} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: 12, marginTop: 14 }}>
-                  <div>
-                    <label style={S.label}>Цена (цифры)</label>
-                    <input style={S.input} type="number" value={cfg.price} onChange={e => set('price', Number(e.target.value))} />
-                  </div>
-                  <div>
-                    <label style={S.label}>Валюта</label>
-                    <input style={S.input} value={cfg.currency} onChange={e => set('currency', e.target.value)} />
-                  </div>
+            <div className="card" style={{ padding: '20px 24px' }}>
+              <h3 style={S.sectionTitle}>Основное</h3>
+              <label style={S.label}>Заголовок</label>
+              <input style={S.input} value={cfg.title} onChange={e => set('title', e.target.value)} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: 12, marginTop: 14 }}>
+                <div>
+                  <label style={S.label}>Цена (цифры)</label>
+                  <input style={S.input} type="number" value={cfg.price} onChange={e => set('price', Number(e.target.value))} />
                 </div>
-                <label style={{ ...S.label, marginTop: 14 }}>Подпись под ценой</label>
-                <input style={S.input} value={cfg.description} onChange={e => set('description', e.target.value)} />
+                <div>
+                  <label style={S.label}>Валюта</label>
+                  <input style={S.input} value={cfg.currency} onChange={e => set('currency', e.target.value)} />
+                </div>
               </div>
+              <label style={{ ...S.label, marginTop: 14 }}>Подпись под ценой</label>
+              <input style={S.input} value={cfg.description} onChange={e => set('description', e.target.value)} />
+            </div>
 
-              {/* Список характеристик */}
-              <div className="card" style={{ padding: '20px 24px' }}>
-                <h3 style={S.sectionTitle}>Характеристики</h3>
-                {cfg.features.map((f, i) => (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 32px', gap: 10, marginBottom: 10, alignItems: 'center' }}>
-                    <input style={S.input} placeholder="Название" value={f.label} onChange={e => setFeature(i, 'label', e.target.value)} />
-                    <input style={S.input} placeholder="Значение" value={f.value} onChange={e => setFeature(i, 'value', e.target.value)} />
-                    <button onClick={() => removeFeature(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c0392b', fontSize: 18, lineHeight: 1 }}>×</button>
-                  </div>
-                ))}
-                <button onClick={addFeature} style={{ ...S.btnGhost, marginTop: 4, fontSize: 12 }}>+ Добавить строку</button>
-              </div>
+            <div className="card" style={{ padding: '20px 24px' }}>
+              <h3 style={S.sectionTitle}>Характеристики</h3>
+              {cfg.features.map((f, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 32px', gap: 10, marginBottom: 10, alignItems: 'center' }}>
+                  <input style={S.input} placeholder="Название" value={f.label} onChange={e => setFeature(i, 'label', e.target.value)} />
+                  <input style={S.input} placeholder="Значение" value={f.value} onChange={e => setFeature(i, 'value', e.target.value)} />
+                  <button onClick={() => removeFeature(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c0392b', fontSize: 18, lineHeight: 1 }}>×</button>
+                </div>
+              ))}
+              <button onClick={addFeature} style={{ ...S.btnGhost, marginTop: 4, fontSize: 12 }}>+ Добавить строку</button>
+            </div>
 
-              {/* Статус оплаты */}
-              <div className="card" style={{ padding: '20px 24px' }}>
-                <h3 style={S.sectionTitle}>Статус оплаты</h3>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'sans-serif', fontSize: 13, color: 'var(--text)', cursor: 'pointer', marginBottom: 14 }}>
-                  <input
-                    type="checkbox"
-                    checked={cfg.payment_enabled}
-                    onChange={e => set('payment_enabled', e.target.checked)}
-                    style={{ width: 16, height: 16 }}
-                  />
-                  Оплата включена (кнопка «Перейти к оплате» активна)
-                </label>
-                <label style={S.label}>Текст заглушки (показывается когда оплата отключена)</label>
-                <textarea
-                  style={{ ...S.input, height: 80, resize: 'vertical' }}
-                  value={cfg.payment_note}
-                  onChange={e => set('payment_note', e.target.value)}
+            <div className="card" style={{ padding: '20px 24px' }}>
+              <h3 style={S.sectionTitle}>Статус оплаты</h3>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'sans-serif', fontSize: 13, color: 'var(--text)', cursor: 'pointer', marginBottom: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={cfg.payment_enabled}
+                  onChange={e => set('payment_enabled', e.target.checked)}
+                  style={{ width: 16, height: 16 }}
                 />
-              </div>
+                Оплата включена (кнопка «Перейти к оплате» активна)
+              </label>
+              <label style={S.label}>Текст заглушки (показывается когда оплата отключена)</label>
+              <textarea
+                style={{ ...S.input, height: 80, resize: 'vertical' }}
+                value={cfg.payment_note}
+                onChange={e => set('payment_note', e.target.value)}
+              />
             </div>
 
             {/* ── Превью ── */}
-            <div style={{ position: 'sticky', top: 24 }}>
-              <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--text-mute)', marginBottom: 10 }}>Превью</div>
-              <div style={S.preview}>
+            <div>
+              <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--text-mute)', marginBottom: 12 }}>Превью</div>
+              <div style={{ ...S.preview, maxWidth: 440 }}>
                 <div style={S.previewEyebrow}>ОПЛАТА ДИАГНОСТИКИ</div>
                 <h2 style={S.previewTitle}>{cfg.title || '—'}</h2>
                 <div style={S.previewPrice}>
@@ -204,9 +199,9 @@ export default function AdminPricingPage() {
             </div>
 
           </div>
-        </main>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 

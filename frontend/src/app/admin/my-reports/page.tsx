@@ -61,11 +61,11 @@ export default function AdminMyReportsPage() {
   const drafts = assessments.filter(a => a.status === 'draft').length
 
   return (
-    <div className="app-layout">
+    <>
       <AdminNav current="my-reports" />
-      <div className="admin-body">
+      <div className="admin-shell">
         <AdminSide current="my-reports" />
-        <main className="admin-main" style={{ padding: '32px 40px' }}>
+        <div className="admin-main" style={{ padding: '32px 40px' }}>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
             <div>
@@ -138,7 +138,7 @@ export default function AdminMyReportsPage() {
               ))}
             </div>
           )}
-        </main>
+        </div>
       </div>
 
       {confirmId && (
@@ -172,6 +172,6 @@ export default function AdminMyReportsPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
