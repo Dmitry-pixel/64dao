@@ -464,9 +464,54 @@ def build_report_html(
     # Блок "Целевое состояние" — строим до page2, чтобы вставить простой переменной
     transition_html = _transition_block(strategy, target_hex_info)
 
-    # Страница 2 (сценарий) — только если есть стратегия
+    # Определяем тип отчёта
+    is_method2 = not combination
+
+    # ── Обложка ──────────────────────────────────────────────────────────────
+    if is_method2:
+        cover_label = "Отчёт по бизнес-модели"
+        cover_title = f"Бизнес-модель<br>{e(company_name)}"
+        cover_combo = ""
+    else:
+        cover_label = "Отчёт по стратегической диагностике"
+        cover_title = "Стратегический<br>профиль компании"
+        cover_combo = f'<div style="font-family:\'Courier New\',monospace;font-size:44px;font-weight:700;color:#1e3a8a;letter-spacing:8px;opacity:0.18;">{e(combination)}</div>'
+
+    # ── Страница 1 (только для Method 1) ──────────────────────────────────
+    page1 = ""
+    if not is_method2:
+        page1 = f"""
+<div style="padding:40px 50px;page-break-after:always;background:#e8e4db;min-height:297mm;">
+  <div style="display:flex;justify-content:space-between;align-items:center;
+              padding-bottom:14px;border-bottom:1px solid rgba(26,37,64,0.12);margin-bottom:28px;">
+    <span style="font-size:11px;font-weight:700;color:#c0392b;font-family:Arial,sans-serif;letter-spacing:2px;">64DAO</span>
+    <span style="font-size:10px;color:rgba(26,37,64,0.3);font-family:Arial,sans-serif;">
+      {e(company_name)} · стр. 1
+    </span>
+  </div>
+  <div style="font-size:10px;color:rgba(26,37,64,0.3);letter-spacing:2px;
+              text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:6px;">текущее состояние</div>
+  <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin-bottom:8px;">Стратегический профиль</h1>
+  <p style="font-size:13px;color:rgba(26,37,64,0.55);line-height:1.7;
+            font-family:Arial,sans-serif;margin-bottom:24px;">
+    На основании выбранных ответов определена следующая комбинация параметров бизнес-модели.
+  </p>
+  <div style="font-family:'Courier New',monospace;font-size:44px;font-weight:700;
+              color:#1e3a8a;letter-spacing:8px;margin-bottom:20px;">{e(combination)}</div>
+  <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin-bottom:12px;">Текущее состояние</h2>
+  {_table_rows(cs_rows) if cs_rows else ""}
+  {f'<div style="display:inline-block;padding:3px 10px;border-radius:3px;font-size:10px;font-family:Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.2);color:#c0392b;margin-bottom:12px;">{e(strategy.lifecycle_stage or "")}</div>' if strategy and strategy.lifecycle_stage else ""}
+  {_lifecycle_blocks(strategy, combination) if strategy else ""}
+  <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
+              display:flex;justify-content:space-between;font-family:Arial,sans-serif;
+              font-size:10px;color:rgba(26,37,64,0.3);">
+    <span>64dao.ru</span><span>© 2024 64DAO — Конфиденциально</span>
+  </div>
+</div>"""
+
+    # ── Страница 2 (сценарий) — только для Method 1 ──────────────────────
     page2 = ""
-    if strategy:
+    if strategy and not is_method2:
         page2 = f"""
         <div style="padding:40px 50px;page-break-after:always;background:#e8e4db;min-height:297mm;">
           <div style="display:flex;justify-content:space-between;align-items:center;
@@ -496,7 +541,45 @@ def build_report_html(
           </div>
         </div>"""
 
-    page3_num = 3 if strategy else 2
+    # Номер страницы BMC
+    if is_method2:
+        bmc_page_num = 1
+    elif strategy:
+        bmc_page_num = 3
+    else:
+        bmc_page_num = 2
+
+    # BMC показываем только если есть данные
+    bmc_section = ""
+    if method2_data:
+        bmc_section = f"""
+<!-- СТРАНИЦА {bmc_page_num}: КАНВА БИЗНЕС-МОДЕЛИ -->
+<div style="padding:40px 50px;background:#e8e4db;min-height:297mm;">
+  <div style="display:flex;justify-content:space-between;align-items:center;
+              padding-bottom:14px;border-bottom:1px solid rgba(26,37,64,0.12);margin-bottom:28px;">
+    <span style="font-size:11px;font-weight:700;color:#c0392b;font-family:Arial,sans-serif;letter-spacing:2px;">64DAO</span>
+    <span style="font-size:10px;color:rgba(26,37,64,0.3);font-family:Arial,sans-serif;">
+      {e(company_name)} · стр. {bmc_page_num}
+    </span>
+  </div>
+  <div style="font-size:10px;color:rgba(26,37,64,0.3);letter-spacing:2px;
+              text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:6px;">
+    {"бизнес-модель" if is_method2 else "метод 2 — оценка бизнес-модели"}
+  </div>
+  <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin-bottom:8px;">Канва бизнес-модели</h1>
+  <p style="font-size:13px;color:rgba(26,37,64,0.55);line-height:1.7;
+            font-family:Arial,sans-serif;margin-bottom:24px;">
+    Оценка текущего состояния каждого блока бизнес-модели по методологии Остервальдера.
+  </p>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
+    {bmc_blocks}
+  </div>
+  <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
+              display:flex;justify-content:space-between;font-family:Arial,sans-serif;
+              font-size:10px;color:rgba(26,37,64,0.3);">
+    <span>64dao.ru</span><span>© 2024 64DAO — Конфиденциально</span>
+  </div>
+</div>"""
 
     return f"""<!DOCTYPE html>
 <html lang="ru">
@@ -541,77 +624,23 @@ def build_report_html(
     <div style="max-width:380px;">
       <div style="font-size:10px;color:rgba(26,37,64,0.3);letter-spacing:2px;
                   text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:16px;">
-        Отчёт по стратегической диагностике
+        {cover_label}
       </div>
       <h1 style="font-size:40px;font-weight:400;line-height:1.1;color:#1a2540;margin-bottom:20px;">
-        Стратегический<br>профиль компании
+        {cover_title}
       </h1>
-      <div style="font-size:20px;color:rgba(26,37,64,0.7);margin-bottom:8px;">{e(company_name)}</div>
+      {"" if is_method2 else f'<div style="font-size:20px;color:rgba(26,37,64,0.7);margin-bottom:8px;">{e(company_name)}</div>'}
       <div style="font-size:13px;color:rgba(26,37,64,0.4);font-family:Arial,sans-serif;">{date_str}</div>
     </div>
-    <div style="font-family:'Courier New',monospace;font-size:44px;font-weight:700;
-                color:#1e3a8a;letter-spacing:8px;opacity:0.18;">{e(combination)}</div>
+    {cover_combo}
   </div>
 </div>
 
-<!-- СТРАНИЦА 1: ТЕКУЩЕЕ СОСТОЯНИЕ -->
-<div style="padding:40px 50px;page-break-after:always;background:#e8e4db;min-height:297mm;">
-  <div style="display:flex;justify-content:space-between;align-items:center;
-              padding-bottom:14px;border-bottom:1px solid rgba(26,37,64,0.12);margin-bottom:28px;">
-    <span style="font-size:11px;font-weight:700;color:#c0392b;font-family:Arial,sans-serif;letter-spacing:2px;">64DAO</span>
-    <span style="font-size:10px;color:rgba(26,37,64,0.3);font-family:Arial,sans-serif;">
-      {e(company_name)} · стр. 1
-    </span>
-  </div>
-  <div style="font-size:10px;color:rgba(26,37,64,0.3);letter-spacing:2px;
-              text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:6px;">текущее состояние</div>
-  <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin-bottom:8px;">Стратегический профиль</h1>
-  <p style="font-size:13px;color:rgba(26,37,64,0.55);line-height:1.7;
-            font-family:Arial,sans-serif;margin-bottom:24px;">
-    На основании выбранных ответов определена следующая комбинация параметров бизнес-модели.
-  </p>
-  <div style="font-family:'Courier New',monospace;font-size:44px;font-weight:700;
-              color:#1e3a8a;letter-spacing:8px;margin-bottom:20px;">{e(combination)}</div>
-  <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin-bottom:12px;">Текущее состояние</h2>
-  {_table_rows(cs_rows) if cs_rows else ""}
-  {f'<div style="display:inline-block;padding:3px 10px;border-radius:3px;font-size:10px;font-family:Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.2);color:#c0392b;margin-bottom:12px;">{e(strategy.lifecycle_stage or "")}</div>' if strategy and strategy.lifecycle_stage else ""}
-  {_lifecycle_blocks(strategy, combination) if strategy else ""}
-  <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
-              display:flex;justify-content:space-between;font-family:Arial,sans-serif;
-              font-size:10px;color:rgba(26,37,64,0.3);">
-    <span>64dao.ru</span><span>© 2024 64DAO — Конфиденциально</span>
-  </div>
-</div>
+{page1}
 
 {page2}
 
-<!-- СТРАНИЦА {page3_num}: КАНВА БИЗНЕС-МОДЕЛИ -->
-<div style="padding:40px 50px;background:#e8e4db;min-height:297mm;">
-  <div style="display:flex;justify-content:space-between;align-items:center;
-              padding-bottom:14px;border-bottom:1px solid rgba(26,37,64,0.12);margin-bottom:28px;">
-    <span style="font-size:11px;font-weight:700;color:#c0392b;font-family:Arial,sans-serif;letter-spacing:2px;">64DAO</span>
-    <span style="font-size:10px;color:rgba(26,37,64,0.3);font-family:Arial,sans-serif;">
-      {e(company_name)} · стр. {page3_num}
-    </span>
-  </div>
-  <div style="font-size:10px;color:rgba(26,37,64,0.3);letter-spacing:2px;
-              text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:6px;">
-    метод 2 — оценка бизнес-модели
-  </div>
-  <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin-bottom:8px;">Канва бизнес-модели</h1>
-  <p style="font-size:13px;color:rgba(26,37,64,0.55);line-height:1.7;
-            font-family:Arial,sans-serif;margin-bottom:24px;">
-    Оценка текущего состояния каждого блока бизнес-модели по методологии Остервальдера.
-  </p>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
-    {bmc_blocks}
-  </div>
-  <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
-              display:flex;justify-content:space-between;font-family:Arial,sans-serif;
-              font-size:10px;color:rgba(26,37,64,0.3);">
-    <span>64dao.ru</span><span>© 2024 64DAO — Конфиденциально</span>
-  </div>
-</div>
+{bmc_section}
 
 </body>
 </html>"""

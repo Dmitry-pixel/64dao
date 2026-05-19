@@ -217,6 +217,7 @@ export interface Assessment {
   user_id: string
   method1_combination: string | null
   method2_data: Record<string, { score: number; text: string }> | null
+  company_name: string | null
   status: 'draft' | 'completed' | 'paid'
   created_at: string
   reports: ReportOut[]

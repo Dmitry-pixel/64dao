@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -35,25 +34,6 @@ async def create_assessment(
     )
     db.add(assessment)
     await db.flush()
-
-    # Снимаем скалярные данные пока сессия открыта
-    assessment_id = str(assessment.id)
-    company_name = body.company_name or user.company_name or "Компания"
-    user_name    = user.full_name or ""
-    user_id      = user.id
-
-    # Запускаем генерацию PDF в фоне — только если есть combination (Метод 1)
-    if body.status == "completed" and body.method1_combination:
-        asyncio.create_task(
-            _generate_report_background(
-                assessment_id=assessment_id,
-                user_id=user_id,
-                company_name=company_name,
-                user_name=user_name,
-                combination=body.method1_combination,
-                method2_data=assessment.method2_data or {},
-            )
-        )
 
     # Перезагружаем с reports для корректного response_model
     result = await db.execute(
@@ -206,70 +186,3 @@ async def generate_report_on_demand(
 
     return report
 
-
-async def _generate_report_background(
-    assessment_id: str,
-    user_id,
-    company_name: str,
-    user_name: str,
-    combination: str,
-    method2_data: dict,
-) -> None:
-    """Фоновая генерация PDF — не блокирует API-ответ."""
-    try:
-        from app.db import AsyncSessionLocal
-        async with AsyncSessionLocal() as bg_db:
-            # Загружаем стратегию
-            strategy = await bg_db.scalar(
-                select(Strategy)
-                .where(Strategy.combination == combination, Strategy.is_published == True)
-            )
-
-            now = datetime.now(timezone.utc)
-            date_str = now.strftime("%d %B %Y, %H:%M").replace(
-                "January", "января").replace("February", "февраля").replace(
-                "March", "марта").replace("April", "апреля").replace(
-                "May", "мая").replace("June", "июня").replace(
-                "July", "июля").replace("August", "августа").replace(
-                "September", "сентября").replace("October", "октября").replace(
-                "November", "ноября").replace("December", "декабря")
-
-            html = build_report_html(
-                company_name=company_name,
-                user_name=user_name,
-                date_str=date_str,
-                combination=combination,
-                strategy=strategy,
-                method2_data=method2_data,
-            )
-
-            filename = f"{assessment_id}-{int(datetime.now().timestamp())}.pdf"
-            output_path = str(Path(settings.uploads_dir) / str(user_id) / filename)
-
-            await generate_pdf(html, output_path)
-
-            # Сохраняем запись отчёта
-            report = Report(
-                assessment_id=assessment_id,
-                user_id=user_id,
-                pdf_path=output_path,
-                pdf_filename=filename,
-                generated_at=datetime.now(timezone.utc),
-            )
-            bg_db.add(report)
-
-            # Обновляем статус диагностики
-            assessment = await bg_db.scalar(
-                select(Assessment).where(Assessment.id == assessment_id)
-            )
-            if assessment:
-                assessment.status = "completed"
-
-            await bg_db.commit()
-
-    except Exception as exc:
-        import logging
-        logging.getLogger(__name__).error(
-            "Background PDF generation failed for assessment %s: %s",
-            assessment_id, exc, exc_info=True,
-        )

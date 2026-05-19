@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { getAssessment, getMe, getStrategyByCombo, reportDownloadUrl } from '@/lib/api'
+import { getAssessment, getMe, getStrategyByCombo, generateReport, reportDownloadUrl } from '@/lib/api'
 import type { Strategy, Assessment, AuthUser } from '@/lib/api'
 import { AppNav } from '@/components/AppNav'
 
@@ -87,17 +87,18 @@ function TextBody({ text }: { text: string }) {
 // ── Method 1 Report ────────────────────────────────────────────────────────────
 
 function Method1Report({
-  assessment, strategy, user, onBack,
+  assessment, strategy, user, onBack, onDownload, generatingPdf,
 }: {
   assessment: Assessment
   strategy: Strategy | null
   user: AuthUser
   onBack: () => void
+  onDownload: () => void
+  generatingPdf: boolean
 }) {
   const combo = assessment.method1_combination ?? 'AAAAAA'
   const hex = hexFor(combo)
-  const report = assessment.reports?.[0]
-  const companyName = user.company_name || user.full_name || 'Компания'
+  const companyName = assessment.company_name || user.company_name || user.full_name || 'Компания'
   const dateStr = new Date(assessment.created_at).toLocaleDateString('ru-RU', {
     day: 'numeric', month: 'long', year: 'numeric'
   })
@@ -110,11 +111,14 @@ function Method1Report({
         <button onClick={onBack} className="btn btn-ghost" style={{ fontSize: 13, padding: '8px 16px' }}>
           ← Назад
         </button>
-        {report && (
-          <a href={reportDownloadUrl(report.id)} className="btn btn-primary" target="_blank" rel="noreferrer">
-            ↓ Скачать PDF
-          </a>
-        )}
+        <button
+          className="btn btn-primary"
+          onClick={onDownload}
+          disabled={generatingPdf}
+          style={{ opacity: generatingPdf ? 0.6 : 1 }}
+        >
+          {generatingPdf ? 'Формируем PDF…' : '↓ Скачать PDF'}
+        </button>
       </div>
 
       {/* Cover */}
@@ -231,13 +235,6 @@ function Method1Report({
         </SectionBlock>
       )}
 
-      {/* No PDF yet */}
-      {!report && (
-        <div className="card" style={{ textAlign: 'center', padding: '28px', marginTop: 24 }}>
-          <p className="muted" style={{ marginBottom: 12 }}>PDF-отчёт генерируется. Обычно это занимает меньше минуты.</p>
-          <button className="btn btn-ghost" onClick={() => window.location.reload()}>Обновить страницу</button>
-        </div>
-      )}
     </div>
   )
 }
@@ -245,15 +242,16 @@ function Method1Report({
 // ── Method 2 Report ────────────────────────────────────────────────────────────
 
 function Method2Report({
-  assessment, user, onBack,
+  assessment, user, onBack, onDownload, generatingPdf,
 }: {
   assessment: Assessment
   user: AuthUser
   onBack: () => void
+  onDownload: () => void
+  generatingPdf: boolean
 }) {
-  const report = assessment.reports?.[0]
   const method2 = assessment.method2_data as Record<string, { score: number; text: string }> | null
-  const companyName = user.company_name || user.full_name || 'Компания'
+  const companyName = assessment.company_name || user.company_name || user.full_name || 'Компания'
   const dateStr = new Date(assessment.created_at).toLocaleDateString('ru-RU', {
     day: 'numeric', month: 'long', year: 'numeric'
   })
@@ -270,11 +268,14 @@ function Method2Report({
         <button onClick={onBack} className="btn btn-ghost" style={{ fontSize: 13, padding: '8px 16px' }}>
           ← Назад
         </button>
-        {report && (
-          <a href={reportDownloadUrl(report.id)} className="btn btn-primary" target="_blank" rel="noreferrer">
-            ↓ Скачать PDF
-          </a>
-        )}
+        <button
+          className="btn btn-primary"
+          onClick={onDownload}
+          disabled={generatingPdf}
+          style={{ opacity: generatingPdf ? 0.6 : 1 }}
+        >
+          {generatingPdf ? 'Формируем PDF…' : '↓ Скачать PDF'}
+        </button>
       </div>
 
       {/* Cover */}
@@ -321,13 +322,6 @@ function Method2Report({
         </SectionBlock>
       )}
 
-      {/* No PDF yet */}
-      {!report && (
-        <div className="card" style={{ textAlign: 'center', padding: '28px', marginTop: 24 }}>
-          <p className="muted" style={{ marginBottom: 12 }}>PDF-отчёт генерируется. Обычно это занимает меньше минуты.</p>
-          <button className="btn btn-ghost" onClick={() => window.location.reload()}>Обновить страницу</button>
-        </div>
-      )}
     </div>
   )
 }
@@ -344,6 +338,7 @@ export default function ReportPage() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [generatingPdf, setGeneratingPdf] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -371,6 +366,18 @@ export default function ReportPage() {
     init()
   }, [id])
 
+  const handleDownload = async () => {
+    setGeneratingPdf(true)
+    try {
+      const report = await generateReport(id)
+      window.open(reportDownloadUrl(report.id), '_blank')
+    } catch {
+      alert('Не удалось сформировать PDF. Попробуйте ещё раз.')
+    } finally {
+      setGeneratingPdf(false)
+    }
+  }
+
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', color: 'var(--text-mute)' }}>
       Загрузка…
@@ -389,6 +396,8 @@ export default function ReportPage() {
           assessment={assessment}
           user={user}
           onBack={() => router.push(backUrl)}
+          onDownload={handleDownload}
+          generatingPdf={generatingPdf}
         />
       ) : (
         <Method1Report
@@ -396,6 +405,8 @@ export default function ReportPage() {
           strategy={strategy}
           user={user}
           onBack={() => router.push(backUrl)}
+          onDownload={handleDownload}
+          generatingPdf={generatingPdf}
         />
       )}
     </>

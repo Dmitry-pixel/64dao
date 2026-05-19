@@ -116,8 +116,8 @@ export default function AdminMyReportsPage() {
                 <div
                   key={a.id}
                   className="dash-card"
-                  onClick={() => a.status === 'completed' && !isMethod2(a) ? router.push(`/report/${a.id}`) : undefined}
-                  style={{ cursor: a.status === 'completed' && !isMethod2(a) ? 'pointer' : 'default' }}
+                  onClick={() => a.status === 'completed' ? router.push(`/report/${a.id}`) : undefined}
+                  style={{ cursor: a.status === 'completed' ? 'pointer' : 'default' }}
                 >
                   <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
                   <div className="hex-block">{isMethod2(a) ? '䷿' : hexFor(a.method1_combination ?? '')}</div>
@@ -141,34 +141,43 @@ export default function AdminMyReportsPage() {
                       {a.status === 'completed' ? 'Готов' : 'Черновик'}
                     </span>
                     {a.status === 'completed' ? (
-                      a.reports?.length > 0 ? (
-                        <a
-                          href={reportDownloadUrl(a.reports[0].id)}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={e => e.stopPropagation()}
+                      <>
+                        <button
                           className="btn btn-ghost"
                           style={{ padding: '7px 14px', fontSize: 12 }}
+                          onClick={e => { e.stopPropagation(); router.push(`/report/${a.id}`) }}
                         >
-                          Скачать отчёт
-                        </a>
-                      ) : (
-                        <button
-                          className="btn btn-primary"
-                          style={{ padding: '7px 14px', fontSize: 12, opacity: generatingId === a.id ? 0.6 : 1 }}
-                          disabled={generatingId === a.id}
-                          onClick={e => { e.stopPropagation(); handleDownload(a.id) }}
-                        >
-                          {generatingId === a.id ? 'Формируем…' : 'Скачать отчёт'}
+                          Смотреть отчёт
                         </button>
-                      )
+                        {a.reports?.length > 0 ? (
+                          <a
+                            href={reportDownloadUrl(a.reports[0].id)}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="btn btn-primary"
+                            style={{ padding: '7px 14px', fontSize: 12 }}
+                          >
+                            Скачать отчёт
+                          </a>
+                        ) : (
+                          <button
+                            className="btn btn-primary"
+                            style={{ padding: '7px 14px', fontSize: 12, opacity: generatingId === a.id ? 0.6 : 1 }}
+                            disabled={generatingId === a.id}
+                            onClick={e => { e.stopPropagation(); handleDownload(a.id) }}
+                          >
+                            {generatingId === a.id ? 'Формируем…' : 'Скачать отчёт'}
+                          </button>
+                        )}
+                      </>
                     ) : (
                       <button
                         className="btn btn-ghost"
                         style={{ padding: '7px 14px', fontSize: 12 }}
                         onClick={e => { e.stopPropagation(); router.push('/assessment/start') }}
                       >
-                        Смотреть →
+                        Новая диагностика
                       </button>
                     )}
                     <button
