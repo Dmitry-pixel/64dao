@@ -25,7 +25,6 @@ export default function DashboardPage() {
     const init = async () => {
       try {
         const me = await getMe()
-        if (me.role === 'admin') { router.push('/admin'); return }
         setUser(me)
         const data = await listAssessments()
         setAssessments(data)
