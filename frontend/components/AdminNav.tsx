@@ -78,8 +78,8 @@ export function AdminSide({ current }: AdminSideProps) {
       </Link>
 
       <h4>Диагностики</h4>
-      <Link href="/admin/reports" className={current === 'reports' ? 'on' : ''}>
-        Отчёты <span className="num">{stats?.reports ?? '—'}</span>
+      <Link href="/dashboard" className={current === 'reports' ? 'on' : ''}>
+        Мои отчёты <span className="num">{stats?.reports ?? '—'}</span>
       </Link>
 
       <h4>Система</h4>
