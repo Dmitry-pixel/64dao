@@ -90,9 +90,26 @@ export default function AdminPricingPage() {
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', color: 'var(--text-mute)' }}>
-      Загрузка…
+      Загрузка...
     </div>
   )
+
+  const S: Record<string, React.CSSProperties> = {
+    sectionTitle: { fontFamily: 'sans-serif', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--text-mute)', fontWeight: 600, margin: '0 0 14px' },
+    label: { display: 'block', fontFamily: 'sans-serif', fontSize: 11, color: 'var(--text-mute)', marginBottom: 5 },
+    input: { width: '100%', padding: '9px 12px', border: '1px solid rgba(26,37,64,0.15)', borderRadius: 6, fontSize: 13, fontFamily: 'sans-serif', color: 'var(--text)', background: 'rgba(255,255,255,0.8)', outline: 'none', boxSizing: 'border-box' as const },
+    btnGhost: { background: 'none', border: '1px solid rgba(26,37,64,0.2)', borderRadius: 6, padding: '8px 16px', fontFamily: 'sans-serif', cursor: 'pointer', color: 'var(--text)' },
+    preview: { background: '#fff', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 12, padding: '28px 24px', display: 'flex', flexDirection: 'column' as const },
+    previewEyebrow: { fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 3, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.4)', textAlign: 'center' as const, marginBottom: 10 },
+    previewTitle: { fontFamily: 'Georgia,serif', fontSize: 22, fontWeight: 400, color: '#1a2540', textAlign: 'center' as const, margin: '0 0 14px' },
+    previewPrice: { fontFamily: 'Georgia,serif', fontSize: 44, fontWeight: 400, color: '#1a2540', textAlign: 'center' as const, lineHeight: 1, marginBottom: 6 },
+    previewDesc: { fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.45)', textAlign: 'center' as const, marginBottom: 16 },
+    previewDivider: { height: 1, background: 'rgba(26,37,64,0.08)', margin: '10px 0' },
+    previewRow: { display: 'flex', justifyContent: 'space-between', fontFamily: 'sans-serif', fontSize: 13, color: '#1a2540', padding: '7px 0' },
+    previewBtn: { background: '#3d4a6b', color: '#fff', border: 'none', borderRadius: 8, padding: '14px', fontFamily: 'sans-serif', fontSize: 14, fontWeight: 500, width: '100%', marginTop: 16, textAlign: 'center' as const },
+    previewNote: { background: '#fff5f5', border: '1px solid rgba(192,57,43,0.2)', borderRadius: 8, padding: '12px 14px', marginTop: 10, fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)', lineHeight: 1.5 },
+    previewBack: { background: 'none', border: '1px solid rgba(26,37,64,0.15)', borderRadius: 8, padding: '11px', fontFamily: 'sans-serif', fontSize: 13, color: '#1a2540', width: '100%', marginTop: 10, cursor: 'pointer', textAlign: 'center' as const },
+  }
 
   return (
     <>
@@ -104,18 +121,13 @@ export default function AdminPricingPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
             <div>
               <span className="label-red">Система</span>
-              <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 28, fontWeight: 400, color: 'var(--text)', margin: '6px 0 0' }}>Тариф & Цена</h1>
+              <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 28, fontWeight: 400, color: 'var(--text)', margin: '6px 0 0' }}>Тариф &amp; Цена</h1>
             </div>
-            <button
-              onClick={save}
-              disabled={saving}
-              style={{ background: saved ? '#166534' : 'var(--text)', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 24px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', fontWeight: 500, minWidth: 140 }}
-            >
-              {saving ? 'Сохраняем…' : saved ? '✓ Сохранено' : 'Сохранить'}
+            <button onClick={save} disabled={saving} style={{ background: saved ? '#166534' : 'var(--text)', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 24px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', fontWeight: 500, minWidth: 140 }}>
+              {saving ? 'Сохраняем...' : saved ? 'Сохранено' : 'Сохранить'}
             </button>
           </div>
 
-          {/* ── Редактор ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 720 }}>
 
             <div className="card" style={{ padding: '20px 24px' }}>
@@ -142,7 +154,7 @@ export default function AdminPricingPage() {
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 32px', gap: 10, marginBottom: 10, alignItems: 'center' }}>
                   <input style={S.input} placeholder="Название" value={f.label} onChange={e => setFeature(i, 'label', e.target.value)} />
                   <input style={S.input} placeholder="Значение" value={f.value} onChange={e => setFeature(i, 'value', e.target.value)} />
-                  <button onClick={() => removeFeature(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c0392b', fontSize: 18, lineHeight: 1 }}>×</button>
+                  <button onClick={() => removeFeature(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c0392b', fontSize: 18, lineHeight: 1 }}>x</button>
                 </div>
               ))}
               <button onClick={addFeature} style={{ ...S.btnGhost, marginTop: 4, fontSize: 12 }}>+ Добавить строку</button>
@@ -151,43 +163,26 @@ export default function AdminPricingPage() {
             <div className="card" style={{ padding: '20px 24px' }}>
               <h3 style={S.sectionTitle}>Статус оплаты</h3>
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'sans-serif', fontSize: 13, color: 'var(--text)', cursor: 'pointer', marginBottom: 14 }}>
-                <input
-                  type="checkbox"
-                  checked={cfg.payment_enabled}
-                  onChange={e => set('payment_enabled', e.target.checked)}
-                  style={{ width: 16, height: 16 }}
-                />
-                Оплата включена (кнопка «Перейти к оплате» активна)
+                <input type="checkbox" checked={cfg.payment_enabled} onChange={e => set('payment_enabled', e.target.checked)} style={{ width: 16, height: 16 }} />
+                Оплата включена (кнопка активна)
               </label>
-              <label style={S.label}>Текст заглушки (показывается когда оплата отключена)</label>
-              <textarea
-                style={{ ...S.input, height: 80, resize: 'vertical' }}
-                value={cfg.payment_note}
-                onChange={e => set('payment_note', e.target.value)}
-              />
+              <label style={S.label}>Текст заглушки</label>
+              <textarea style={{ ...S.input, height: 80, resize: 'vertical' as const }} value={cfg.payment_note} onChange={e => set('payment_note', e.target.value)} />
             </div>
 
-            {/* ── Превью ── */}
             <div>
               <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--text-mute)', marginBottom: 12 }}>Превью</div>
               <div style={{ ...S.preview, maxWidth: 440 }}>
                 <div style={S.previewEyebrow}>ОПЛАТА ДИАГНОСТИКИ</div>
                 <h2 style={S.previewTitle}>{cfg.title || '—'}</h2>
-                <div style={S.previewPrice}>
-                  {cfg.price.toLocaleString('ru-RU')} <span style={{ fontSize: 28 }}>{cfg.currency}</span>
-                </div>
+                <div style={S.previewPrice}>{cfg.price.toLocaleString('ru-RU')} <span style={{ fontSize: 28 }}>{cfg.currency}</span></div>
                 <div style={S.previewDesc}>{cfg.description}</div>
                 <div style={S.previewDivider} />
                 {cfg.features.map((f, i) => (
-                  <div key={i} style={S.previewRow}>
-                    <span>{f.label}</span>
-                    <span style={{ fontWeight: 500 }}>{f.value}</span>
-                  </div>
+                  <div key={i} style={S.previewRow}><span>{f.label}</span><span style={{ fontWeight: 500 }}>{f.value}</span></div>
                 ))}
                 <div style={S.previewDivider} />
-                <button style={{ ...S.previewBtn, opacity: cfg.payment_enabled ? 1 : 0.5, cursor: cfg.payment_enabled ? 'pointer' : 'default' }}>
-                  Перейти к оплате →
-                </button>
+                <button style={{ ...S.previewBtn, opacity: cfg.payment_enabled ? 1 : 0.5 }}>Перейти к оплате →</button>
                 {!cfg.payment_enabled && cfg.payment_note && (
                   <div style={S.previewNote}>
                     <div style={{ fontWeight: 600, color: '#c0392b', marginBottom: 4, fontSize: 12 }}>Заглушка · оплата временно отключена</div>
@@ -203,22 +198,4 @@ export default function AdminPricingPage() {
       </div>
     </>
   )
-}
-
-const S: Record<string, React.CSSProperties> = {
-  sectionTitle: { fontFamily: 'sans-serif', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--text-mute)', fontWeight: 600, margin: '0 0 14px' },
-  label: { display: 'block', fontFamily: 'sans-serif', fontSize: 11, color: 'var(--text-mute)', marginBottom: 5 },
-  input: { width: '100%', padding: '9px 12px', border: '1px solid rgba(26,37,64,0.15)', borderRadius: 6, fontSize: 13, fontFamily: 'sans-serif', color: 'var(--text)', background: 'rgba(255,255,255,0.8)', outline: 'none', boxSizing: 'border-box' },
-  btnGhost: { background: 'none', border: '1px solid rgba(26,37,64,0.2)', borderRadius: 6, padding: '8px 16px', fontFamily: 'sans-serif', cursor: 'pointer', color: 'var(--text)' },
-  // Preview
-  preview: { background: '#fff', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 12, padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: 0 },
-  previewEyebrow: { fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 3, textTransform: 'uppercase', color: 'rgba(26,37,64,0.4)', textAlign: 'center', marginBottom: 10 },
-  previewTitle: { fontFamily: 'Georgia,serif', fontSize: 22, fontWeight: 400, color: '#1a2540', textAlign: 'center', margin: '0 0 14px' },
-  previewPrice: { fontFamily: 'Georgia,serif', fontSize: 44, fontWeight: 400, color: '#1a2540', textAlign: 'center', lineHeight: 1, marginBottom: 6 },
-  previewDesc: { fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.45)', textAlign: 'center', marginBottom: 16 },
-  previewDivider: { height: 1, background: 'rgba(26,37,64,0.08)', margin: '10px 0' },
-  previewRow: { display: 'flex', justifyContent: 'space-between', fontFamily: 'sans-serif', fontSize: 13, color: '#1a2540', padding: '7px 0' },
-  previewBtn: { background: '#3d4a6b', color: '#fff', border: 'none', borderRadius: 8, padding: '14px', fontFamily: 'sans-serif', fontSize: 14, fontWeight: 500, width: '100%', marginTop: 16, textAlign: 'center' },
-  previewNote: { background: '#fff5f5', border: '1px solid rgba(192,57,43,0.2)', borderRadius: 8, padding: '12px 14px', marginTop: 10, fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)', lineHeight: 1.5 },
-  previewBack: { background: 'none', border: '1px solid rgba(26,37,64,0.15)', borderRadius: 8, padding: '11px', fontFamily: 'sans-serif', fontSize: 13, color: '#1a2540', width: '100%', marginTop: 10, cursor: 'pointer', textAlign: 'center' },
 }
