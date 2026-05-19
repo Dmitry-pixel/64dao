@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+import logging
 
 from app.auth import get_current_user
 from app.config import get_settings
@@ -97,6 +98,38 @@ async def get_assessment(
         raise HTTPException(status_code=403, detail="Нет доступа")
 
     return assessment
+
+
+@router.delete("/{assessment_id}", status_code=204)
+async def delete_assessment(
+    assessment_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Assessment)
+        .where(Assessment.id == assessment_id)
+        .options(selectinload(Assessment.reports))
+    )
+    assessment = result.scalar_one_or_none()
+
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Диагностика не найдена")
+
+    if assessment.user_id != user.id and user.role != "admin":
+        raise HTTPException(status_code=403, detail="Нет доступа")
+
+    # Удаляем PDF-файлы с диска
+    for report in assessment.reports:
+        if report.pdf_path:
+            try:
+                Path(report.pdf_path).unlink(missing_ok=True)
+            except Exception as exc:
+                logging.getLogger(__name__).warning(
+                    "Could not delete PDF file %s: %s", report.pdf_path, exc
+                )
+
+    await db.delete(assessment)
 
 
 async def _generate_report_background(

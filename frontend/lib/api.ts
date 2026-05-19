@@ -108,6 +108,10 @@ export async function getAssessment(id: string) {
   return request<Assessment>(`/api/assessments/${id}`)
 }
 
+export async function deleteAssessment(id: string) {
+  return request<void>(`/api/assessments/${id}`, { method: 'DELETE' })
+}
+
 export function reportDownloadUrl(reportId: string) {
   return `${API}/api/reports/${reportId}/download`
 }
