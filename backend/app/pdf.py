@@ -142,17 +142,18 @@ SCENARIO_LABELS = {
     "focus":                 "Фокус",
 }
 
-BMC_LABELS = {
-    "segments":   "Потребительские сегменты",
-    "value":      "Ценностные предложения",
-    "channels":   "Каналы сбыта",
-    "relations":  "Взаимоотношения с клиентами",
-    "revenue":    "Потоки доходов",
-    "resources":  "Ключевые ресурсы",
-    "activities": "Ключевые виды деятельности",
-    "partners":   "Ключевые партнёры",
-    "costs":      "Структура издержек",
-}
+# Ключи должны точно совпадать с b.title в BMC_BLOCKS на фронтенде (assessment/page.tsx)
+BMC_KEYS = [
+    "Ключевые партнёры",
+    "Ключевые активности",
+    "Ключевые ресурсы",
+    "Ценностное предложение",
+    "Отношения с клиентами",
+    "Каналы",
+    "Сегменты клиентов",
+    "Структура издержек",
+    "Потоки доходов",
+]
 
 HEX_SYMBOLS = [
     "䷀","䷁","䷂","䷃","䷄","䷅","䷆","䷇","䷈","䷉","䷊","䷋",
@@ -440,22 +441,21 @@ def build_report_html(
     sc = (strategy.scenario or {}) if strategy else {}
     sc_rows = [(lbl, sc[k]) for k, lbl in SCENARIO_LABELS.items() if sc.get(k)]
 
-    # BMC блоки
+    # BMC блоки — ключи должны совпадать с Russian names на фронтенде
     bmc_blocks = ""
-    for key, label in BMC_LABELS.items():
-        block = method2_data.get(key, {})
+    for label in BMC_KEYS:
+        block = method2_data.get(label, {})
         score = int(block.get("score", 0)) if block else 0
         text  = str(block.get("text", "")) if block else ""
-        preview = (text[:220] + "…") if len(text) > 220 else text
         bmc_blocks += f"""
         <div style="border:1px solid rgba(26,37,64,0.1);border-radius:5px;
                     padding:12px;background:rgba(255,255,255,0.5);">
           <div style="font-size:11px;font-weight:600;color:#1a2540;
-                      font-family:Arial,sans-serif;margin-bottom:6px;">{label}</div>
+                      font-family:Arial,sans-serif;margin-bottom:6px;">{e(label)}</div>
           {_score_bar(score)}
           <div style="font-size:11px;color:rgba(26,37,64,0.55);
                       line-height:1.5;font-family:Arial,sans-serif;">
-            {e(preview) if preview else '<em style="opacity:0.4;">Не заполнено</em>'}
+            {e(text) if text else '<em style="opacity:0.4;">Не заполнено</em>'}
           </div>
         </div>"""
 
@@ -603,7 +603,7 @@ def build_report_html(
 <body>
 
 <!-- ОБЛОЖКА -->
-<div style="width:210mm;height:297mm;background:#e8e4db;position:relative;
+<div style="width:210mm;min-height:297mm;background:#e8e4db;position:relative;
             overflow:hidden;display:flex;flex-direction:column;page-break-after:always;">
   <div style="position:absolute;right:0;top:0;width:55%;height:100%;
               display:grid;grid-template-columns:repeat(6,1fr);gap:2px;opacity:0.08;">

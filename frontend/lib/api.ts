@@ -65,11 +65,26 @@ export async function resendOTP(email: string) {
 }
 
 export async function logout() {
+  _meCache = null
   return request<{ message: string }>('/api/auth/logout', { method: 'POST' })
 }
 
-export async function getMe() {
-  return request<AuthUser>('/api/auth/me')
+// Module-level cache so multiple components (AppNav + page) share one request
+let _meCache: AuthUser | null = null
+let _meFetching: Promise<AuthUser> | null = null
+
+export async function getMe(): Promise<AuthUser> {
+  if (_meCache) return _meCache
+  if (_meFetching) return _meFetching
+  _meFetching = request<AuthUser>('/api/auth/me').then(u => {
+    _meCache = u
+    _meFetching = null
+    return u
+  }).catch(err => {
+    _meFetching = null
+    throw err
+  })
+  return _meFetching
 }
 
 // ── Registration ──────────────────────────────────────────────────────────────
