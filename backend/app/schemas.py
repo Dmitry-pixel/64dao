@@ -54,6 +54,7 @@ class AssessmentCreate(BaseModel):
     method1_answers:     dict[str, str] | None = None
     method1_combination: str | None = None
     method2_data:        dict[str, Method2Block] | None = None
+    company_name:        str | None = None
     status:              str = Field(default="completed")
 
     @field_validator("method1_combination")
@@ -97,6 +98,7 @@ class AssessmentOut(BaseModel):
     user_id:             uuid.UUID
     method1_combination: str | None
     method2_data:        dict[str, Any] | None
+    company_name:        str | None
     status:              str
     created_at:          datetime
     reports:             list[ReportOut] = []

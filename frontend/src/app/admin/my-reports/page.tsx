@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getMe, listAssessments, reportDownloadUrl, deleteAssessment } from '@/lib/api'
+import { getMe, listAssessments, reportDownloadUrl, deleteAssessment, generateReport } from '@/lib/api'
 import { AdminNav, AdminSide } from '@/components/AdminNav'
 
 const HEX_TRIGRAMS = ['䷀','䷁','䷂','䷃','䷄','䷅','䷆','䷇','䷈','䷉','䷊','䷋','䷌','䷍','䷎','䷏','䷐','䷑','䷒','䷓','䷔','䷕','䷖','䷗','䷘','䷙','䷚','䷛','䷜','䷝','䷞','䷟','䷠','䷡','䷢','䷣','䷤','䷥','䷦','䷧','䷨','䷩','䷪','䷫','䷬','䷭','䷮','䷯','䷰','䷱','䷲','䷳','䷴','䷵','䷶','䷷','䷸','䷹','䷺','䷻','䷼','䷽','䷾','䷿']
@@ -13,6 +13,10 @@ function hexFor(combo: string): string {
   return HEX_TRIGRAMS[idx] || '䷀'
 }
 
+function isMethod2(a: any): boolean {
+  return !!a.method2_data && !a.method1_combination
+}
+
 export default function AdminMyReportsPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
@@ -20,6 +24,7 @@ export default function AdminMyReportsPage() {
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [generatingId, setGeneratingId] = useState<string | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -48,6 +53,22 @@ export default function AdminMyReportsPage() {
     } finally {
       setDeletingId(null)
       setConfirmId(null)
+    }
+  }
+
+  const handleDownload = async (assessmentId: string) => {
+    setGeneratingId(assessmentId)
+    try {
+      const report = await generateReport(assessmentId)
+      // Обновляем список чтобы кнопка стала активной
+      setAssessments(prev => prev.map(a =>
+        a.id === assessmentId ? { ...a, reports: [report] } : a
+      ))
+      window.open(reportDownloadUrl(report.id), '_blank')
+    } catch {
+      alert('Не удалось сформировать отчёт. Попробуйте ещё раз.')
+    } finally {
+      setGeneratingId(null)
     }
   }
 
@@ -95,16 +116,23 @@ export default function AdminMyReportsPage() {
                 <div
                   key={a.id}
                   className="dash-card"
-                  onClick={() => a.status === 'completed' ? router.push(`/report/${a.id}`) : router.push(`/assessment/${a.id}`)}
+                  onClick={() => a.status === 'completed' && !isMethod2(a) ? router.push(`/report/${a.id}`) : undefined}
+                  style={{ cursor: a.status === 'completed' && !isMethod2(a) ? 'pointer' : 'default' }}
                 >
                   <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
-                  <div className="hex-block">{hexFor(a.method1_combination ?? '')}</div>
+                  <div className="hex-block">{isMethod2(a) ? '䷿' : hexFor(a.method1_combination ?? '')}</div>
                   <div>
                     <div className="dash-meta">
-                      {a.method1_combination ?? '—'} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {isMethod2(a)
+                        ? `Метод 2 · Бизнес-модель`
+                        : (a.method1_combination ?? '—')} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </div>
                     <div className="dash-title">
-                      {a.status === 'completed' ? `Стратегия «${a.method1_combination ?? '—'}»` : 'Диагностика в процессе'}
+                      {a.status === 'completed'
+                        ? (isMethod2(a)
+                            ? `Бизнес-модель${a.company_name ? ' · ' + a.company_name : ''}`
+                            : `Стратегия «${a.method1_combination ?? '—'}»`)
+                        : 'Диагностика в процессе'}
                     </div>
                     <div className="dash-detail">{a.status === 'draft' ? 'Черновик' : 'Завершено'}</div>
                   </div>
@@ -112,18 +140,35 @@ export default function AdminMyReportsPage() {
                     <span className={`pill pill-${a.status}`}>
                       {a.status === 'completed' ? 'Готов' : 'Черновик'}
                     </span>
-                    {a.status === 'completed' && a.reports?.length > 0 ? (
-                      <a
-                        href={reportDownloadUrl(a.reports[0].id)}
-                        onClick={e => e.stopPropagation()}
+                    {a.status === 'completed' ? (
+                      a.reports?.length > 0 ? (
+                        <a
+                          href={reportDownloadUrl(a.reports[0].id)}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          className="btn btn-ghost"
+                          style={{ padding: '7px 14px', fontSize: 12 }}
+                        >
+                          Скачать отчёт
+                        </a>
+                      ) : (
+                        <button
+                          className="btn btn-primary"
+                          style={{ padding: '7px 14px', fontSize: 12, opacity: generatingId === a.id ? 0.6 : 1 }}
+                          disabled={generatingId === a.id}
+                          onClick={e => { e.stopPropagation(); handleDownload(a.id) }}
+                        >
+                          {generatingId === a.id ? 'Формируем…' : 'Скачать отчёт'}
+                        </button>
+                      )
+                    ) : (
+                      <button
                         className="btn btn-ghost"
                         style={{ padding: '7px 14px', fontSize: 12 }}
+                        onClick={e => { e.stopPropagation(); router.push('/assessment/start') }}
                       >
-                        Скачать PDF
-                      </a>
-                    ) : (
-                      <button className="btn btn-soft" style={{ padding: '7px 14px', fontSize: 12 }}>
-                        Продолжить →
+                        Смотреть →
                       </button>
                     )}
                     <button

@@ -50,16 +50,22 @@ interface AdminSideProps {
 }
 
 export function AdminSide({ current }: AdminSideProps) {
-  const [stats, setStats] = useState<{ users: number; strategies: number; reports: number } | null>(null)
+  const [stats, setStats] = useState<{ users: number; strategies: number } | null>(null)
+  const [myReportsCount, setMyReportsCount] = useState<number | null>(null)
 
   useEffect(() => {
     adminApi.stats()
       .then((data: any) => setStats({
         users: data.total_users,
         strategies: data.published_strategies,
-        reports: data.total_reports,
       }))
       .catch(() => {})
+
+    import('@/lib/api').then(({ listAssessments }) =>
+      listAssessments()
+        .then(data => setMyReportsCount(data.length))
+        .catch(() => {})
+    )
   }, [])
 
   return (
@@ -79,8 +85,8 @@ export function AdminSide({ current }: AdminSideProps) {
       </Link>
 
       <h4>Диагностики</h4>
-      <Link href="/dashboard" className={current === 'reports' ? 'on' : ''}>
-        Мои отчёты <span className="num">{stats?.reports ?? '—'}</span>
+      <Link href="/admin/my-reports" className={current === 'my-reports' ? 'on' : ''}>
+        Мои отчёты <span className="num">{myReportsCount ?? '—'}</span>
       </Link>
 
       <h4>Система</h4>

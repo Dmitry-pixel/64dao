@@ -116,6 +116,7 @@ function AssessmentInner() {
       const assessment = await createAssessment({
         method1_answers: answersMap,
         method1_combination: combo,
+        company_name: companyName.trim() || null,
         status: 'completed',
       })
       router.push(`/assessment/waiting?id=${assessment.id}&combo=${combo}`)
@@ -135,6 +136,7 @@ function AssessmentInner() {
       const { createAssessment } = await import('@/lib/api')
       await createAssessment({
         method2_data,
+        company_name: companyName.trim() || null,
         status: 'completed',
       })
       router.push('/dashboard')

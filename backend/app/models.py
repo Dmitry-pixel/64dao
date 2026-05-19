@@ -108,6 +108,7 @@ class Assessment(Base):
     method1_answers:     Mapped[dict | None]= mapped_column(JSONB)
     method1_combination: Mapped[str | None]= mapped_column(String(6))
     method2_data:        Mapped[dict | None]= mapped_column(JSONB)
+    company_name:        Mapped[str | None]= mapped_column(String(255), nullable=True)
     status:              Mapped[str]       = mapped_column(String(20), nullable=False, default="draft")
     created_at:          Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:          Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

@@ -92,6 +92,7 @@ export async function createAssessment(data: {
   method1_answers?: Record<string, string>
   method1_combination?: string | null
   method2_data?: Record<string, { score: number; text: string }>
+  company_name?: string | null
   status?: string
 }) {
   return request<Assessment>('/api/assessments', {
@@ -114,6 +115,10 @@ export async function deleteAssessment(id: string) {
 
 export function reportDownloadUrl(reportId: string) {
   return `${API}/api/reports/${reportId}/download`
+}
+
+export async function generateReport(assessmentId: string) {
+  return request<ReportOut>(`/api/assessments/${assessmentId}/generate-report`, { method: 'POST' })
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
