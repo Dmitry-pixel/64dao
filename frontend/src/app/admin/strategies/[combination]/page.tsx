@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 
 function comboToHex(combo: string): string {
@@ -124,7 +124,7 @@ function getTargetHex(combo: string) {
   return HEXAGRAM_DATA.find(h => h.n === targetN) || null;
 }
 
-// ─── Стили на уровне модуля ───────────────────────────────────────────────────
+// ─── Стили ────────────────────────────────────────────────────────────────────
 const S_INP: React.CSSProperties = {
   width: '100%', padding: '10px 14px',
   border: '1px solid rgba(26,37,64,0.3)', borderRadius: 6,
@@ -137,28 +137,27 @@ const S_LBL: React.CSSProperties = {
   letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(26,37,64,0.5)', marginBottom: 6,
 };
 
-type OnSet = (k: string, v: string) => void;
+type OnChange = (k: string, v: string) => void;
 
-// ─── Компоненты с memo — не перемонтируются при изменении соседних полей ─────
-const FI = memo(function FI({ label, fk, value, ph = '', onSet }: {
-  label: string; fk: string; value: string; ph?: string; onSet: OnSet;
+// ─── Uncontrolled компоненты (defaultValue — без потери фокуса) ───────────────
+const FI = memo(function FI({ label, fk, dv, ph = '', onChange }: {
+  label: string; fk: string; dv: string; ph?: string; onChange: OnChange;
 }) {
   return (
     <div style={{ marginBottom: 16 }}>
       {label && <label style={S_LBL}>{label}</label>}
-      <input value={value} onChange={e => onSet(fk, e.target.value)} placeholder={ph} style={S_INP} />
+      <input defaultValue={dv} onChange={e => onChange(fk, e.target.value)} placeholder={ph} style={S_INP} />
     </div>
   );
 });
 
-const FA = memo(function FA({ label, fk, value, rows = 4, ph = '', onSet }: {
-  label: string; fk: string; value: string; rows?: number; ph?: string; onSet: OnSet;
+const FA = memo(function FA({ label, fk, dv, rows = 4, ph = '', onChange }: {
+  label: string; fk: string; dv: string; rows?: number; ph?: string; onChange: OnChange;
 }) {
   return (
     <div style={{ marginBottom: 16 }}>
       {label && <label style={S_LBL}>{label}</label>}
-      <textarea value={value} onChange={e => onSet(fk, e.target.value)} rows={rows} placeholder={ph}
-        style={S_TA} />
+      <textarea defaultValue={dv} onChange={e => onChange(fk, e.target.value)} rows={rows} placeholder={ph} style={S_TA} />
     </div>
   );
 });
@@ -176,8 +175,23 @@ const Sec = memo(function Sec({ label, title, help, children }: {
   );
 });
 
-// ─── Форма (EMPTY) ────────────────────────────────────────────────────────────
-const EMPTY = {
+// ─── Типы ─────────────────────────────────────────────────────────────────────
+type FormData = {
+  title: string; stratagema_title: string; lifecycle_stage: string; lifecycle_description: string;
+  lc_profit: string; lc_strategy: string; lc_decisions: string;
+  lc_consumer: string; lc_market: string; lc_value: string;
+  scenario_text: string; marketing_text: string; management_text: string;
+  assm_planning: string; assm_growth: string; assm_advertising: string;
+  assm_feedback: string; assm_risk: string; assm_product: string;
+  assm_service: string; assm_startup: string; assm_investment: string;
+  assm_contracts: string; assm_sync: string; assm_creative: string; assm_interaction: string;
+  transition_title: string; transition_lifecycle_stage: string; transition_description: string;
+  scenario_innovation_strategy: string; scenario_innovation_type: string;
+  scenario_value_discipline: string; scenario_leadership_principles: string;
+  scenario_growth_strategy: string; scenario_focus: string;
+};
+
+const EMPTY_FORM: FormData = {
   title: '', stratagema_title: '', lifecycle_stage: '', lifecycle_description: '',
   lc_profit: '', lc_strategy: '', lc_decisions: '', lc_consumer: '', lc_market: '', lc_value: '',
   scenario_text: '', marketing_text: '', management_text: '',
@@ -185,118 +199,133 @@ const EMPTY = {
   assm_product: '', assm_service: '', assm_startup: '', assm_investment: '',
   assm_contracts: '', assm_sync: '', assm_creative: '', assm_interaction: '',
   transition_title: '', transition_lifecycle_stage: '', transition_description: '',
-  is_published: false,
   scenario_innovation_strategy: '', scenario_innovation_type: '', scenario_value_discipline: '',
   scenario_leadership_principles: '', scenario_growth_strategy: '', scenario_focus: '',
 };
 
-type FormState = typeof EMPTY;
-
-// ─── Главная страница ─────────────────────────────────────────────────────────
+// ─── Страница ─────────────────────────────────────────────────────────────────
 export default function StrategyEditorPage({ params }: { params: { combination: string } }) {
   const router = useRouter();
   const { combination } = params;
   const hex = HEXAGRAM_MAP[combination];
 
-  const [form, setForm] = useState<FormState>({ ...EMPTY });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
+  // formRef хранит все значения — изменения НЕ вызывают ре-рендер
+  const formRef = useRef<FormData>({ ...EMPTY_FORM });
+
+  // Только UI-состояние (saving/saved/error/published/selects) — НЕ содержимое полей
+  const [loading, setLoading]         = useState(true);
+  const [saving, setSaving]           = useState(false);
+  const [saved, setSaved]             = useState(false);
+  const [error, setError]             = useState('');
+  const [isPublished, setIsPublished] = useState(false);
+  const [lcStage, setLcStage]         = useState('');
+  const [trStage, setTrStage]         = useState('');
+  // formKey — меняется ОДИН РАЗ после загрузки, чтобы форма отрисовалась с правильными defaultValue
+  const [formKey, setFormKey]         = useState(0);
 
   useEffect(() => {
     if (!hex) { setLoading(false); return; }
-    setForm(f => ({ ...f, title: hex.name, lifecycle_stage: hex.stage, ...autoFillLc(combination) }));
+    const lc = autoFillLc(combination);
+
     fetch(`/api/admin/strategies/combo/${combination}`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (!data || data.detail) return;
-        const sc = data.scenario || {};
-        const lc = autoFillLc(combination);
-        setForm(f => ({
-          ...f,
-          title: data.title || f.title,
-          stratagema_title: data.stratagema_title || '',
-          lifecycle_stage: data.lifecycle_stage || f.lifecycle_stage,
-          lifecycle_description: data.lifecycle_description || '',
-          lc_profit:    data.lc_profit    || lc.lc_profit,
-          lc_strategy:  data.lc_strategy  || lc.lc_strategy,
-          lc_decisions: data.lc_decisions || lc.lc_decisions,
-          lc_consumer:  data.lc_consumer  || lc.lc_consumer,
-          lc_market:    data.lc_market    || lc.lc_market,
-          lc_value:     data.lc_value     || lc.lc_value,
-          scenario_text: data.scenario_text || '',
-          marketing_text: data.marketing_text || '',
-          management_text: data.management_text || '',
-          assm_planning: data.assm_planning || '',
-          assm_growth: data.assm_growth || '',
-          assm_advertising: data.assm_advertising || '',
-          assm_feedback: data.assm_feedback || '',
-          assm_risk: data.assm_risk || '',
-          assm_product: data.assm_product || '',
-          assm_service: data.assm_service || '',
-          assm_startup: data.assm_startup || '',
-          assm_investment: data.assm_investment || '',
-          assm_contracts: data.assm_contracts || '',
-          assm_sync: data.assm_sync || '',
-          assm_creative: data.assm_creative || '',
-          assm_interaction: data.assm_interaction || '',
-          transition_title: data.transition_title || '',
-          transition_lifecycle_stage: data.transition_lifecycle_stage || '',
-          transition_description: data.transition_description || '',
-          is_published: data.is_published || false,
-          scenario_innovation_strategy: sc.innovation_strategy || '',
-          scenario_innovation_type: sc.innovation_type || '',
-          scenario_value_discipline: sc.value_discipline || '',
-          scenario_leadership_principles: sc.leadership_principles || '',
-          scenario_growth_strategy: sc.growth_strategy || '',
-          scenario_focus: sc.focus || '',
-        }));
+        if (data && !data.detail) {
+          const sc = data.scenario || {};
+          formRef.current = {
+            title:                      data.title              || hex.name,
+            stratagema_title:           data.stratagema_title   || '',
+            lifecycle_stage:            data.lifecycle_stage    || hex.stage,
+            lifecycle_description:      data.lifecycle_description || '',
+            lc_profit:                  data.lc_profit          || lc.lc_profit,
+            lc_strategy:                data.lc_strategy        || lc.lc_strategy,
+            lc_decisions:               data.lc_decisions       || lc.lc_decisions,
+            lc_consumer:                data.lc_consumer        || lc.lc_consumer,
+            lc_market:                  data.lc_market          || lc.lc_market,
+            lc_value:                   data.lc_value           || lc.lc_value,
+            scenario_text:              data.scenario_text      || '',
+            marketing_text:             data.marketing_text     || '',
+            management_text:            data.management_text    || '',
+            assm_planning:              data.assm_planning      || '',
+            assm_growth:                data.assm_growth        || '',
+            assm_advertising:           data.assm_advertising   || '',
+            assm_feedback:              data.assm_feedback      || '',
+            assm_risk:                  data.assm_risk          || '',
+            assm_product:               data.assm_product       || '',
+            assm_service:               data.assm_service       || '',
+            assm_startup:               data.assm_startup       || '',
+            assm_investment:            data.assm_investment    || '',
+            assm_contracts:             data.assm_contracts     || '',
+            assm_sync:                  data.assm_sync          || '',
+            assm_creative:              data.assm_creative      || '',
+            assm_interaction:           data.assm_interaction   || '',
+            transition_title:           data.transition_title   || '',
+            transition_lifecycle_stage: data.transition_lifecycle_stage || '',
+            transition_description:     data.transition_description    || '',
+            scenario_innovation_strategy: sc.innovation_strategy  || '',
+            scenario_innovation_type:     sc.innovation_type      || '',
+            scenario_value_discipline:    sc.value_discipline     || '',
+            scenario_leadership_principles: sc.leadership_principles || '',
+            scenario_growth_strategy:   sc.growth_strategy || '',
+            scenario_focus:             sc.focus           || '',
+          };
+          setIsPublished(data.is_published || false);
+          setLcStage(data.lifecycle_stage || hex.stage);
+          setTrStage(data.transition_lifecycle_stage || '');
+        } else {
+          formRef.current = { ...EMPTY_FORM, title: hex.name, lifecycle_stage: hex.stage, ...lc };
+          setLcStage(hex.stage);
+        }
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .catch(() => {
+        formRef.current = { ...EMPTY_FORM, title: hex.name, lifecycle_stage: hex.stage, ...autoFillLc(combination) };
+        setLcStage(hex.stage);
+      })
+      .finally(() => {
+        setFormKey(1);   // форма рендерится один раз с правильными данными
+        setLoading(false);
+      });
   }, [combination]);
 
-  // useCallback — стабильная ссылка, не вызывает перерисовку memo-компонентов
-  const set = useCallback((k: string, v: string) => {
-    setForm(f => ({ ...f, [k]: v }));
-    setSaved(false);
-  }, []);
-
-  const setSelect = useCallback((k: string, v: string) => {
-    setForm(f => ({ ...f, [k]: v }));
-    setSaved(false);
+  // onChange только пишет в ref — НИКАКИХ state-апдейтов → НИКАКОГО ре-рендера при вводе
+  const handleChange = useCallback((k: string, v: string) => {
+    (formRef.current as any)[k] = v;
   }, []);
 
   const save = async (publish: boolean) => {
+    // Синхронизируем select-значения из state в ref перед сохранением
+    formRef.current.lifecycle_stage = lcStage;
+    formRef.current.transition_lifecycle_stage = trStage;
+
     setSaving(true); setError('');
     try {
+      const f = formRef.current;
       const body = {
-        title: form.title, stratagema_title: form.stratagema_title,
-        lifecycle_stage: form.lifecycle_stage, lifecycle_description: form.lifecycle_description,
-        lc_profit: form.lc_profit, lc_strategy: form.lc_strategy,
-        lc_decisions: form.lc_decisions, lc_consumer: form.lc_consumer,
-        lc_market: form.lc_market, lc_value: form.lc_value,
-        scenario_text: form.scenario_text, marketing_text: form.marketing_text,
-        management_text: form.management_text,
-        assm_planning: form.assm_planning, assm_growth: form.assm_growth,
-        assm_advertising: form.assm_advertising, assm_feedback: form.assm_feedback,
-        assm_risk: form.assm_risk, assm_product: form.assm_product,
-        assm_service: form.assm_service, assm_startup: form.assm_startup,
-        assm_investment: form.assm_investment, assm_contracts: form.assm_contracts,
-        assm_sync: form.assm_sync, assm_creative: form.assm_creative,
-        assm_interaction: form.assm_interaction,
-        transition_title: form.transition_title,
-        transition_lifecycle_stage: form.transition_lifecycle_stage,
-        transition_description: form.transition_description,
+        title: f.title, stratagema_title: f.stratagema_title,
+        lifecycle_stage: f.lifecycle_stage, lifecycle_description: f.lifecycle_description,
+        lc_profit: f.lc_profit, lc_strategy: f.lc_strategy,
+        lc_decisions: f.lc_decisions, lc_consumer: f.lc_consumer,
+        lc_market: f.lc_market, lc_value: f.lc_value,
+        scenario_text: f.scenario_text, marketing_text: f.marketing_text,
+        management_text: f.management_text,
+        assm_planning: f.assm_planning, assm_growth: f.assm_growth,
+        assm_advertising: f.assm_advertising, assm_feedback: f.assm_feedback,
+        assm_risk: f.assm_risk, assm_product: f.assm_product,
+        assm_service: f.assm_service, assm_startup: f.assm_startup,
+        assm_investment: f.assm_investment, assm_contracts: f.assm_contracts,
+        assm_sync: f.assm_sync, assm_creative: f.assm_creative,
+        assm_interaction: f.assm_interaction,
+        transition_title: f.transition_title,
+        transition_lifecycle_stage: f.transition_lifecycle_stage,
+        transition_description: f.transition_description,
         is_published: publish,
         scenario: {
-          innovation_strategy: form.scenario_innovation_strategy,
-          innovation_type: form.scenario_innovation_type,
-          value_discipline: form.scenario_value_discipline,
-          leadership_principles: form.scenario_leadership_principles,
-          growth_strategy: form.scenario_growth_strategy,
-          focus: form.scenario_focus,
+          innovation_strategy: f.scenario_innovation_strategy,
+          innovation_type: f.scenario_innovation_type,
+          value_discipline: f.scenario_value_discipline,
+          leadership_principles: f.scenario_leadership_principles,
+          growth_strategy: f.scenario_growth_strategy,
+          focus: f.scenario_focus,
         },
         current_state: { combination, hex_name: hex?.name || '' },
       };
@@ -307,7 +336,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
       });
       if (!r.ok) { const e = await r.json(); throw new Error(e.detail || 'Ошибка сохранения'); }
       const data = await r.json();
-      setForm(f => ({ ...f, is_published: data.is_published }));
+      setIsPublished(data.is_published);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e: any) { setError(e.message || 'Ошибка'); }
@@ -326,6 +355,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
   );
 
   const targetHex = getTargetHex(combination);
+  const f = formRef.current;
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 880, margin: '0 auto' }}>
@@ -337,7 +367,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
             Стратегия №{hex.n} · {combination}
           </span>
           <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, margin: '4px 0 4px', color: '#1a2540', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 40 }}>{comboToHex(combination)}</span>{form.title || hex.name}
+            <span style={{ fontSize: 40 }}>{comboToHex(combination)}</span>{f.title || hex.name}
           </h1>
           <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.5)', margin: 0 }}>Стадия: {hex.stage}</p>
         </div>
@@ -372,106 +402,109 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
         )}
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontFamily: 'sans-serif', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: 'rgba(26,37,64,0.35)', marginBottom: 6 }}>Статус</div>
-          <span style={{ display: 'inline-block', padding: '4px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: form.is_published ? 'rgba(22,101,52,0.1)' : 'rgba(26,37,64,0.08)', color: form.is_published ? '#166534' : 'rgba(26,37,64,0.5)' }}>
-            {form.is_published ? 'Опубликовано' : 'Черновик'}
+          <span style={{ display: 'inline-block', padding: '4px 14px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: isPublished ? 'rgba(22,101,52,0.1)' : 'rgba(26,37,64,0.08)', color: isPublished ? '#166534' : 'rgba(26,37,64,0.5)' }}>
+            {isPublished ? 'Опубликовано' : 'Черновик'}
           </span>
         </div>
       </div>
 
-      <Sec label="Основное" title="Заголовок и стратагема" help="Отображается в шапке отчёта пользователя.">
-        <FI label="Заголовок стратегии" fk="title" value={form.title} ph={hex.name} onSet={set} />
-        <FI label="Стратагема (название)" fk="stratagema_title" value={form.stratagema_title} ph="Краткая формулировка стратагемы" onSet={set} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <label style={S_LBL}>Стадия жизненного цикла</label>
-            <select value={form.lifecycle_stage || hex.stage} onChange={e => setSelect('lifecycle_stage', e.target.value)} style={S_INP}>
-              {['Зарождение','Расцвет','Зрелость','Обновление','Упадок'].map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-        </div>
-      </Sec>
-
-      <Sec label="Жизненный цикл" title="Описание стадии" help="6 параметров диагностики. Авто-заполнены из комбинации, можно отредактировать.">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          {LC_BLOCKS.map((b, i) => (
-            <div key={b.key} style={{ background: 'rgba(26,37,64,0.02)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '14px 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <span style={{ width: 22, height: 22, borderRadius: '50%', background: combination[i] === 'A' ? '#1e3a8a' : '#e8e4db', color: combination[i] === 'A' ? '#fff' : '#1a2540', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'monospace', fontSize: 11, fontWeight: 700, flexShrink: 0, border: combination[i] === 'B' ? '1px solid rgba(26,37,64,0.2)' : 'none' }}>{combination[i]}</span>
-                <label style={{ ...S_LBL, margin: 0 }}>{b.label}</label>
-              </div>
-              <FA label="" fk={b.key} value={(form as any)[b.key] || ''} rows={3} onSet={set} />
-            </div>
-          ))}
-        </div>
-      </Sec>
-
-      <Sec label="Сценарий" title="Сценарий развития" help="Блок 03 отчёта — что означает эта комбинация для бизнеса.">
-        <FA label="" fk="scenario_text" value={form.scenario_text} rows={5} ph="Опишите сценарий развития…" onSet={set} />
-      </Sec>
-
-      <Sec label="Маркетинг" title="Рекомендации по маркетингу" help="Что делать с продуктом, ценой, каналами и коммуникацией.">
-        <FA label="" fk="marketing_text" value={form.marketing_text} rows={6} ph="Опишите маркетинговые рекомендации…" onSet={set} />
-      </Sec>
-
-      <Sec label="Управление" title="Рекомендации по управлению" help="Как организовать команду и принятие решений.">
-        <FA label="" fk="management_text" value={form.management_text} rows={6} ph="Опишите управленческие рекомендации…" onSet={set} />
-      </Sec>
-
-      <Sec label="Предположения" title="Предположения, лежащие в основе принятия решения" help="Тематические блоки — отображаются в отчёте после раздела «Управление».">
-        <FA label="Планирование" fk="assm_planning" value={form.assm_planning} rows={3} ph="Предположения по планированию…" onSet={set} />
-        <FA label="Рост и производительность" fk="assm_growth" value={form.assm_growth} rows={3} ph="Предположения по росту…" onSet={set} />
-        <FA label="Реклама" fk="assm_advertising" value={form.assm_advertising} rows={3} ph="Предположения по рекламе…" onSet={set} />
-        <FA label="Братная связь" fk="assm_feedback" value={form.assm_feedback} rows={3} ph="Предположения по братной связи…" onSet={set} />
-        <FA label="Риск" fk="assm_risk" value={form.assm_risk} rows={3} ph="Предположения по рискам…" onSet={set} />
-        <FA label="Выбор продукта" fk="assm_product" value={form.assm_product} rows={3} ph="Предположения по выбору продукта…" onSet={set} />
-        <FA label="Сервис" fk="assm_service" value={form.assm_service} rows={3} ph="Предположения по сервису…" onSet={set} />
-        <FA label="Стартап" fk="assm_startup" value={form.assm_startup} rows={3} ph="Предположения по стартапу…" onSet={set} />
-        <FA label="Инвестиции и финансы" fk="assm_investment" value={form.assm_investment} rows={3} ph="Предположения по инвестициям…" onSet={set} />
-        <FA label="Договора и соглашения" fk="assm_contracts" value={form.assm_contracts} rows={3} ph="Предположения по договорам…" onSet={set} />
-        <FA label="Синхронизация" fk="assm_sync" value={form.assm_sync} rows={3} ph="Предположения по синхронизации…" onSet={set} />
-        <FA label="Творческий вклад" fk="assm_creative" value={form.assm_creative} rows={3} ph="Предположения по творческому вкладу…" onSet={set} />
-        <FA label="Взаимодействие" fk="assm_interaction" value={form.assm_interaction} rows={3} ph="Предположения по взаимодействию…" onSet={set} />
-      </Sec>
-
-      <Sec label="Переход" title="Целевое состояние" help="Куда компании двигаться — определено автоматически по таблице соответствия гексаграмм.">
-        {targetHex && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20, background: 'rgba(192,57,43,0.04)', border: '1px solid rgba(192,57,43,0.18)', borderRadius: 10, padding: '16px 20px', marginBottom: 20 }}>
-            <div style={{ textAlign: 'center', flexShrink: 0 }}>
-              <div style={{ fontSize: 64, lineHeight: 1, color: '#1a2540', marginBottom: 4 }}>{String.fromCodePoint(0x4DC0 + targetHex.n - 1)}</div>
-              <div style={{ fontFamily: 'sans-serif', fontSize: 10, color: '#c0392b', letterSpacing: 1, fontWeight: 700, textTransform: 'uppercase' }}>Гексаграмма {targetHex.n}</div>
-              <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)', marginTop: 2 }}>{targetHex.name}</div>
-              <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)', marginTop: 2 }}>{targetHex.stage}</div>
-            </div>
+      {/* ── Форма — key={formKey} гарантирует один рендер с правильными defaultValue ── */}
+      <div key={formKey}>
+        <Sec label="Основное" title="Заголовок и стратагема" help="Отображается в шапке отчёта пользователя.">
+          <FI label="Заголовок стратегии" fk="title" dv={f.title} ph={hex.name} onChange={handleChange} />
+          <FI label="Стратагема (название)" fk="stratagema_title" dv={f.stratagema_title} ph="Краткая формулировка стратагемы" onChange={handleChange} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <div style={{ fontFamily: 'sans-serif', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(26,37,64,0.4)', marginBottom: 4 }}>Целевая гексаграмма</div>
-              <div style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: '#1a2540', marginBottom: 4 }}>{targetHex.name}</div>
-              <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#1e3a8a', letterSpacing: 2, marginBottom: 4 }}>{targetHex.combo}</div>
-              <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)' }}>Стадия: {targetHex.stage}</div>
+              <label style={S_LBL}>Стадия жизненного цикла</label>
+              <select value={lcStage || hex.stage} onChange={e => setLcStage(e.target.value)} style={S_INP}>
+                {['Зарождение','Расцвет','Зрелость','Обновление','Упадок'].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
           </div>
-        )}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <FI label="Название перехода" fk="transition_title" value={form.transition_title} ph="Название целевой стратегии" onSet={set} />
-          <div>
-            <label style={S_LBL}>Стадия целевого состояния</label>
-            <select value={form.transition_lifecycle_stage} onChange={e => setSelect('transition_lifecycle_stage', e.target.value)} style={S_INP}>
-              {['','Зарождение','Расцвет','Зрелость','Обновление','Упадок'].map(s => <option key={s} value={s}>{s || '—'}</option>)}
-            </select>
-          </div>
-        </div>
-        <FA label="Описание перехода" fk="transition_description" value={form.transition_description} rows={4} ph="Опишите как компании перейти к целевому состоянию…" onSet={set} />
-      </Sec>
+        </Sec>
 
-      <Sec label="Сценарий стратагемы" title="Таблица стратагемы" help="Конкретные характеристики — отображаются в блоке «Сценарий стратагемы» отчёта.">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <FI label="Стратегия изменений" fk="scenario_innovation_strategy" value={form.scenario_innovation_strategy} onSet={set} />
-          <FI label="Тип изменений" fk="scenario_innovation_type" value={form.scenario_innovation_type} onSet={set} />
-          <FI label="Ценностная дисциплина" fk="scenario_value_discipline" value={form.scenario_value_discipline} onSet={set} />
-          <FI label="Принципы лидерства" fk="scenario_leadership_principles" value={form.scenario_leadership_principles} onSet={set} />
-          <FI label="Стратегия роста" fk="scenario_growth_strategy" value={form.scenario_growth_strategy} onSet={set} />
-          <FI label="Фокус" fk="scenario_focus" value={form.scenario_focus} onSet={set} />
-        </div>
-      </Sec>
+        <Sec label="Жизненный цикл" title="Описание стадии" help="6 параметров диагностики. Авто-заполнены из комбинации, можно отредактировать.">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            {LC_BLOCKS.map((b, i) => (
+              <div key={b.key} style={{ background: 'rgba(26,37,64,0.02)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '14px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: combination[i] === 'A' ? '#1e3a8a' : '#e8e4db', color: combination[i] === 'A' ? '#fff' : '#1a2540', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'monospace', fontSize: 11, fontWeight: 700, flexShrink: 0, border: combination[i] === 'B' ? '1px solid rgba(26,37,64,0.2)' : 'none' }}>{combination[i]}</span>
+                  <label style={{ ...S_LBL, margin: 0 }}>{b.label}</label>
+                </div>
+                <FA label="" fk={b.key} dv={(f as any)[b.key] || ''} rows={3} onChange={handleChange} />
+              </div>
+            ))}
+          </div>
+        </Sec>
+
+        <Sec label="Сценарий" title="Сценарий развития" help="Блок 03 отчёта — что означает эта комбинация для бизнеса.">
+          <FA label="" fk="scenario_text" dv={f.scenario_text} rows={5} ph="Опишите сценарий развития…" onChange={handleChange} />
+        </Sec>
+
+        <Sec label="Маркетинг" title="Рекомендации по маркетингу" help="Что делать с продуктом, ценой, каналами и коммуникацией.">
+          <FA label="" fk="marketing_text" dv={f.marketing_text} rows={6} ph="Опишите маркетинговые рекомендации…" onChange={handleChange} />
+        </Sec>
+
+        <Sec label="Управление" title="Рекомендации по управлению" help="Как организовать команду и принятие решений.">
+          <FA label="" fk="management_text" dv={f.management_text} rows={6} ph="Опишите управленческие рекомендации…" onChange={handleChange} />
+        </Sec>
+
+        <Sec label="Предположения" title="Предположения, лежащие в основе принятия решения" help="Тематические блоки — отображаются в отчёте после раздела «Управление».">
+          <FA label="Планирование" fk="assm_planning" dv={f.assm_planning} rows={3} ph="Предположения по планированию…" onChange={handleChange} />
+          <FA label="Рост и производительность" fk="assm_growth" dv={f.assm_growth} rows={3} ph="Предположения по росту…" onChange={handleChange} />
+          <FA label="Реклама" fk="assm_advertising" dv={f.assm_advertising} rows={3} ph="Предположения по рекламе…" onChange={handleChange} />
+          <FA label="Братная связь" fk="assm_feedback" dv={f.assm_feedback} rows={3} ph="Предположения по братной связи…" onChange={handleChange} />
+          <FA label="Риск" fk="assm_risk" dv={f.assm_risk} rows={3} ph="Предположения по рискам…" onChange={handleChange} />
+          <FA label="Выбор продукта" fk="assm_product" dv={f.assm_product} rows={3} ph="Предположения по выбору продукта…" onChange={handleChange} />
+          <FA label="Сервис" fk="assm_service" dv={f.assm_service} rows={3} ph="Предположения по сервису…" onChange={handleChange} />
+          <FA label="Стартап" fk="assm_startup" dv={f.assm_startup} rows={3} ph="Предположения по стартапу…" onChange={handleChange} />
+          <FA label="Инвестиции и финансы" fk="assm_investment" dv={f.assm_investment} rows={3} ph="Предположения по инвестициям…" onChange={handleChange} />
+          <FA label="Договора и соглашения" fk="assm_contracts" dv={f.assm_contracts} rows={3} ph="Предположения по договорам…" onChange={handleChange} />
+          <FA label="Синхронизация" fk="assm_sync" dv={f.assm_sync} rows={3} ph="Предположения по синхронизации…" onChange={handleChange} />
+          <FA label="Творческий вклад" fk="assm_creative" dv={f.assm_creative} rows={3} ph="Предположения по творческому вкладу…" onChange={handleChange} />
+          <FA label="Взаимодействие" fk="assm_interaction" dv={f.assm_interaction} rows={3} ph="Предположения по взаимодействию…" onChange={handleChange} />
+        </Sec>
+
+        <Sec label="Переход" title="Целевое состояние" help="Куда компании двигаться — определено автоматически по таблице соответствия гексаграмм.">
+          {targetHex && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20, background: 'rgba(192,57,43,0.04)', border: '1px solid rgba(192,57,43,0.18)', borderRadius: 10, padding: '16px 20px', marginBottom: 20 }}>
+              <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                <div style={{ fontSize: 64, lineHeight: 1, color: '#1a2540', marginBottom: 4 }}>{String.fromCodePoint(0x4DC0 + targetHex.n - 1)}</div>
+                <div style={{ fontFamily: 'sans-serif', fontSize: 10, color: '#c0392b', letterSpacing: 1, fontWeight: 700, textTransform: 'uppercase' }}>Гексаграмма {targetHex.n}</div>
+                <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)', marginTop: 2 }}>{targetHex.name}</div>
+                <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)', marginTop: 2 }}>{targetHex.stage}</div>
+              </div>
+              <div>
+                <div style={{ fontFamily: 'sans-serif', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(26,37,64,0.4)', marginBottom: 4 }}>Целевая гексаграмма</div>
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: '#1a2540', marginBottom: 4 }}>{targetHex.name}</div>
+                <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#1e3a8a', letterSpacing: 2, marginBottom: 4 }}>{targetHex.combo}</div>
+                <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)' }}>Стадия: {targetHex.stage}</div>
+              </div>
+            </div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <FI label="Название перехода" fk="transition_title" dv={f.transition_title} ph="Название целевой стратегии" onChange={handleChange} />
+            <div>
+              <label style={S_LBL}>Стадия целевого состояния</label>
+              <select value={trStage} onChange={e => setTrStage(e.target.value)} style={S_INP}>
+                {['','Зарождение','Расцвет','Зрелость','Обновление','Упадок'].map(s => <option key={s} value={s}>{s || '—'}</option>)}
+              </select>
+            </div>
+          </div>
+          <FA label="Описание перехода" fk="transition_description" dv={f.transition_description} rows={4} ph="Опишите как компании перейти к целевому состоянию…" onChange={handleChange} />
+        </Sec>
+
+        <Sec label="Сценарий стратагемы" title="Таблица стратагемы" help="Конкретные характеристики — отображаются в блоке «Сценарий стратагемы» отчёта.">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <FI label="Стратегия изменений" fk="scenario_innovation_strategy" dv={f.scenario_innovation_strategy} onChange={handleChange} />
+            <FI label="Тип изменений" fk="scenario_innovation_type" dv={f.scenario_innovation_type} onChange={handleChange} />
+            <FI label="Ценностная дисциплина" fk="scenario_value_discipline" dv={f.scenario_value_discipline} onChange={handleChange} />
+            <FI label="Принципы лидерства" fk="scenario_leadership_principles" dv={f.scenario_leadership_principles} onChange={handleChange} />
+            <FI label="Стратегия роста" fk="scenario_growth_strategy" dv={f.scenario_growth_strategy} onChange={handleChange} />
+            <FI label="Фокус" fk="scenario_focus" dv={f.scenario_focus} onChange={handleChange} />
+          </div>
+        </Sec>
+      </div>{/* конец key={formKey} */}
 
       {saved && <div style={{ background: 'rgba(22,101,52,0.08)', border: '1px solid rgba(22,101,52,0.2)', borderRadius: 8, padding: '11px 16px', fontFamily: 'sans-serif', fontSize: 13, color: '#166534', marginBottom: 12 }}>✓ Сохранено успешно</div>}
       {error && <div style={{ background: 'rgba(153,27,27,0.08)', border: '1px solid rgba(153,27,27,0.2)', borderRadius: 8, padding: '11px 16px', fontFamily: 'sans-serif', fontSize: 13, color: '#991b1b', marginBottom: 12 }}>{error}</div>}
