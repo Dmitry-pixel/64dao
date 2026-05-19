@@ -150,7 +150,8 @@ async def _generate_report_background(
                 .where(Strategy.combination == combination, Strategy.is_published == True)
             )
 
-            date_str = datetime.now(timezone.utc).strftime("%d %B %Y").replace(
+            now = datetime.now(timezone.utc)
+            date_str = now.strftime("%d %B %Y, %H:%M").replace(
                 "January", "января").replace("February", "февраля").replace(
                 "March", "марта").replace("April", "апреля").replace(
                 "May", "мая").replace("June", "июня").replace(

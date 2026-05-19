@@ -66,7 +66,7 @@ export default function ReportPage() {
                 Комбинация {combo}
               </h1>
               <p className="muted">
-                Диагностика завершена · {new Date(assessment.created_at).toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' })}
+                Диагностика завершена · {new Date(assessment.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
             <div style={{ fontSize: 96, fontFamily: 'Georgia, serif', color: 'var(--blue)', lineHeight: 1 }}>
@@ -80,7 +80,7 @@ export default function ReportPage() {
               <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <span className="label-red" style={{ display: 'block', marginBottom: 6 }}>PDF-отчёт готов</span>
-                  <p className="faint">Сгенерирован {report.generated_at ? new Date(report.generated_at).toLocaleDateString('ru') : '—'}</p>
+                  <p className="faint">Сгенерирован {report.generated_at ? new Date(report.generated_at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</p>
                 </div>
                 <a
                   href={reportDownloadUrl(report.id)}

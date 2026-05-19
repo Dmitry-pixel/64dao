@@ -102,7 +102,7 @@ export default function DashboardPage() {
                   <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
                   <div className="hex-block">{hexFor(a.method1_combination ?? '')}</div>
                   <div>
-                    <div className="dash-meta">{a.method1_combination ?? '—'} · {new Date(a.created_at).toLocaleDateString('ru')}</div>
+                    <div className="dash-meta">{a.method1_combination ?? '—'} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                     <div className="dash-title">
                       {a.status === 'completed' ? `Стратегия «${a.method1_combination ?? '—'}»` : 'Диагностика в процессе'}
                     </div>
