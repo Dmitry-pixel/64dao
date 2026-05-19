@@ -186,11 +186,12 @@ export default function StrategyEditorPage({ params }: Params) {
 
   useEffect(() => {
     if (!hex) { setLoading(false); return; }
-    // Pre-fill из статических данных
+    // Pre-fill из статических данных + авто-заполнение lc_ из комбинации
     setForm(f => ({
       ...f,
       title: hex.name,
       lifecycle_stage: hex.stage,
+      ...autoFillLc(combination),
     }));
     fetch(`/api/strategies/${combination}`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
