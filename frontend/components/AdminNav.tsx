@@ -87,6 +87,7 @@ export function AdminSide({ current }: AdminSideProps) {
       <Link href="/admin/pricing" className={current === 'pricing' ? 'on' : ''}>Тариф & цена</Link>
       <Link href="/admin/email-templates" className={current === 'email-templates' ? 'on' : ''}>Email-шаблоны</Link>
       <Link href="/admin/logs" className={current === 'logs' ? 'on' : ''}>Логи</Link>
+      <Link href="/404" className={current === '404' ? 'on' : ''}>Страница 404</Link>
     </aside>
   )
 }
