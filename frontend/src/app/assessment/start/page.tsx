@@ -1,14 +1,31 @@
 'use client'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { getMe } from '@/lib/api'
 import { AppNav } from '@/components/AppNav'
 
 export default function AssessmentStartPage() {
   const router = useRouter()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    getMe().then(me => { if (me.role === 'admin') setIsAdmin(true) }).catch(() => {})
+  }, [])
+
+  const backUrl = isAdmin ? '/admin/my-reports' : '/dashboard'
 
   return (
     <>
       <AppNav />
       <div style={{ padding: '48px 60px', maxWidth: 980, margin: '0 auto' }}>
+        <button
+          onClick={() => router.push(backUrl)}
+          className="btn btn-ghost"
+          style={{ marginBottom: 28, fontSize: 13, padding: '8px 16px' }}
+        >
+          ← Вернуться назад
+        </button>
+
         <span className="label-red">Новая диагностика</span>
         <h1 className="h1-serif" style={{ marginTop: 10, marginBottom: 8 }}>Выберите метод</h1>
         <p className="muted" style={{ marginBottom: 40, maxWidth: 560 }}>
@@ -16,7 +33,6 @@ export default function AssessmentStartPage() {
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, maxWidth: 860 }}>
-          {/* Метод 1 */}
           <div
             className="card"
             style={{ cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s' }}
@@ -38,7 +54,6 @@ export default function AssessmentStartPage() {
             <button className="btn btn-primary btn-block">Начать Метод 1 →</button>
           </div>
 
-          {/* Метод 2 */}
           <div
             className="card"
             style={{ cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s' }}
@@ -63,9 +78,9 @@ export default function AssessmentStartPage() {
 
         <div className="card-flat" style={{ marginTop: 32, maxWidth: 860 }}>
           <div style={{ display: 'flex', gap: 32, fontFamily: 'sans-serif', fontSize: 13, color: 'var(--text-mute)' }}>
-            <span>📄 PDF-отчёт со стратегией</span>
-            <span>🎯 Анализ жизненного цикла</span>
-            <span>💡 Рекомендации по управлению и маркетингу</span>
+            <span>PDF-отчёт со стратегией</span>
+            <span>Анализ жизненного цикла</span>
+            <span>Рекомендации по управлению и маркетингу</span>
           </div>
         </div>
       </div>
