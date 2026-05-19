@@ -304,11 +304,12 @@ export default function StrategyEditorPage({ params }: Params) {
       const data = await r.json();
       setForm(f => ({ ...f, is_published: data.is_published }));
       setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
     } catch (e: any) { setError(e.message || 'Ошибка'); }
     finally { setSaving(false); }
   };
 
-  const inp = { width: '100%', padding: '10px 14px', border: '1px solid rgba(26,37,64,0.18)', borderRadius: 6, fontFamily: 'sans-serif', fontSize: 13, background: '#fafaf8', color: '#1a2540', outline: 'none', boxSizing: 'border-box' as const };
+  const inp = { width: '100%', padding: '10px 14px', border: '1px solid rgba(26,37,64,0.3)', borderRadius: 6, fontFamily: 'sans-serif', fontSize: 13, background: '#fff', color: '#1a2540', boxSizing: 'border-box' as const };
   const lbl = { display: 'block', fontFamily: 'sans-serif', fontSize: 11, fontWeight: 600 as const, letterSpacing: 1, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.5)', marginBottom: 6 };
   const btn = (extra: React.CSSProperties = {}) => ({ padding: '9px 18px', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontFamily: 'sans-serif', ...extra } as const);
 
@@ -507,9 +508,11 @@ export default function StrategyEditorPage({ params }: Params) {
         </div>
       </Sec>
 
+      {saved && <div style={{ background: 'rgba(22,101,52,0.08)', border: '1px solid rgba(22,101,52,0.2)', borderRadius: 8, padding: '11px 16px', fontFamily: 'sans-serif', fontSize: 13, color: '#166534', marginBottom: 12 }}>✓ Сохранено успешно</div>}
+      {error && <div style={{ background: 'rgba(153,27,27,0.08)', border: '1px solid rgba(153,27,27,0.2)', borderRadius: 8, padding: '11px 16px', fontFamily: 'sans-serif', fontSize: 13, color: '#991b1b', marginBottom: 12 }}>{error}</div>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4, paddingBottom: 40 }}>
-        <button onClick={() => save(false)} disabled={saving} style={btn({ border: '1px solid rgba(26,37,64,0.2)', background: 'transparent', color: '#1a2540' })}>Сохранить черновик</button>
-        <button onClick={() => save(true)} disabled={saving} style={btn({ border: 'none', background: '#1a2540', color: '#fff', fontWeight: 600 })}>Сохранить и опубликовать</button>
+        <button onClick={() => save(false)} disabled={saving} style={btn({ border: '1px solid rgba(26,37,64,0.2)', background: 'transparent', color: '#1a2540' })}>{saving ? 'Сохранение…' : 'Сохранить черновик'}</button>
+        <button onClick={() => save(true)} disabled={saving} style={btn({ border: 'none', background: '#1a2540', color: '#fff', fontWeight: 600 })}>{saving ? 'Сохранение…' : 'Сохранить и опубликовать'}</button>
       </div>
     </div>
   );
