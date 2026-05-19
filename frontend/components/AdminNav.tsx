@@ -64,6 +64,7 @@ export function AdminSide({ current }: AdminSideProps) {
 
   return (
     <aside className="admin-side">
+      <Link href="/admin" style={{ display: 'block', marginBottom: 16, fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)', textDecoration: 'none' }}>← Вернуться в кабинет</Link>
       <h4>Обзор</h4>
       <Link href="/admin" className={current === 'stats' ? 'on' : ''}>Сводка</Link>
 
