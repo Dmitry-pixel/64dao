@@ -32,7 +32,7 @@ export function AdminNav({ current }: AdminNavProps) {
         <Link href="/admin" className={current === 'stats' ? 'on' : ''}>Сводка</Link>
         <Link href="/admin/users" className={current === 'users' ? 'on' : ''}>Пользователи</Link>
         <Link href="/admin/strategies" className={current === 'strategies' ? 'on' : ''}>Стратегии</Link>
-        <Link href="/dashboard" className={current === 'reports' ? 'on' : ''}>Мои отчёты</Link>
+        <Link href="/admin/my-reports" className={current === 'my-reports' ? 'on' : ''}>Мои отчёты</Link>
       </div>
       <div className="appnav-user">
         <span className="pill pill-pending" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>admin</span>
