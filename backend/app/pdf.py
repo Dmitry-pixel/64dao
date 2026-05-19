@@ -371,6 +371,48 @@ def _transition_block(strategy: Any, target_hex_info: tuple | None) -> str:
     )
 
 
+_LC_LABELS = [
+    ("lc_profit",    "Формирование прибыли"),
+    ("lc_strategy",  "Рыночная стратегия"),
+    ("lc_decisions", "Принятие решений"),
+    ("lc_consumer",  "Тип потребителя"),
+    ("lc_market",    "Статус рынка"),
+    ("lc_value",     "Тип ценности"),
+]
+
+
+def _lifecycle_blocks(strategy: Any, combination: str) -> str:
+    """6 блоков жизненного цикла для PDF — по одному на каждый вопрос."""
+    header = ""
+    if strategy and strategy.stratagema_title:
+        header = f'<div style="display:inline-block;padding:3px 10px;border-radius:3px;font-size:10px;font-family:Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;background:rgba(30,58,138,0.08);border:1px solid rgba(30,58,138,0.2);color:#1e3a8a;margin-bottom:10px;">{e(strategy.stratagema_title)}</div>'
+    if strategy and strategy.title:
+        header += f'<h3 style="font-size:16px;font-weight:500;color:#1a2540;margin-bottom:16px;font-family:Arial,sans-serif;">{e(strategy.title)}</h3>'
+
+    blocks_html = ""
+    for i, (field, label) in enumerate(_LC_LABELS):
+        letter = combination[i] if i < len(combination) else "A"
+        value = (getattr(strategy, field, None) or "") if strategy else ""
+        badge_bg = "rgba(30,58,138,0.1)" if letter == "A" else "rgba(26,37,64,0.06)"
+        badge_color = "#1e3a8a" if letter == "A" else "#1a2540"
+        badge_border = "rgba(30,58,138,0.2)" if letter == "A" else "rgba(26,37,64,0.15)"
+        blocks_html += f"""
+<div style="background:rgba(255,255,255,0.5);border:1px solid rgba(26,37,64,0.1);border-radius:6px;padding:12px 14px;">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+    <span style="width:18px;height:18px;border-radius:50%;background:{badge_bg};border:1px solid {badge_border};color:{badge_color};display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:10px;font-weight:700;flex-shrink:0;">{letter}</span>
+    <span style="font-size:9px;font-family:Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;color:rgba(26,37,64,0.45);font-weight:600;">{e(label)}</span>
+  </div>
+  <p style="font-size:12px;color:#1a2540;line-height:1.6;margin:0;font-family:Arial,sans-serif;">{e(value)}</p>
+</div>"""
+
+    return f"""<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px 24px;background:rgba(255,255,255,0.4);">
+{header}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+{blocks_html}
+</div>
+</div>"""
+
+
 def build_report_html(
     company_name: str,
     user_name: str,
@@ -533,7 +575,7 @@ def build_report_html(
   <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin-bottom:12px;">Текущее состояние</h2>
   {_table_rows(cs_rows) if cs_rows else ""}
   {f'<div style="display:inline-block;padding:3px 10px;border-radius:3px;font-size:10px;font-family:Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.2);color:#c0392b;margin-bottom:12px;">{e(strategy.lifecycle_stage or "")}</div>' if strategy and strategy.lifecycle_stage else ""}
-  {f'<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px 24px;background:rgba(255,255,255,0.4);"><div style="display:inline-block;padding:3px 10px;border-radius:3px;font-size:10px;font-family:Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;background:rgba(30,58,138,0.08);border:1px solid rgba(30,58,138,0.2);color:#1e3a8a;margin-bottom:10px;">{e(strategy.stratagema_title or "")}</div><h3 style="font-size:16px;font-weight:500;color:#1a2540;margin-bottom:10px;">{e(strategy.title or "")}</h3><p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">{e(strategy.lifecycle_description or "")}</p></div>' if strategy else ""}
+  {_lifecycle_blocks(strategy, combination) if strategy else ""}
   <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
               display:flex;justify-content:space-between;font-family:Arial,sans-serif;
               font-size:10px;color:rgba(26,37,64,0.3);">

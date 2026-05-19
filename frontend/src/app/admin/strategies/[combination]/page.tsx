@@ -92,6 +92,36 @@ const TARGET_HEXAGRAM: Record<number, number> = {
   57: 44, 58:  5, 59: 44, 60: 43, 61: 42, 62: 33, 63: 17, 64: 40,
 };
 
+// Авто-заполнение 6 блоков жизненного цикла из комбинации
+const LC_BLOCKS = [
+  { key: 'lc_profit',    label: 'Формирование прибыли',
+    a: 'Рост выручки и объёма продаж',
+    b: 'Повышение эффективности, сокращение расходов и потерь' },
+  { key: 'lc_strategy',  label: 'Рыночная стратегия',
+    a: 'Первопроходец — создание новых решений и рынков, новых категорий, продуктов или подходов',
+    b: 'Быстрый последователь — адаптация уже подтверждённых решений, быстрое улучшение существующего' },
+  { key: 'lc_decisions', label: 'Принятие решений',
+    a: 'Преимущественно централизованно',
+    b: 'Преимущественно распределённо' },
+  { key: 'lc_consumer',  label: 'Тип потребителя',
+    a: 'Корпоративные клиенты (B2B)',
+    b: 'Частные потребители (B2C)' },
+  { key: 'lc_market',    label: 'Статус рынка',
+    a: 'Зрелый рынок с высокой конкуренцией',
+    b: 'Развивающийся рынок с формирующимся спросом' },
+  { key: 'lc_value',     label: 'Тип ценности',
+    a: 'Технологические инновации',
+    b: 'Улучшение существующих решений' },
+];
+
+function autoFillLc(combination: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  LC_BLOCKS.forEach((b, i) => {
+    result[b.key] = combination[i] === 'A' ? b.a : b.b;
+  });
+  return result;
+}
+
 function getTargetHex(combo: string) {
   const cur = HEXAGRAM_MAP[combo];
   if (!cur) return null;
@@ -106,6 +136,12 @@ const EMPTY = {
   stratagema_title: '',
   lifecycle_stage: '',
   lifecycle_description: '',
+  lc_profit: '',
+  lc_strategy: '',
+  lc_decisions: '',
+  lc_consumer: '',
+  lc_market: '',
+  lc_value: '',
   scenario_text: '',
   marketing_text: '',
   management_text: '',
@@ -168,6 +204,12 @@ export default function StrategyEditorPage({ params }: Params) {
           stratagema_title: data.stratagema_title || '',
           lifecycle_stage: data.lifecycle_stage || f.lifecycle_stage,
           lifecycle_description: data.lifecycle_description || '',
+          lc_profit:    data.lc_profit    || autoFillLc(combination).lc_profit,
+          lc_strategy:  data.lc_strategy  || autoFillLc(combination).lc_strategy,
+          lc_decisions: data.lc_decisions || autoFillLc(combination).lc_decisions,
+          lc_consumer:  data.lc_consumer  || autoFillLc(combination).lc_consumer,
+          lc_market:    data.lc_market    || autoFillLc(combination).lc_market,
+          lc_value:     data.lc_value     || autoFillLc(combination).lc_value,
           scenario_text: data.scenario_text || '',
           marketing_text: data.marketing_text || '',
           management_text: data.management_text || '',
@@ -210,6 +252,12 @@ export default function StrategyEditorPage({ params }: Params) {
         stratagema_title: form.stratagema_title,
         lifecycle_stage: form.lifecycle_stage,
         lifecycle_description: form.lifecycle_description,
+        lc_profit:    form.lc_profit,
+        lc_strategy:  form.lc_strategy,
+        lc_decisions: form.lc_decisions,
+        lc_consumer:  form.lc_consumer,
+        lc_market:    form.lc_market,
+        lc_value:     form.lc_value,
         scenario_text: form.scenario_text,
         marketing_text: form.marketing_text,
         management_text: form.management_text,
@@ -371,8 +419,23 @@ export default function StrategyEditorPage({ params }: Params) {
         </div>
       </Sec>
 
-      <Sec label="Жизненный цикл" title="Описание стадии" help="Блок 02 отчёта — характеристика текущей фазы компании.">
-        <FA label="" k="lifecycle_description" rows={5} ph="Опишите текущую фазу жизненного цикла компании…" />
+      <Sec label="Жизненный цикл" title="Описание стадии" help="Блок 02 отчёта — 6 параметров диагностики. Авто-заполнены из комбинации, можно отредактировать.">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          {LC_BLOCKS.map((b, i) => (
+            <div key={b.key} style={{ background: 'rgba(26,37,64,0.02)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '14px 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{ width: 22, height: 22, borderRadius: '50%', background: combination[i] === 'A' ? '#1e3a8a' : '#e8e4db', color: combination[i] === 'A' ? '#fff' : '#1a2540', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'monospace', fontSize: 11, fontWeight: 700, flexShrink: 0, border: combination[i] === 'B' ? '1px solid rgba(26,37,64,0.2)' : 'none' }}>{combination[i]}</span>
+                <label style={{ ...lbl, margin: 0 }}>{b.label}</label>
+              </div>
+              <textarea
+                value={(form as any)[b.key] || ''}
+                onChange={e => set(b.key, e.target.value)}
+                rows={3}
+                style={{ ...inp, resize: 'vertical', lineHeight: 1.6, fontSize: 12 }}
+              />
+            </div>
+          ))}
+        </div>
       </Sec>
 
       <Sec label="Сценарий" title="Сценарий развития" help="Блок 03 отчёта — что означает эта комбинация для бизнеса.">

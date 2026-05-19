@@ -61,6 +61,13 @@ class Strategy(Base):
     stratagema_title:           Mapped[str | None]= mapped_column(String(255))
     lifecycle_stage:            Mapped[str | None]= mapped_column(String(100))
     lifecycle_description:      Mapped[str | None]= mapped_column(Text)
+    # 6 блоков жизненного цикла (по одному на каждый вопрос диагностики)
+    lc_profit:                  Mapped[str | None]= mapped_column(Text)  # Формирование прибыли
+    lc_strategy:                Mapped[str | None]= mapped_column(Text)  # Рыночная стратегия
+    lc_decisions:               Mapped[str | None]= mapped_column(Text)  # Принятие решений
+    lc_consumer:                Mapped[str | None]= mapped_column(Text)  # Тип потребителя
+    lc_market:                  Mapped[str | None]= mapped_column(Text)  # Статус рынка
+    lc_value:                   Mapped[str | None]= mapped_column(Text)  # Тип ценности
     scenario:                   Mapped[dict | None]= mapped_column(JSONB)
     scenario_text:              Mapped[str | None]= mapped_column(Text)
     marketing_text:             Mapped[str | None]= mapped_column(Text)

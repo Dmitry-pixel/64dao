@@ -1,16 +1,15 @@
 """
-Скрипт заполнения lifecycle_description для всех 64 стратегий.
+Скрипт заполнения lifecycle_description и 6 lc_* полей для всех 64 стратегий.
 
 Запуск:
   docker exec dao64_backend python seed_lifecycle.py
 """
 
 import asyncio
-from sqlalchemy import select, update
+from sqlalchemy import select
 from app.db import AsyncSessionLocal as async_session_maker
 from app.models import Strategy
 
-# Описания для каждой позиции (A/B) и каждого из 6 вопросов
 QUESTION_LABELS = [
     "Формирование прибыли",
     "Рыночная стратегия",
@@ -28,8 +27,8 @@ ANSWERS = [
     ),
     # Вопрос 2: СТРАТЕГИЯ
     (
-        "Первопроходец (создание новых решений и рынков). Создаёт новые категории, продукты или подходы",
-        "Быстрый последователь (адаптация уже подтверждённых решений). Быстро адаптирует и улучшает существующие решения",
+        "Первопроходец — создание новых решений и рынков, новых категорий, продуктов или подходов",
+        "Быстрый последователь — адаптация уже подтверждённых решений, быстрое улучшение существующего",
     ),
     # Вопрос 3: ОРГАНИЗАЦИЯ
     (
@@ -53,9 +52,10 @@ ANSWERS = [
     ),
 ]
 
+LC_FIELDS = ['lc_profit', 'lc_strategy', 'lc_decisions', 'lc_consumer', 'lc_market', 'lc_value']
+
 
 def generate_description(combination: str) -> str:
-    """Генерирует текст lifecycle_description из 6-буквенной комбинации."""
     lines = []
     for i, letter in enumerate(combination):
         label = QUESTION_LABELS[i]
@@ -73,8 +73,14 @@ async def main():
         for s in strategies:
             if not s.combination or len(s.combination) != 6:
                 continue
-            text = generate_description(s.combination)
-            s.lifecycle_description = text
+
+            # lifecycle_description — сводный текст для совместимости
+            s.lifecycle_description = generate_description(s.combination)
+
+            # 6 отдельных lc_* полей — заполняем всегда (авто-заполнение из комбинации)
+            for i, field in enumerate(LC_FIELDS):
+                setattr(s, field, ANSWERS[i][0] if s.combination[i] == "A" else ANSWERS[i][1])
+
             updated += 1
 
         await session.commit()

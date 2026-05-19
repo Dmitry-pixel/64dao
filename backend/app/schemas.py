@@ -109,6 +109,12 @@ class StrategyCreate(BaseModel):
     stratagema_title:           str | None = None
     lifecycle_stage:            str | None = None
     lifecycle_description:      str | None = None
+    lc_profit:                  str | None = None
+    lc_strategy:                str | None = None
+    lc_decisions:               str | None = None
+    lc_consumer:                str | None = None
+    lc_market:                  str | None = None
+    lc_value:                   str | None = None
     scenario:                   dict[str, str] | None = None
     scenario_text:              str | None = None
     marketing_text:             str | None = None
@@ -154,6 +160,12 @@ class StrategyOut(BaseModel):
     stratagema_title:           str | None
     lifecycle_stage:            str | None
     lifecycle_description:      str | None
+    lc_profit:                  str | None
+    lc_strategy:                str | None
+    lc_decisions:               str | None
+    lc_consumer:                str | None
+    lc_market:                  str | None
+    lc_value:                   str | None
     scenario:                   dict | None
     scenario_text:              str | None
     marketing_text:             str | None
