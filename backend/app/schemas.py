@@ -208,6 +208,15 @@ class StrategyListItem(BaseModel):
 
 # ── Admin ─────────────────────────────────────────────────────────────────────
 
+class LogEntry(BaseModel):
+    type:       str           # "user" | "assessment" | "report"
+    timestamp:  str           # ISO datetime string
+    user_email: str
+    user_name:  str | None
+    detail:     str
+    sub:        str | None = None   # доп. подробность (комбинация, статус)
+
+
 class AdminSetupRequest(BaseModel):
     setup_key: str
     email:     EmailStr

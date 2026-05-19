@@ -12,7 +12,7 @@ from app.config import get_settings
 from app.db import get_db
 from app.models import User, Assessment, Report, Strategy, Order
 from app.schemas import (
-    AdminSetupRequest, AdminStats,
+    AdminSetupRequest, AdminStats, LogEntry,
     StrategyCreate, StrategyUpdate, StrategyOut, StrategyListItem,
     UserOut, AssessmentOut, ImpersonateStatus, SuccessResponse,
 )
@@ -306,6 +306,79 @@ async def set_user_role(
     user.role = body.role
     await db.flush()
     return SuccessResponse(message=f"Роль изменена на {body.role}")
+
+
+# ── Activity log ──────────────────────────────────────────────────────────────
+
+@router.get("/logs", response_model=list[LogEntry])
+async def get_activity_log(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Объединённая лента событий: регистрации, диагностики, PDF — последние 100."""
+    LIMIT = 200  # берём по 200 из каждой таблицы, потом обрежем до 100
+
+    events: list[dict] = []
+
+    # Регистрации пользователей
+    users_res = await db.execute(
+        select(User).order_by(User.created_at.desc()).limit(LIMIT)
+    )
+    for u in users_res.scalars():
+        events.append({
+            "type":       "user",
+            "timestamp":  u.created_at.isoformat(),
+            "user_email": u.email,
+            "user_name":  u.full_name,
+            "detail":     "Регистрация",
+            "sub":        None,
+        })
+
+    # Диагностики с данными пользователя
+    assessments_res = await db.execute(
+        select(Assessment, User.email, User.full_name)
+        .join(User, Assessment.user_id == User.id)
+        .order_by(Assessment.created_at.desc())
+        .limit(LIMIT)
+    )
+    for row in assessments_res:
+        a, email, name = row
+        if a.method1_combination:
+            detail = "Диагностика Метод 1"
+            sub = a.method1_combination
+        else:
+            detail = "Диагностика Метод 2"
+            sub = a.company_name or "—"
+        events.append({
+            "type":       "assessment",
+            "timestamp":  a.created_at.isoformat(),
+            "user_email": email,
+            "user_name":  name,
+            "detail":     detail,
+            "sub":        sub,
+        })
+
+    # PDF-отчёты с данными пользователя
+    reports_res = await db.execute(
+        select(Report, User.email, User.full_name)
+        .join(User, Report.user_id == User.id)
+        .order_by(Report.created_at.desc())
+        .limit(LIMIT)
+    )
+    for row in reports_res:
+        r, email, name = row
+        events.append({
+            "type":       "report",
+            "timestamp":  (r.generated_at or r.created_at).isoformat(),
+            "user_email": email,
+            "user_name":  name,
+            "detail":     "PDF сформирован",
+            "sub":        r.pdf_filename,
+        })
+
+    # Сортируем по убыванию даты и берём первые 100
+    events.sort(key=lambda x: x["timestamp"], reverse=True)
+    return events[:100]
 
 
 # ── Reports list ──────────────────────────────────────────────────────────────

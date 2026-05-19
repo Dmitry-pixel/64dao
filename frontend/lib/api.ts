@@ -147,6 +147,7 @@ export const adminApi = {
   updateStrategy: (id: string, d: unknown) => request(`/api/admin/strategies/${id}`, { method: 'PUT', body: JSON.stringify(d) }),
   deleteStrategy: (id: string) => request(`/api/admin/strategies/${id}`, { method: 'DELETE' }),
   reports:        () => request('/api/admin/reports'),
+  logs:           () => request<LogEntry[]>('/api/admin/logs'),
 
   uploadImage: async (strategyId: string, file: File) => {
     const form = new FormData()
@@ -225,6 +226,15 @@ export interface ReportOut {
   pdf_filename: string | null
   generated_at: string | null
   created_at: string
+}
+
+export interface LogEntry {
+  type:       'user' | 'assessment' | 'report'
+  timestamp:  string
+  user_email: string
+  user_name:  string | null
+  detail:     string
+  sub:        string | null
 }
 
 export interface Assessment {
