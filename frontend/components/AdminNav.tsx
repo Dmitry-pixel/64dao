@@ -1,7 +1,8 @@
 'use client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { logout } from '@/lib/api'
+import { useEffect, useState } from 'react'
+import { logout, adminApi } from '@/lib/api'
 import { Logo } from '@/components/Logo'
 
 const HEX_TRIGRAMS = ['䷀','䷁','䷂','䷃','䷄','䷅','䷆','䷇','䷈','䷉','䷊','䷋','䷌','䷍','䷎','䷏','䷐','䷑','䷒','䷓','䷔','䷕','䷖','䷗','䷘','䷙','䷚','䷛','䷜','䷝','䷞','䷟','䷠','䷡','䷢','䷣','䷤','䷥','䷦','䷧','䷨','䷩','䷪','䷫','䷬','䷭','䷮','䷯','䷰','䷱','䷲','䷳','䷴','䷵','䷶','䷷','䷸','䷹','䷺','䷻','䷼','䷽','䷾','䷿']
@@ -46,10 +47,21 @@ export function AdminNav({ current }: AdminNavProps) {
 
 interface AdminSideProps {
   current: string
-  stats?: { users: number; strategies: number; reports: number }
 }
 
-export function AdminSide({ current, stats }: AdminSideProps) {
+export function AdminSide({ current }: AdminSideProps) {
+  const [stats, setStats] = useState<{ users: number; strategies: number; reports: number } | null>(null)
+
+  useEffect(() => {
+    adminApi.stats()
+      .then(data => setStats({
+        users: data.total_users,
+        strategies: data.published_strategies,
+        reports: data.total_reports,
+      }))
+      .catch(() => {})
+  }, [])
+
   return (
     <aside className="admin-side">
       <h4>Обзор</h4>

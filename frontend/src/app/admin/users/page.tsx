@@ -66,7 +66,7 @@ export default function AdminUsersPage() {
     <>
       <AdminNav current="users" />
       <div className="admin-shell">
-        <AdminSide current="users" stats={{ users: users.length, strategies: 0, reports: 0 }} />
+        <AdminSide current="users" />
         <div className="admin-main">
           <div className="admin-header">
             <div>

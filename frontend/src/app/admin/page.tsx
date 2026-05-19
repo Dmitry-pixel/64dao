@@ -33,7 +33,7 @@ export default function AdminStatsPage() {
     <>
       <AdminNav current="stats" />
       <div className="admin-shell">
-        <AdminSide current="stats" stats={{ users: stats.total_users, strategies: stats.published_strategies, reports: stats.total_reports }} />
+        <AdminSide current="stats" />
         <div className="admin-main">
           <div className="admin-header">
             <div>

@@ -57,7 +57,7 @@ export default function AdminStrategiesPage() {
     <>
       <AdminNav current="strategies" />
       <div className="admin-shell">
-        <AdminSide current="strategies" stats={{ users: 0, strategies: published, reports: 0 }} />
+        <AdminSide current="strategies" />
         <div className="admin-main">
           <div className="admin-header">
             <div>
