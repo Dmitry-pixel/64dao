@@ -132,22 +132,14 @@ function AssessmentInner() {
       method2_data[b.title] = { score: bmcScores[i] || 3, text: bmcTexts[i] || '' }
     })
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL || ''
-      await fetch(`${API}/api/assessments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          company_name: companyName.trim() || null,
-          method: 'method2',
-          method2_data,
-          status: 'completed',
-        }),
+      const { createAssessment } = await import('@/lib/api')
+      await createAssessment({
+        method2_data,
+        status: 'completed',
       })
-      setMode('waiting')
+      router.push('/dashboard')
     } catch {
-      setMode('waiting')
-    } finally {
+      alert('Ошибка сохранения. Попробуйте ещё раз.')
       setSubmitting(false)
     }
   }

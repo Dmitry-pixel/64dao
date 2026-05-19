@@ -89,8 +89,8 @@ export async function register(data: {
 // ── Assessments ───────────────────────────────────────────────────────────────
 
 export async function createAssessment(data: {
-  method1_answers: Record<string, string>
-  method1_combination: string
+  method1_answers?: Record<string, string>
+  method1_combination?: string | null
   method2_data?: Record<string, { score: number; text: string }>
   status?: string
 }) {

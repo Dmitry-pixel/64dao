@@ -41,8 +41,8 @@ async def create_assessment(
     user_name    = user.full_name or ""
     user_id      = user.id
 
-    # Запускаем генерацию PDF в фоне — не блокируем ответ
-    if body.status == "completed":
+    # Запускаем генерацию PDF в фоне — только если есть combination (Метод 1)
+    if body.status == "completed" and body.method1_combination:
         asyncio.create_task(
             _generate_report_background(
                 assessment_id=assessment_id,

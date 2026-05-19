@@ -97,14 +97,20 @@ export default function DashboardPage() {
                 <div
                   key={a.id}
                   className="dash-card"
-                  onClick={() => a.status === 'completed' ? router.push(`/report/${a.id}`) : router.push(`/assessment/${a.id}`)}
+                  onClick={() => a.status === 'completed' && a.method1_combination ? router.push(`/report/${a.id}`) : undefined}
                 >
                   <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
-                  <div className="hex-block">{hexFor(a.method1_combination ?? '')}</div>
+                  <div className="hex-block">{a.method2_data && !a.method1_combination ? '䷿' : hexFor(a.method1_combination ?? '')}</div>
                   <div>
-                    <div className="dash-meta">{a.method1_combination ?? '—'} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                    <div className="dash-meta">
+                      {a.method2_data && !a.method1_combination ? 'Метод 2 · Бизнес-модель' : (a.method1_combination ?? '—')} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </div>
                     <div className="dash-title">
-                      {a.status === 'completed' ? `Стратегия «${a.method1_combination ?? '—'}»` : 'Диагностика в процессе'}
+                      {a.status === 'completed'
+                        ? (a.method2_data && !a.method1_combination
+                            ? 'Анализ бизнес-модели'
+                            : `Стратегия «${a.method1_combination ?? '—'}»`)
+                        : 'Диагностика в процессе'}
                     </div>
                     <div className="dash-detail">{a.status === 'draft' ? 'Черновик' : 'Завершено'}</div>
                   </div>
@@ -121,8 +127,11 @@ export default function DashboardPage() {
                       >
                         Скачать PDF
                       </a>
+                    ) : a.status === 'completed' && a.method2_data && !a.method1_combination ? (
+                      <span style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)', padding: '7px 0' }}>Метод 2</span>
                     ) : (
-                      <button className="btn btn-soft" style={{ padding: '7px 14px', fontSize: 12 }}>
+                      <button className="btn btn-soft" style={{ padding: '7px 14px', fontSize: 12 }}
+                        onClick={e => { e.stopPropagation(); router.push('/assessment/start') }}>
                         Продолжить →
                       </button>
                     )}

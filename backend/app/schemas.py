@@ -51,21 +51,23 @@ class Method2Block(BaseModel):
 
 
 class AssessmentCreate(BaseModel):
-    method1_answers:     dict[str, str]
-    method1_combination: str = Field(min_length=6, max_length=6)
+    method1_answers:     dict[str, str] | None = None
+    method1_combination: str | None = None
     method2_data:        dict[str, Method2Block] | None = None
     status:              str = Field(default="completed")
 
     @field_validator("method1_combination")
     @classmethod
-    def validate_combination(cls, v: str) -> str:
-        if not re.fullmatch(r"[AB]{6}", v):
+    def validate_combination(cls, v: str | None) -> str | None:
+        if v is not None and not re.fullmatch(r"[AB]{6}", v):
             raise ValueError("Combination must be exactly 6 chars A or B")
         return v
 
     @field_validator("method1_answers")
     @classmethod
-    def validate_answers(cls, v: dict) -> dict:
+    def validate_answers(cls, v: dict | None) -> dict | None:
+        if v is None:
+            return v
         for key, val in v.items():
             if val not in ("A", "B"):
                 raise ValueError(f"Answer for key {key} must be 'A' or 'B'")
