@@ -193,7 +193,7 @@ export default function StrategyEditorPage({ params }: Params) {
       lifecycle_stage: hex.stage,
       ...autoFillLc(combination),
     }));
-    fetch(`/api/strategies/${combination}`, { credentials: 'include' })
+    fetch(`/api/admin/strategies/combo/${combination}`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data || data.detail) return;
@@ -295,7 +295,7 @@ export default function StrategyEditorPage({ params }: Params) {
         },
       };
 
-      const r = await fetch(`/api/strategies/${combination}`, {
+      const r = await fetch(`/api/admin/strategies/combo/${combination}`, {
         method: 'PUT', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

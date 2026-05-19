@@ -156,6 +156,47 @@ async def update_strategy(
     return strategy
 
 
+@router.get("/strategies/combo/{combination}", response_model=StrategyOut)
+async def get_strategy_by_combo(
+    combination: str,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    strategy = await db.scalar(
+        select(Strategy).where(Strategy.combination == combination)
+    )
+    if not strategy:
+        raise HTTPException(status_code=404, detail="Стратегия не найдена")
+    return strategy
+
+
+@router.put("/strategies/combo/{combination}", response_model=StrategyOut)
+async def upsert_strategy_by_combo(
+    combination: str,
+    body: StrategyUpdate,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    strategy = await db.scalar(
+        select(Strategy).where(Strategy.combination == combination)
+    )
+    if strategy:
+        # Обновляем существующую
+        for field, value in body.model_dump(exclude_unset=True).items():
+            if value is not None or field in ('lifecycle_description',):
+                setattr(strategy, field, value)
+    else:
+        # Создаём новую
+        data = body.model_dump(exclude_unset=True)
+        data['combination'] = combination
+        strategy = Strategy(**data)
+        db.add(strategy)
+
+    await db.flush()
+    await db.refresh(strategy)
+    return strategy
+
+
 @router.delete("/strategies/{strategy_id}", response_model=SuccessResponse)
 async def delete_strategy(
     strategy_id: str,
