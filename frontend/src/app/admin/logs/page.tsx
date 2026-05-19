@@ -5,17 +5,25 @@ import { getMe, adminApi } from '@/lib/api'
 import type { LogEntry } from '@/lib/api'
 import { AdminNav, AdminSide } from '@/components/AdminNav'
 
+const RESET_KEY = 'logsResetAt'
+
 const TYPE_META: Record<string, { label: string; color: string; bg: string; icon: string }> = {
-  user:       { label: 'Регистрация',  color: '#1e7e34', bg: 'rgba(30,126,52,0.1)',   icon: '👤' },
-  assessment: { label: 'Диагностика', color: '#1e3a8a', bg: 'rgba(30,58,138,0.1)',   icon: '📊' },
-  report:     { label: 'PDF',          color: '#c0392b', bg: 'rgba(192,57,43,0.1)',   icon: '📄' },
+  user:       { label: 'Регистрация',  color: '#1e7e34', bg: 'rgba(30,126,52,0.1)',  icon: '👤' },
+  assessment: { label: 'Диагностика', color: '#1e3a8a', bg: 'rgba(30,58,138,0.1)',  icon: '📊' },
+  report:     { label: 'PDF',          color: '#c0392b', bg: 'rgba(192,57,43,0.1)',  icon: '📄' },
 }
 
 function formatTs(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleString('ru-RU', {
+  return new Date(iso).toLocaleString('ru-RU', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
+  })
+}
+
+function formatResetTime(iso: string): string {
+  return new Date(iso).toLocaleString('ru-RU', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
   })
 }
 
@@ -23,15 +31,15 @@ export default function AdminLogsPage() {
   const router = useRouter()
   const [entries, setEntries] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [resetting, setResetting] = useState(false)
-  const [total, setTotal] = useState(0)
+  const [resetAt, setResetAt] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (reset?: string) => {
     setLoading(true)
     try {
-      const data = await adminApi.logs() as LogEntry[]
-      setEntries(data)
-      setTotal(data.length)
+      const all = await adminApi.logs() as LogEntry[]
+      const cutoff = reset ?? (typeof window !== 'undefined' ? localStorage.getItem(RESET_KEY) : null)
+      const filtered = cutoff ? all.filter(e => e.timestamp > cutoff) : all
+      setEntries(filtered)
     } catch {
       // ignore
     } finally {
@@ -43,16 +51,22 @@ export default function AdminLogsPage() {
     getMe()
       .then(me => { if (me.role !== 'admin') router.push('/dashboard') })
       .catch(() => router.push('/login'))
-      .then(() => load())
+
+    const stored = typeof window !== 'undefined' ? localStorage.getItem(RESET_KEY) : null
+    if (stored) setResetAt(stored)
+    load(stored ?? undefined)
   }, [])
 
-  const handleReset = async () => {
-    setResetting(true)
+  const handleReset = () => {
+    const now = new Date().toISOString()
+    localStorage.setItem(RESET_KEY, now)
+    setResetAt(now)
     setEntries([])
-    setTotal(0)
-    await new Promise(r => setTimeout(r, 300))
-    await load()
-    setResetting(false)
+  }
+
+  const handleRefresh = () => {
+    const cutoff = typeof window !== 'undefined' ? localStorage.getItem(RESET_KEY) : null
+    load(cutoff ?? undefined)
   }
 
   const counts = {
@@ -78,35 +92,71 @@ export default function AdminLogsPage() {
               <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'var(--text-mute)', margin: 0 }}>
                 {loading
                   ? 'Загружаем события…'
-                  : `Последние ${total} событий · ${counts.user} регистр. · ${counts.assessment} диагн. · ${counts.report} PDF`}
+                  : resetAt
+                    ? `События после ${formatResetTime(resetAt)} · ${entries.length} новых`
+                    : `Последние ${entries.length} событий · ${counts.user} регистр. · ${counts.assessment} диагн. · ${counts.report} PDF`}
               </p>
             </div>
-            <button
-              className="btn btn-ghost"
-              style={{ padding: '9px 20px', fontSize: 13 }}
-              disabled={loading || resetting}
-              onClick={handleReset}
-            >
-              {resetting ? 'Сброс…' : '↺ Сбросить'}
-            </button>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                className="btn btn-ghost"
+                style={{ padding: '9px 20px', fontSize: 13 }}
+                disabled={loading}
+                onClick={handleRefresh}
+              >
+                ↺ Обновить
+              </button>
+              <button
+                className="btn btn-ghost"
+                style={{ padding: '9px 20px', fontSize: 13, color: '#c0392b', borderColor: 'rgba(192,57,43,0.25)' }}
+                disabled={loading}
+                onClick={handleReset}
+              >
+                Сбросить
+              </button>
+            </div>
           </div>
 
+          {/* Reset notice */}
+          {resetAt && (
+            <div style={{
+              marginBottom: 20, padding: '10px 16px', borderRadius: 8,
+              background: 'rgba(192,57,43,0.06)', border: '1px solid rgba(192,57,43,0.2)',
+              fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.65)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <span>Сброс выполнен {formatResetTime(resetAt)}. Показаны только новые события после этой отметки.</span>
+              <button
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'sans-serif', fontSize: 12, color: '#c0392b' }}
+                onClick={() => {
+                  localStorage.removeItem(RESET_KEY)
+                  setResetAt(null)
+                  load()
+                }}
+              >
+                Показать все
+              </button>
+            </div>
+          )}
+
           {/* Legend */}
-          <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-            {Object.entries(TYPE_META).map(([type, meta]) => (
-              <div key={type} style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '4px 12px', borderRadius: 20,
-                background: meta.bg, border: `1px solid ${meta.color}22`,
-                fontFamily: 'sans-serif', fontSize: 12, color: meta.color, fontWeight: 600,
-              }}>
-                <span>{meta.icon}</span>
-                <span>{meta.label}</span>
-                <span style={{ opacity: 0.6, fontWeight: 400 }}>·</span>
-                <span>{counts[type as keyof typeof counts]}</span>
-              </div>
-            ))}
-          </div>
+          {!loading && entries.length > 0 && (
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+              {Object.entries(TYPE_META).map(([type, meta]) => (
+                <div key={type} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '4px 12px', borderRadius: 20,
+                  background: meta.bg, border: `1px solid ${meta.color}22`,
+                  fontFamily: 'sans-serif', fontSize: 12, color: meta.color, fontWeight: 600,
+                }}>
+                  <span>{meta.icon}</span>
+                  <span>{meta.label}</span>
+                  <span style={{ opacity: 0.6, fontWeight: 400 }}>·</span>
+                  <span>{counts[type as keyof typeof counts]}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Feed */}
           {loading ? (
@@ -116,8 +166,11 @@ export default function AdminLogsPage() {
           ) : entries.length === 0 ? (
             <div className="dash-empty">
               <span style={{ fontSize: 40, display: 'block', marginBottom: 12 }}>📋</span>
-              <h3>Событий пока нет</h3>
-              <p>Здесь появятся регистрации пользователей, диагностики и PDF-отчёты.</p>
+              <h3>{resetAt ? 'Новых событий пока нет' : 'Событий пока нет'}</h3>
+              <p>{resetAt
+                ? 'После сброса новых регистраций, диагностик и PDF не было. Нажмите «Обновить» чтобы проверить снова.'
+                : 'Здесь появятся регистрации пользователей, диагностики и PDF-отчёты.'
+              }</p>
             </div>
           ) : (
             <div style={{
@@ -142,7 +195,6 @@ export default function AdminLogsPage() {
                       background: i % 2 === 0 ? 'transparent' : 'rgba(26,37,64,0.015)',
                     }}
                   >
-                    {/* Icon */}
                     <div style={{
                       width: 32, height: 32, borderRadius: '50%',
                       background: meta.bg,
@@ -152,13 +204,11 @@ export default function AdminLogsPage() {
                       {meta.icon}
                     </div>
 
-                    {/* Content */}
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                         <span style={{
                           fontFamily: 'sans-serif', fontSize: 11, fontWeight: 700,
-                          letterSpacing: 1, textTransform: 'uppercase',
-                          color: meta.color,
+                          letterSpacing: 1, textTransform: 'uppercase', color: meta.color,
                         }}>{meta.label}</span>
                         {entry.sub && (
                           <span style={{
@@ -177,7 +227,6 @@ export default function AdminLogsPage() {
                       </div>
                     </div>
 
-                    {/* Timestamp */}
                     <div style={{
                       fontFamily: 'sans-serif', fontSize: 12,
                       color: 'rgba(26,37,64,0.4)',
@@ -191,11 +240,9 @@ export default function AdminLogsPage() {
             </div>
           )}
 
-          {/* Footer note */}
           {!loading && entries.length > 0 && (
             <p style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.35)', marginTop: 14, textAlign: 'center' }}>
-              Показано {entries.length} из последних 100 событий.
-              Нажмите «↺ Сбросить» чтобы обновить ленту.
+              Показано {entries.length} событий.
             </p>
           )}
 
