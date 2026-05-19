@@ -54,7 +54,7 @@ export function AdminSide({ current }: AdminSideProps) {
 
   useEffect(() => {
     adminApi.stats()
-      .then(data => setStats({
+      .then((data: any) => setStats({
         users: data.total_users,
         strategies: data.published_strategies,
         reports: data.total_reports,
