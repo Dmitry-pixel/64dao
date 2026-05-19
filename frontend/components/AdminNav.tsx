@@ -69,6 +69,11 @@ export function AdminSide({ current, stats }: AdminSideProps) {
       <Link href="/admin/reports" className={current === 'reports' ? 'on' : ''}>
         Отчёты <span className="num">{stats?.reports ?? '—'}</span>
       </Link>
+
+      <h4>Система</h4>
+      <Link href="/admin/pricing" className={current === 'pricing' ? 'on' : ''}>Тариф & цена</Link>
+      <Link href="/admin/email-templates" className={current === 'email-templates' ? 'on' : ''}>Email-шаблоны</Link>
+      <Link href="/admin/logs" className={current === 'logs' ? 'on' : ''}>Логи</Link>
     </aside>
   )
 }
