@@ -120,7 +120,7 @@ export default function Method1Page() {
         method1_combination: combo,
         status: 'completed',
       })
-      router.push(`/assessment/waiting?id=${assessment.id}&combo=${combo}`)
+      router.push(`/report/${assessment.id}`)
     } catch {
       alert('Ошибка сохранения. Попробуйте ещё раз.')
       setSaving(false)

@@ -2,15 +2,28 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getMe, listAssessments, reportDownloadUrl, deleteAssessment } from '@/lib/api'
+import { getMe, listAssessments, deleteAssessment } from '@/lib/api'
 import { AppNav } from '@/components/AppNav'
 
-const HEX_TRIGRAMS = ['䷀','䷁','䷂','䷃','䷄','䷅','䷆','䷇','䷈','䷉','䷊','䷋','䷌','䷍','䷎','䷏','䷐','䷑','䷒','䷓','䷔','䷕','䷖','䷗','䷘','䷙','䷚','䷛','䷜','䷝','䷞','䷟','䷠','䷡','䷢','䷣','䷤','䷥','䷦','䷧','䷨','䷩','䷪','䷫','䷬','䷭','䷮','䷯','䷰','䷱','䷲','䷳','䷴','䷵','䷶','䷷','䷸','䷹','䷺','䷻','䷼','䷽','䷾','䷿']
+// combination → hexagram number (King Wen sequence)
+const HEX_NUM: Record<string, number> = {
+  'AAAAAA':1,'BBBBBB':2,'ABBBAB':3,'BABBBA':4,'AAABAB':5,'BABAAA':6,
+  'BABBBB':7,'BBBBAB':8,'AAABAA':9,'AABAAA':10,'AAABBB':11,'BBBAAA':12,
+  'ABAAAA':13,'AAAABA':14,'BBABBB':15,'BBBABB':16,'ABBAAB':17,'BAABBA':18,
+  'AABBBB':19,'BBBBAA':20,'ABBABA':21,'ABABBA':22,'BBBBBA':23,'ABBBBB':24,
+  'ABBAAA':25,'AAABBA':26,'ABBBBA':27,'BAAAAB':28,'BABBAB':29,'ABAABA':30,
+  'BBAAAB':31,'BAAABB':32,'BBAAAA':33,'AAAABB':34,'BBBABA':35,'ABABBB':36,
+  'ABABAA':37,'AABABA':38,'BBABAB':39,'BABABB':40,'AABBBA':41,'ABBBAA':42,
+  'AAAAAB':43,'BAAAAA':44,'BBBAAB':45,'BAABBB':46,'BABAAB':47,'BAABAB':48,
+  'ABAAAB':49,'BAAABA':50,'ABBABB':51,'BBABBA':52,'BBABAA':53,'AABABB':54,
+  'ABAABB':55,'BBAABA':56,'BABBAA':57,'AABAAB':58,'BAABAA':59,'AABBAB':60,
+  'AABBAA':61,'BBAABB':62,'ABABAB':63,'BABABA':64,
+}
 
 function hexFor(combo: string): string {
-  if (!combo || combo.length !== 6) return '䷀'
-  const idx = parseInt([...combo].map(c => c === 'B' ? '1' : '0').join(''), 2)
-  return HEX_TRIGRAMS[idx] || '䷀'
+  const n = HEX_NUM[combo]
+  if (!n) return '䷀'
+  return String.fromCodePoint(0x4DC0 + n - 1)
 }
 
 export default function DashboardPage() {
@@ -103,13 +116,13 @@ export default function DashboardPage() {
                   <div className="hex-block">{a.method2_data && !a.method1_combination ? '䷿' : hexFor(a.method1_combination ?? '')}</div>
                   <div>
                     <div className="dash-meta">
-                      {a.method2_data && !a.method1_combination ? 'Метод 2 · Бизнес-модель' : (a.method1_combination ?? '—')} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {a.method2_data && !a.method1_combination ? 'Метод 2 · Бизнес-модель' : 'Метод 1 · Диагностика'} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </div>
                     <div className="dash-title">
                       {a.status === 'completed'
                         ? (a.method2_data && !a.method1_combination
-                            ? 'Анализ бизнес-модели'
-                            : `Стратегия «${a.method1_combination ?? '—'}»`)
+                            ? `Бизнес-модель · ${a.company_name || user?.company_name || 'Компания'}`
+                            : `Стратегия · ${a.company_name || user?.company_name || 'Компания'}`)
                         : 'Диагностика в процессе'}
                     </div>
                     <div className="dash-detail">{a.status === 'draft' ? 'Черновик' : 'Завершено'}</div>
@@ -118,17 +131,14 @@ export default function DashboardPage() {
                     <span className={`pill pill-${a.status}`}>
                       {a.status === 'completed' ? 'Готов' : 'Черновик'}
                     </span>
-                    {a.status === 'completed' && a.reports?.length > 0 ? (
-                      <a
-                        href={reportDownloadUrl(a.reports[0].id)}
-                        onClick={e => e.stopPropagation()}
+                    {a.status === 'completed' ? (
+                      <button
                         className="btn btn-ghost"
                         style={{ padding: '7px 14px', fontSize: 12 }}
+                        onClick={e => { e.stopPropagation(); router.push(`/report/${a.id}`) }}
                       >
-                        Скачать PDF
-                      </a>
-                    ) : a.status === 'completed' && a.method2_data && !a.method1_combination ? (
-                      <span style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)', padding: '7px 0' }}>Метод 2</span>
+                        Открыть →
+                      </button>
                     ) : (
                       <button className="btn btn-soft" style={{ padding: '7px 14px', fontSize: 12 }}
                         onClick={e => { e.stopPropagation(); router.push('/assessment/start') }}>

@@ -150,6 +150,11 @@ export async function generateReport(assessmentId: string) {
   return request<ReportOut>(`/api/assessments/${assessmentId}/generate-report`, { method: 'POST' })
 }
 
+/** URL для открытия PDF в новой вкладке браузера (без сохранения на диск). */
+export function assessmentPdfUrl(assessmentId: string) {
+  return `${API}/api/assessments/${assessmentId}/pdf`
+}
+
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
 export const adminApi = {
@@ -199,6 +204,7 @@ export interface Strategy {
   id: string
   combination: string
   title: string | null
+  current_state: Record<string, string> | null
   stratagema_title: string | null
   lifecycle_stage: string | null
   lifecycle_description: string | null
@@ -216,6 +222,20 @@ export interface Strategy {
   transition_lifecycle_stage: string | null
   transition_description: string | null
   image_url: string | null
+  // Предположения (связи с будущим)
+  assm_planning: string | null
+  assm_growth: string | null
+  assm_advertising: string | null
+  assm_feedback: string | null
+  assm_risk: string | null
+  assm_product: string | null
+  assm_service: string | null
+  assm_startup: string | null
+  assm_investment: string | null
+  assm_contracts: string | null
+  assm_sync: string | null
+  assm_creative: string | null
+  assm_interaction: string | null
   is_published: boolean
   updated_at: string
 }

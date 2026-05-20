@@ -488,7 +488,7 @@ def build_report_html(
     else:
         cover_label = "Отчёт по стратегической диагностике"
         cover_title = "Стратегический<br>профиль компании"
-        cover_combo = f'<div style="font-family:\'Courier New\',monospace;font-size:44px;font-weight:700;color:#1e3a8a;letter-spacing:8px;opacity:0.18;">{e(combination)}</div>'
+        cover_combo = ""
 
     # ── Страница 1 (только для Method 1) ──────────────────────────────────
     page1 = ""
@@ -504,13 +504,7 @@ def build_report_html(
   </div>
   <div style="font-size:10px;color:rgba(26,37,64,0.3);letter-spacing:2px;
               text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:6px;">текущее состояние</div>
-  <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin-bottom:8px;">Стратегический профиль</h1>
-  <p style="font-size:13px;color:rgba(26,37,64,0.55);line-height:1.7;
-            font-family:Arial,sans-serif;margin-bottom:24px;">
-    На основании выбранных ответов определена следующая комбинация параметров бизнес-модели.
-  </p>
-  <div style="font-family:'Courier New',monospace;font-size:44px;font-weight:700;
-              color:#1e3a8a;letter-spacing:8px;margin-bottom:20px;">{e(combination)}</div>
+  <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin-bottom:20px;">Стратегический профиль</h1>
   <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin-bottom:12px;">Текущее состояние</h2>
   {_table_rows(cs_rows) if cs_rows else ""}
   {f'<div style="display:inline-block;padding:3px 10px;border-radius:3px;font-size:10px;font-family:Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.2);color:#c0392b;margin-bottom:12px;">{e(strategy.lifecycle_stage or "")}</div>' if strategy and strategy.lifecycle_stage else ""}
