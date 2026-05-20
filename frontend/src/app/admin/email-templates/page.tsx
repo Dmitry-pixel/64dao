@@ -14,12 +14,17 @@ const TEMPLATE_META: Record<string, { label: string; vars: string[] }> = {
     label: 'Приветствие при регистрации',
     vars: ['{name}', '{name_part}'],
   },
+  forgot_password: {
+    label: 'Сброс пароля',
+    vars: ['{name}', '{name_part}', '{reset_link}'],
+  },
 }
 
 const VAR_HINTS: Record<string, string> = {
-  '{code}':      'OTP-код (6 цифр)',
-  '{name}':      'Имя пользователя',
-  '{name_part}': 'Имя с запятой: «, Иван» или пусто если нет имени',
+  '{code}':       'OTP-код (6 цифр)',
+  '{name}':       'Имя пользователя',
+  '{name_part}':  'Имя с запятой: «, Иван» или пусто если нет имени',
+  '{reset_link}': 'Ссылка для сброса пароля',
 }
 
 function PreviewPanel({ html }: { html: string }) {
@@ -101,7 +106,7 @@ export default function AdminEmailTemplatesPage() {
                 Email-шаблоны
               </h1>
               <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'var(--text-mute)', margin: 0 }}>
-                {keys.length} шаблона · редактируйте тему и HTML-текст письма
+                {keys.length} шаблона · редактируйте тему и HTML-текст писем
               </p>
             </div>
             <button

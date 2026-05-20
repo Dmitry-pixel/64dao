@@ -148,6 +148,62 @@ async def resend_otp(
     return SuccessResponse(message="Если email зарегистрирован — код отправлен")
 
 
+# ── Forgot password ───────────────────────────────────────────────────────────
+
+@router.post("/forgot-password", response_model=SuccessResponse)
+@limiter.limit("3/minute")
+async def forgot_password(
+    request: Request,
+    body: LoginRequest,          # переиспользуем схему {email}
+    db: AsyncSession = Depends(get_db),
+):
+    """Отправляет ссылку сброса пароля. Одинаковый ответ независимо от наличия email."""
+    from app.config import get_settings as _gs
+    app_url = _gs().app_url
+
+    user = await db.scalar(select(User).where(User.email == body.email))
+    if user:
+        token = create_reset_token(str(user.id), user.email)
+        reset_link = f"{app_url}/reset-password?token={token}"
+        try:
+            await send_forgot_password_email(user.email, user.full_name, reset_link)
+        except Exception as exc:
+            logger.error("Failed to send reset email to %s: %s", user.email, exc)
+            raise HTTPException(status_code=500, detail="Не удалось отправить письмо. Попробуйте позже.")
+    else:
+        await asyncio.sleep(random.uniform(0.15, 0.35))
+
+    return SuccessResponse(message="Если email зарегистрирован — ссылка для сброса отправлена")
+
+
+@router.post("/reset-password", response_model=SuccessResponse)
+@limiter.limit("5/minute")
+async def reset_password(
+    request: Request,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+):
+    """Принимает {token, new_password} и обновляет пароль пользователя."""
+    token = body.get("token", "")
+    new_password = body.get("new_password", "")
+
+    if not token or not new_password:
+        raise HTTPException(status_code=400, detail="token и new_password обязательны")
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Пароль должен быть не менее 8 символов")
+
+    payload = verify_reset_token(token)
+    user_id = payload.get("sub")
+
+    user = await db.scalar(select(User).where(User.id == user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    user.password_hash = hash_password(new_password)
+
+    return SuccessResponse(message="Пароль успешно изменён")
+
+
 # ── Logout ────────────────────────────────────────────────────────────────────
 
 @router.post("/logout", response_model=SuccessResponse)

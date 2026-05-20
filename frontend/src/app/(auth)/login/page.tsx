@@ -55,6 +55,9 @@ export default function LoginPage() {
           </button>
           <SocialRow />
           <p className="auth-foot">
+            <Link href="/forgot-password">Забыли пароль?</Link>
+          </p>
+          <p className="auth-foot">
             Нет аккаунта?{' '}
             <Link href="/register">Зарегистрироваться</Link>
           </p>

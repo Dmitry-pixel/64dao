@@ -57,6 +57,20 @@ export async function verifyOTP(email: string, code: string) {
   })
 }
 
+export async function forgotPassword(email: string) {
+  return request<{ message: string }>('/api/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export async function resetPassword(token: string, new_password: string) {
+  return request<{ message: string }>('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, new_password }),
+  })
+}
+
 export async function resendOTP(email: string) {
   return request<{ message: string }>('/api/auth/resend-otp', {
     method: 'POST',
