@@ -7,13 +7,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import (
-    hash_password,
+    hash_password, verify_password,
     create_token, set_auth_cookie, clear_auth_cookie,
     create_otp_code, verify_otp_code,
+    create_reset_token, verify_reset_token,
     get_current_user,
 )
 from app.db import get_db
-from app.email import send_otp_email, send_welcome_email
+from app.email import send_otp_email, send_welcome_email, send_forgot_password_email
 from app.limiter import limiter
 from app.models import User
 from app.schemas import (

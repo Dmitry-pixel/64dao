@@ -118,6 +118,26 @@ async def require_admin(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+# ── Password reset token ─────────────────────────────────────────────────────
+
+def create_reset_token(user_id: str, email: str) -> str:
+    """JWT на 1 час для сброса пароля."""
+    expire = datetime.now(timezone.utc) + timedelta(hours=1)
+    payload = {"sub": user_id, "email": email, "type": "password_reset", "exp": expire}
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+
+def verify_reset_token(token: str) -> dict:
+    """Декодирует и проверяет токен сброса. Возвращает payload или бросает 400."""
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Ссылка недействительна или истекла")
+    if payload.get("type") != "password_reset":
+        raise HTTPException(status_code=400, detail="Неверный тип токена")
+    return payload
+
+
 # ── OTP ───────────────────────────────────────────────────────────────────────
 
 def generate_otp(length: int = 5) -> str:

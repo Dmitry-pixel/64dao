@@ -487,6 +487,74 @@ async def update_pricing(body: dict, _: User = Depends(require_admin)):
     return {"ok": True}
 
 
+# ── Email templates ───────────────────────────────────────────────────────────
+
+TEMPLATES_FILE = Path("/var/www/64dao/uploads/email_templates.json")
+
+DEFAULT_TEMPLATES = {
+    "otp": {
+        "subject": "{code} — код входа в 64DAO",
+        "body_html": (
+            "<p>Здравствуйте{name_part}!</p>"
+            "<p>Ваш код для входа в систему <b>64DAO</b>:</p>"
+            "<p style=\"font-size:28px;font-weight:700;letter-spacing:6px;color:#1a2540;\">{code}</p>"
+            "<p>Код действует <b>10 минут</b>. Не передавайте его никому.</p>"
+            "<p style=\"color:#999;font-size:12px;\">Если вы не запрашивали код — просто проигнорируйте это письмо.</p>"
+        ),
+        "description": "Отправляется при входе и регистрации. Доступные переменные: {name} — имя, {code} — код OTP.",
+    },
+    "welcome": {
+        "subject": "Добро пожаловать в 64DAO",
+        "body_html": (
+            "<p>Добро пожаловать{name_part}!</p>"
+            "<p>Вы успешно зарегистрировались в системе стратегической диагностики <b>64DAO</b>.</p>"
+            "<p>Вы можете войти в свой кабинет и начать первую диагностику.</p>"
+            "<p style=\"color:#999;font-size:12px;\">Команда 64DAO</p>"
+        ),
+        "description": "Отправляется один раз при регистрации. Доступные переменные: {name} — имя пользователя.",
+    },
+    "forgot_password": {
+        "subject": "Сброс пароля 64DAO",
+        "body_html": (
+            "<p>Здравствуйте{name_part}!</p>"
+            "<p>Мы получили запрос на сброс пароля для вашей учётной записи.</p>"
+            "<p style=\"margin:24px 0;\">"
+            "<a href=\"{reset_link}\" style=\"background:#1a2540;color:#fff;padding:12px 24px;"
+            "border-radius:6px;text-decoration:none;font-weight:600;\">Сбросить пароль</a>"
+            "</p>"
+            "<p>Или скопируйте ссылку в браузер:<br>"
+            "<span style=\"color:#1e3a8a;font-size:13px;\">{reset_link}</span></p>"
+            "<p>Ссылка действует <b>1 час</b>.</p>"
+            "<p style=\"color:#999;font-size:12px;\">Если вы не запрашивали сброс пароля — просто проигнорируйте это письмо.</p>"
+        ),
+        "description": "Отправляется при запросе сброса пароля. Доступные переменные: {name}, {name_part}, {reset_link} — ссылка на форму сброса.",
+    },
+}
+
+
+def _read_templates() -> dict:
+    try:
+        return json.loads(TEMPLATES_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {k: dict(v) for k, v in DEFAULT_TEMPLATES.items()}
+
+
+def _write_templates(data: dict) -> None:
+    TEMPLATES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    TEMPLATES_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+@router.get("/email-templates")
+async def get_email_templates(_: User = Depends(require_admin)):
+    return _read_templates()
+
+
+@router.put("/email-templates")
+async def update_email_templates(body: dict, _: User = Depends(require_admin)):
+    _write_templates(body)
+    return {"ok": True}
+
+
 @router.get("/impersonate/status", response_model=ImpersonateStatus)
 async def impersonation_status(
     request: Request,

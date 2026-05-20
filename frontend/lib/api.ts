@@ -148,6 +148,8 @@ export const adminApi = {
   deleteStrategy: (id: string) => request(`/api/admin/strategies/${id}`, { method: 'DELETE' }),
   reports:        () => request('/api/admin/reports'),
   logs:           () => request<LogEntry[]>('/api/admin/logs'),
+  emailTemplates:     () => request<Record<string, EmailTemplate>>('/api/admin/email-templates'),
+  saveEmailTemplates: (d: Record<string, EmailTemplate>) => request('/api/admin/email-templates', { method: 'PUT', body: JSON.stringify(d) }),
 
   uploadImage: async (strategyId: string, file: File) => {
     const form = new FormData()
@@ -226,6 +228,12 @@ export interface ReportOut {
   pdf_filename: string | null
   generated_at: string | null
   created_at: string
+}
+
+export interface EmailTemplate {
+  subject:     string
+  body_html:   string
+  description?: string
 }
 
 export interface LogEntry {
