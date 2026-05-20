@@ -533,10 +533,15 @@ DEFAULT_TEMPLATES = {
 
 
 def _read_templates() -> dict:
+    defaults = {k: dict(v) for k, v in DEFAULT_TEMPLATES.items()}
     try:
-        return json.loads(TEMPLATES_FILE.read_text(encoding="utf-8"))
+        saved = json.loads(TEMPLATES_FILE.read_text(encoding="utf-8"))
+        # Merge: saved templates take priority, but new default templates are added automatically
+        result = dict(defaults)
+        result.update(saved)
+        return result
     except Exception:
-        return {k: dict(v) for k, v in DEFAULT_TEMPLATES.items()}
+        return defaults
 
 
 def _write_templates(data: dict) -> None:
