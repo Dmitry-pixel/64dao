@@ -185,6 +185,7 @@ type FormData = {
   assm_feedback: string; assm_risk: string; assm_product: string;
   assm_service: string; assm_startup: string; assm_investment: string;
   assm_contracts: string; assm_sync: string; assm_creative: string; assm_interaction: string;
+  assm_resources: string; assm_research: string; assm_trade: string; assm_failures: string; assm_success: string;
   transition_title: string; transition_lifecycle_stage: string; transition_description: string;
   scenario_innovation_strategy: string; scenario_innovation_type: string;
   scenario_value_discipline: string; scenario_leadership_principles: string;
@@ -198,6 +199,7 @@ const EMPTY_FORM: FormData = {
   assm_planning: '', assm_growth: '', assm_advertising: '', assm_feedback: '', assm_risk: '',
   assm_product: '', assm_service: '', assm_startup: '', assm_investment: '',
   assm_contracts: '', assm_sync: '', assm_creative: '', assm_interaction: '',
+  assm_resources: '', assm_research: '', assm_trade: '', assm_failures: '', assm_success: '',
   transition_title: '', transition_lifecycle_stage: '', transition_description: '',
   scenario_innovation_strategy: '', scenario_innovation_type: '', scenario_value_discipline: '',
   scenario_leadership_principles: '', scenario_growth_strategy: '', scenario_focus: '',
@@ -259,6 +261,11 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
             assm_sync:                  data.assm_sync          || '',
             assm_creative:              data.assm_creative      || '',
             assm_interaction:           data.assm_interaction   || '',
+            assm_resources:             data.assm_resources    || '',
+            assm_research:              data.assm_research     || '',
+            assm_trade:                 data.assm_trade        || '',
+            assm_failures:              data.assm_failures     || '',
+            assm_success:               data.assm_success      || '',
             transition_title:           data.transition_title   || '',
             transition_lifecycle_stage: data.transition_lifecycle_stage || '',
             transition_description:     data.transition_description    || '',
@@ -315,6 +322,8 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
         assm_investment: f.assm_investment, assm_contracts: f.assm_contracts,
         assm_sync: f.assm_sync, assm_creative: f.assm_creative,
         assm_interaction: f.assm_interaction,
+        assm_resources: f.assm_resources, assm_research: f.assm_research,
+        assm_trade: f.assm_trade, assm_failures: f.assm_failures, assm_success: f.assm_success,
         transition_title: f.transition_title,
         transition_lifecycle_stage: f.transition_lifecycle_stage,
         transition_description: f.transition_description,
@@ -453,7 +462,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
           <FA label="Планирование" fk="assm_planning" dv={f.assm_planning} rows={3} ph="Предположения по планированию…" onChange={handleChange} />
           <FA label="Рост и производительность" fk="assm_growth" dv={f.assm_growth} rows={3} ph="Предположения по росту…" onChange={handleChange} />
           <FA label="Реклама" fk="assm_advertising" dv={f.assm_advertising} rows={3} ph="Предположения по рекламе…" onChange={handleChange} />
-          <FA label="Братная связь" fk="assm_feedback" dv={f.assm_feedback} rows={3} ph="Предположения по братной связи…" onChange={handleChange} />
+          <FA label="Обратная связь" fk="assm_feedback" dv={f.assm_feedback} rows={3} ph="Предположения по обратной связи…" onChange={handleChange} />
           <FA label="Риск" fk="assm_risk" dv={f.assm_risk} rows={3} ph="Предположения по рискам…" onChange={handleChange} />
           <FA label="Выбор продукта" fk="assm_product" dv={f.assm_product} rows={3} ph="Предположения по выбору продукта…" onChange={handleChange} />
           <FA label="Сервис" fk="assm_service" dv={f.assm_service} rows={3} ph="Предположения по сервису…" onChange={handleChange} />
@@ -463,6 +472,11 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
           <FA label="Синхронизация" fk="assm_sync" dv={f.assm_sync} rows={3} ph="Предположения по синхронизации…" onChange={handleChange} />
           <FA label="Творческий вклад" fk="assm_creative" dv={f.assm_creative} rows={3} ph="Предположения по творческому вкладу…" onChange={handleChange} />
           <FA label="Взаимодействие" fk="assm_interaction" dv={f.assm_interaction} rows={3} ph="Предположения по взаимодействию…" onChange={handleChange} />
+          <FA label="Достаточность ресурсов" fk="assm_resources" dv={f.assm_resources} rows={3} ph="Предположения по достаточности ресурсов…" onChange={handleChange} />
+          <FA label="Исследование и разработка" fk="assm_research" dv={f.assm_research} rows={3} ph="Предположения по исследованиям и разработке…" onChange={handleChange} />
+          <FA label="Международная торговля" fk="assm_trade" dv={f.assm_trade} rows={3} ph="Предположения по международной торговле…" onChange={handleChange} />
+          <FA label="Источники неудач" fk="assm_failures" dv={f.assm_failures} rows={3} ph="Предположения по источникам неудач…" onChange={handleChange} />
+          <FA label="Источники удачи" fk="assm_success" dv={f.assm_success} rows={3} ph="Предположения по источникам удачи…" onChange={handleChange} />
         </Sec>
 
         <Sec label="Переход" title="Целевое состояние" help="Куда компании двигаться — определено автоматически по таблице соответствия гексаграмм.">

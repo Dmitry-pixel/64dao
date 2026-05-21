@@ -137,6 +137,11 @@ class StrategyCreate(BaseModel):
     assm_sync:                  str | None = None
     assm_creative:              str | None = None
     assm_interaction:           str | None = None
+    assm_resources:             str | None = None
+    assm_research:              str | None = None
+    assm_trade:                 str | None = None
+    assm_failures:              str | None = None
+    assm_success:               str | None = None
     is_published:               bool = False
 
     @field_validator("combination")
@@ -188,6 +193,11 @@ class StrategyOut(BaseModel):
     assm_sync:                  str | None
     assm_creative:              str | None
     assm_interaction:           str | None
+    assm_resources:             str | None
+    assm_research:              str | None
+    assm_trade:                 str | None
+    assm_failures:              str | None
+    assm_success:               str | None
     is_published:               bool
     updated_at:                 datetime
 

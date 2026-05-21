@@ -277,7 +277,7 @@ _ASSUMPTION_FIELDS = [
     ("assm_planning",    "Планирование"),
     ("assm_growth",      "Рост и производительность"),
     ("assm_advertising", "Реклама"),
-    ("assm_feedback",    "Братная связь"),
+    ("assm_feedback",    "Обратная связь"),
     ("assm_risk",        "Риск"),
     ("assm_product",     "Выбор продукта"),
     ("assm_service",     "Сервис"),
@@ -287,6 +287,11 @@ _ASSUMPTION_FIELDS = [
     ("assm_sync",        "Синхронизация"),
     ("assm_creative",    "Творческий вклад"),
     ("assm_interaction", "Взаимодействие"),
+    ("assm_resources",   "Достаточность ресурсов"),
+    ("assm_research",    "Исследование и разработка"),
+    ("assm_trade",       "Международная торговля"),
+    ("assm_failures",    "Источники неудач"),
+    ("assm_success",     "Источники удачи"),
 ]
 
 def _assumptions_block(strategy: Any) -> str:
@@ -516,10 +521,8 @@ def build_report_html(
     </span>
   </div>
   <div style="font-size:10px;color:rgba(26,37,64,0.3);letter-spacing:2px;
-              text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:6px;">текущее состояние</div>
+              text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:6px;">жизненный цикл</div>
   <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin-bottom:20px;">Стратегический профиль</h1>
-  <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin-bottom:12px;">Текущее состояние</h2>
-  {_table_rows(cs_rows) if cs_rows else ""}
   {f'<div style="display:inline-block;padding:3px 10px;border-radius:3px;font-size:10px;font-family:Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.2);color:#c0392b;margin-bottom:12px;">{e(strategy.lifecycle_stage or "")}</div>' if strategy and strategy.lifecycle_stage else ""}
   {_lifecycle_blocks(strategy, combination) if strategy else ""}
   <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
@@ -548,7 +551,7 @@ def build_report_html(
           <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin:0 0 20px;">
             Сценарий и рекомендации
           </h1>
-          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin-bottom:12px;">Таблица стратагемы</h2>
+          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin-bottom:12px;">Сценарий стратагемы</h2>
           {_table_rows(sc_rows)}
           <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Описание стратегии</h2>
           <div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);">

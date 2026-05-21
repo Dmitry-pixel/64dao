@@ -97,6 +97,11 @@ const ASSM_FIELDS: [keyof Strategy, string][] = [
   ['assm_sync',        'Синхронизация'],
   ['assm_creative',    'Творческий вклад'],
   ['assm_interaction', 'Взаимодействие'],
+  ['assm_resources',   'Достаточность ресурсов'],
+  ['assm_research',    'Исследование и разработка'],
+  ['assm_trade',       'Международная торговля'],
+  ['assm_failures',    'Источники неудач'],
+  ['assm_success',     'Источники удачи'],
 ]
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
@@ -322,31 +327,33 @@ function Method1Report({
         </div>
       </Section>
 
-      {/* ── 3. СЦЕНАРИЙ ── */}
-      <Section label="Сценарий">
-        {strategy?.scenario_text
-          ? <p style={S.body}>{strategy.scenario_text}</p>
-          : <p style={S.empty}>Описание сценария не заполнено</p>
-        }
+      {/* ── 3. СЦЕНАРИЙ СТРАТАГЕМЫ (ТАБЛИЦА) ── */}
+      <Section label="Сценарий стратагемы">
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <tbody>
+            {scRows.map(([label, value], i) => (
+              <tr key={label} style={{ background: i % 2 === 0 ? 'rgba(26,37,64,0.03)' : 'transparent' }}>
+                <td style={{
+                  padding: '8px 14px', border: '1px solid rgba(26,37,64,0.09)',
+                  fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)',
+                  width: '40%', verticalAlign: 'top',
+                }}>{label}</td>
+                <td style={{
+                  padding: '8px 14px', border: '1px solid rgba(26,37,64,0.09)',
+                  fontFamily: 'sans-serif', fontSize: 13, color: value ? '#1a2540' : 'rgba(26,37,64,0.28)',
+                  fontWeight: value ? 500 : 400,
+                  fontStyle: value ? 'normal' : 'italic',
+                  verticalAlign: 'top',
+                }}>
+                  {value ?? 'Не заполнено'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Section>
 
-      {/* ── 4. МАРКЕТИНГ ── */}
-      <Section label="Маркетинг">
-        {strategy?.marketing_text
-          ? <p style={S.body}>{strategy.marketing_text}</p>
-          : <p style={S.empty}>Рекомендации по маркетингу не заполнены</p>
-        }
-      </Section>
-
-      {/* ── 5. УПРАВЛЕНИЕ ── */}
-      <Section label="Управление">
-        {strategy?.management_text
-          ? <p style={S.body}>{strategy.management_text}</p>
-          : <p style={S.empty}>Рекомендации по управлению не заполнены</p>
-        }
-      </Section>
-
-      {/* ── 6. ПРЕДПОЛОЖЕНИЯ ── */}
+      {/* ── 4. ПРЕДПОЛОЖЕНИЯ ── */}
       <Section label="Предположения · связи с будущим">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 0 }}>
           {ASSM_FIELDS.map(([field, label], i) => {
@@ -371,7 +378,7 @@ function Method1Report({
         </div>
       </Section>
 
-      {/* ── 7. ЦЕЛЕВОЕ СОСТОЯНИЕ (ПЕРЕХОД) ── */}
+      {/* ── 5. ЦЕЛЕВОЕ СОСТОЯНИЕ (ПЕРЕХОД) ── */}
       <Card style={{ border: '1px solid rgba(192,57,43,0.2)', background: 'rgba(192,57,43,0.04)' }}>
         <EyebrowLabel>Целевое состояние · Переход</EyebrowLabel>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, marginBottom: 16 }}>
@@ -412,32 +419,6 @@ function Method1Report({
           : <p style={S.empty}>Описание перехода не заполнено</p>
         }
       </Card>
-
-      {/* ── 8. ТАБЛИЦА СТРАТАГЕМЫ ── */}
-      <Section label="Таблица стратагемы">
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <tbody>
-            {scRows.map(([label, value], i) => (
-              <tr key={label} style={{ background: i % 2 === 0 ? 'rgba(26,37,64,0.03)' : 'transparent' }}>
-                <td style={{
-                  padding: '8px 14px', border: '1px solid rgba(26,37,64,0.09)',
-                  fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)',
-                  width: '40%', verticalAlign: 'top',
-                }}>{label}</td>
-                <td style={{
-                  padding: '8px 14px', border: '1px solid rgba(26,37,64,0.09)',
-                  fontFamily: 'sans-serif', fontSize: 13, color: value ? '#1a2540' : 'rgba(26,37,64,0.28)',
-                  fontWeight: value ? 500 : 400,
-                  fontStyle: value ? 'normal' : 'italic',
-                  verticalAlign: 'top',
-                }}>
-                  {value ?? 'Не заполнено'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Section>
 
     </div>
   )
