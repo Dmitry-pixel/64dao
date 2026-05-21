@@ -294,21 +294,18 @@ def _assumptions_block(strategy: Any) -> str:
     items = ""
     for field, label in _ASSUMPTION_FIELDS:
         val = getattr(strategy, field, None)
-        if val:
-            items += (
-                '<div style="margin-bottom:16px;">'
-                '<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;'
-                'text-transform:uppercase;color:#c0392b;font-family:Arial,sans-serif;margin-bottom:4px;">'
-                + e(label) +
-                '</div>'
-                '<p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;'
-                'margin:0;font-family:Arial,sans-serif;">'
-                + e(val) +
-                '</p>'
-                '</div>'
-            )
-    if not items:
-        return ""
+        items += (
+            '<div style="margin-bottom:16px;">'
+            '<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;'
+            'text-transform:uppercase;color:#c0392b;font-family:Arial,sans-serif;margin-bottom:4px;">'
+            + e(label) +
+            '</div>'
+            '<p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;'
+            'margin:0;font-family:Arial,sans-serif;">'
+            + (e(val) if val else '<em style="opacity:0.4;">Не заполнено</em>') +
+            '</p>'
+            '</div>'
+        )
     return (
         '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:24px 0 12px;">'
         'Предположения, лежащие в основе принятия решения. Связи с будущим'
@@ -403,7 +400,7 @@ def _lifecycle_blocks(strategy: Any, combination: str) -> str:
     <span style="width:18px;height:18px;border-radius:50%;background:{badge_bg};border:1px solid {badge_border};color:{badge_color};display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:10px;font-weight:700;flex-shrink:0;">{letter}</span>
     <span style="font-size:9px;font-family:Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;color:rgba(26,37,64,0.45);font-weight:600;">{e(label)}</span>
   </div>
-  <p style="font-size:12px;color:#1a2540;line-height:1.6;margin:0;font-family:Arial,sans-serif;">{e(value)}</p>
+  <p style="font-size:12px;color:#1a2540;line-height:1.6;margin:0;font-family:Arial,sans-serif;">{e(value) if value else '<em style="opacity:0.35;">Не заполнено</em>'}</p>
 </div>"""
 
     return f"""<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px 24px;background:rgba(255,255,255,0.4);">
@@ -433,13 +430,13 @@ def build_report_html(
     # Целевая гексаграмма — вычисляем заранее, чтобы не усложнять f-строки
     target_hex_info = get_target_hexagram_info(combination) if combination else None
 
-    # Текущее состояние
+    # Текущее состояние — всегда все строки, пустые с заглушкой
     cs = (strategy.current_state or {}) if strategy else {}
-    cs_rows = [(lbl, cs[k]) for k, lbl in CURRENT_STATE_LABELS.items() if cs.get(k)]
+    cs_rows = [(lbl, cs.get(k) or "—") for k, lbl in CURRENT_STATE_LABELS.items()]
 
-    # Сценарий
+    # Сценарий — всегда все строки, пустые с заглушкой
     sc = (strategy.scenario or {}) if strategy else {}
-    sc_rows = [(lbl, sc[k]) for k, lbl in SCENARIO_LABELS.items() if sc.get(k)]
+    sc_rows = [(lbl, sc.get(k) or "—") for k, lbl in SCENARIO_LABELS.items()]
 
     # BMC: сетка оценок (только баллы, без текста)
     bmc_score_grid = ""
@@ -488,7 +485,17 @@ def build_report_html(
     else:
         cover_label = "Отчёт по стратегической диагностике"
         cover_title = "Стратегический<br>профиль компании"
-        cover_combo = ""
+        hex_entry = _HEXAGRAM_BY_COMBO.get(combination)
+        hex_name_str = hex_entry[1] if hex_entry else ""
+        lines_html = ""
+        for ch in combination:
+            if ch == "A":
+                lines_html += '<div style="width:80px;height:8px;background:rgba(26,37,64,0.75);border-radius:2px;margin-bottom:6px;"></div>'
+            else:
+                lines_html += '<div style="display:flex;gap:10px;margin-bottom:6px;"><div style="width:35px;height:8px;background:rgba(26,37,64,0.75);border-radius:2px;"></div><div style="width:35px;height:8px;background:rgba(26,37,64,0.75);border-radius:2px;"></div></div>'
+        cover_combo = f'<div style="margin-top:28px;"><div style="display:flex;flex-direction:column;margin-bottom:10px;">{lines_html}</div><div style="font-size:12px;color:rgba(26,37,64,0.5);font-family:Arial,sans-serif;letter-spacing:2px;font-weight:600;">{hex_name_str}</div></div>' if combination else ""
+        
+
 
     # ── Страница 1 (только для Method 1) ──────────────────────────────────
     page1 = ""
@@ -536,9 +543,24 @@ def build_report_html(
             Сценарий и рекомендации
           </h1>
           {f'<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin-bottom:12px;">Параметры сценария</h2>{_table_rows(sc_rows)}' if sc_rows else ""}
-          {f'<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Описание стратегии</h2><div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);"><p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">{e(strategy.scenario_text)}</p></div>' if strategy.scenario_text else ""}
-          {f'<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Маркетинг</h2><div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);"><p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">{e(strategy.marketing_text)}</p></div>' if strategy.marketing_text else ""}
-          {f'<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Управление</h2><div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);"><p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">{e(strategy.management_text)}</p></div>' if strategy.management_text else ""}
+          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Описание стратегии</h2>
+          <div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);">
+            <p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">
+              {e(strategy.scenario_text) if strategy.scenario_text else '<em style="opacity:0.4;">Не заполнено</em>'}
+            </p>
+          </div>
+          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Маркетинг</h2>
+          <div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);">
+            <p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">
+              {e(strategy.marketing_text) if strategy.marketing_text else '<em style="opacity:0.4;">Не заполнено</em>'}
+            </p>
+          </div>
+          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Управление</h2>
+          <div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);">
+            <p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">
+              {e(strategy.management_text) if strategy.management_text else '<em style="opacity:0.4;">Не заполнено</em>'}
+            </p>
+          </div>
           {assumptions_html}
           {transition_html}
           <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
@@ -633,14 +655,14 @@ def build_report_html(
 
 <!-- ОБЛОЖКА -->
 <div style="width:210mm;min-height:297mm;background:#e8e4db;position:relative;
-            overflow:hidden;display:flex;flex-direction:column;page-break-after:always;">
+            page-break-after:always;">
   <div style="position:absolute;right:0;top:0;width:55%;height:100%;
-              display:grid;grid-template-columns:repeat(6,1fr);gap:2px;opacity:0.08;">
+              display:grid;grid-template-columns:repeat(6,1fr);gap:2px;opacity:0.08;overflow:hidden;">
     {hex_grid}
   </div>
   <div style="position:relative;z-index:2;padding:60px 50px;
-              display:flex;flex-direction:column;justify-content:space-between;height:100%;">
-    <div style="display:flex;align-items:center;gap:12px;">
+              display:flex;flex-direction:column;min-height:297mm;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:auto;">
       <div style="width:44px;height:44px;border:2px solid #c0392b;border-radius:4px;
                   display:flex;flex-direction:column;align-items:center;justify-content:center;
                   font-size:10px;font-weight:700;color:#c0392b;line-height:1.1;font-family:Arial,sans-serif;">
@@ -650,7 +672,7 @@ def build_report_html(
         Стратегическая диагностика
       </span>
     </div>
-    <div style="max-width:380px;">
+    <div style="max-width:480px;padding-top:60px;">
       <div style="font-size:10px;color:rgba(26,37,64,0.3);letter-spacing:2px;
                   text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:16px;">
         {cover_label}
@@ -659,9 +681,9 @@ def build_report_html(
         {cover_title}
       </h1>
       {"" if is_method2 else f'<div style="font-size:20px;color:rgba(26,37,64,0.7);margin-bottom:8px;">{e(company_name)}</div>'}
-      <div style="font-size:13px;color:rgba(26,37,64,0.4);font-family:Arial,sans-serif;">{date_str}</div>
+      <div style="font-size:13px;color:rgba(26,37,64,0.4);font-family:Arial,sans-serif;margin-bottom:0;">{date_str}</div>
+      {cover_combo}
     </div>
-    {cover_combo}
   </div>
 </div>
 
