@@ -109,16 +109,18 @@ def _score_bar(score: int) -> str:
     return f'<div style="margin-bottom:6px;">{bars}</div>'
 
 
-def _table_rows(rows: list[tuple[str, str]]) -> str:
+def _table_rows(rows: list[tuple[str, str | None]]) -> str:
     html = ""
     for i, (label, value) in enumerate(rows):
         bg = "background:#f9fafb;" if i % 2 == 0 else ""
+        val_html = (e(value) if value
+                    else '<em style="opacity:0.4;font-weight:400;color:rgba(26,37,64,0.4);">Не заполнено</em>')
         html += (
             f"<tr>"
             f'<td style="border:1px solid #d1d5db;padding:7px 10px;{bg}'
             f'font-size:12px;color:#6b7280;width:45%;vertical-align:top;">{e(label)}</td>'
             f'<td style="border:1px solid #d1d5db;padding:7px 10px;{bg}'
-            f'font-size:12px;color:#111827;font-weight:500;vertical-align:top;">{e(value)}</td>'
+            f'font-size:12px;color:#111827;font-weight:500;vertical-align:top;">{val_html}</td>'
             f"</tr>"
         )
     return f'<table style="width:100%;border-collapse:collapse;margin-bottom:16px;"><tbody>{html}</tbody></table>'
@@ -319,7 +321,7 @@ def _assumptions_block(strategy: Any) -> str:
 
 def _transition_block(strategy: Any, target_hex_info: tuple | None) -> str:
     """HTML-блок 'Целевое состояние' с символом и названием целевой гексаграммы."""
-    if not strategy or not strategy.transition_title:
+    if not strategy:
         return ""
 
     if target_hex_info:
@@ -342,8 +344,12 @@ def _transition_block(strategy: Any, target_hex_info: tuple | None) -> str:
     else:
         hex_col = ""
 
-    title_html = e(strategy.transition_title)
-    desc_html  = e(strategy.transition_description or "")
+    title_html = (e(strategy.transition_title)
+                  if strategy.transition_title
+                  else '<em style="opacity:0.4;">Название перехода не заполнено</em>')
+    desc_html  = (e(strategy.transition_description)
+                  if strategy.transition_description
+                  else '<em style="opacity:0.4;">Описание перехода не заполнено</em>')
 
     return (
         '<div style="margin-top:24px;padding:16px 20px;'
@@ -432,11 +438,11 @@ def build_report_html(
 
     # Текущее состояние — всегда все строки, пустые с заглушкой
     cs = (strategy.current_state or {}) if strategy else {}
-    cs_rows = [(lbl, cs.get(k) or "—") for k, lbl in CURRENT_STATE_LABELS.items()]
+    cs_rows = [(lbl, cs.get(k) or None) for k, lbl in CURRENT_STATE_LABELS.items()]
 
     # Сценарий — всегда все строки, пустые с заглушкой
     sc = (strategy.scenario or {}) if strategy else {}
-    sc_rows = [(lbl, sc.get(k) or "—") for k, lbl in SCENARIO_LABELS.items()]
+    sc_rows = [(lbl, sc.get(k) or None) for k, lbl in SCENARIO_LABELS.items()]
 
     # BMC: сетка оценок (только баллы, без текста)
     bmc_score_grid = ""
@@ -542,7 +548,7 @@ def build_report_html(
           <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin:0 0 20px;">
             Сценарий и рекомендации
           </h1>
-          {f'<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin-bottom:12px;">Параметры сценария</h2>{_table_rows(sc_rows)}' if sc_rows else ""}
+          {f'<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin-bottom:12px;">Таблица стратагемы</h2>{_table_rows(sc_rows)}' if sc_rows else ""}
           <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Описание стратегии</h2>
           <div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);">
             <p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">
