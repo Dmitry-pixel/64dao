@@ -548,7 +548,8 @@ def build_report_html(
           <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin:0 0 20px;">
             Сценарий и рекомендации
           </h1>
-          {f'<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin-bottom:12px;">Таблица стратагемы</h2>{_table_rows(sc_rows)}' if sc_rows else ""}
+          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin-bottom:12px;">Таблица стратагемы</h2>
+          {_table_rows(sc_rows)}
           <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Описание стратегии</h2>
           <div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);">
             <p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">
