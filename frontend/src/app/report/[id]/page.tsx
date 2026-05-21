@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { getAssessment, getMe, getStrategyByCombo, assessmentPdfUrl } from '@/lib/api'
+import { getAssessment, getMe, getAssessmentStrategy, assessmentPdfUrl } from '@/lib/api'
 import type { Strategy, Assessment, AuthUser } from '@/lib/api'
 import { AppNav } from '@/components/AppNav'
 
@@ -9,7 +9,6 @@ const API = process.env.NEXT_PUBLIC_API_URL || ''
 
 // ── Hexagram data ─────────────────────────────────────────────────────────────
 
-// combination → [number, name]
 const HEX_INFO: Record<string, [number, string]> = {
   'AAAAAA':[1,'Действие'],'BBBBBB':[2,'Реакция'],'ABBBAB':[3,'Появление'],
   'BABBBA':[4,'Формализация'],'AAABAB':[5,'Бдительность'],'BABAAA':[6,'Раздор'],
@@ -35,7 +34,6 @@ const HEX_INFO: Record<string, [number, string]> = {
   'BABABA':[64,'Незавершённость'],
 }
 
-// current hex number → target hex number
 const TARGET_HEX: Record<number, number> = {
   1:9,2:62,3:49,4:7,5:63,6:6,7:62,8:23,9:37,10:25,11:36,12:9,13:37,14:26,15:11,16:54,
   17:63,18:64,19:34,20:33,21:64,22:18,23:56,24:19,25:37,26:22,27:4,28:44,29:3,30:22,
@@ -44,7 +42,6 @@ const TARGET_HEX: Record<number, number> = {
   58:5,59:44,60:43,61:42,62:33,63:17,64:40,
 }
 
-// hex number → combination (reverse lookup)
 const NUM_TO_COMBO: Record<number, string> = Object.fromEntries(
   Object.entries(HEX_INFO).map(([combo, [n]]) => [n, combo])
 )
@@ -68,34 +65,25 @@ function getTargetHexInfo(combo: string): { num: number; name: string; symbol: s
 
 // ── Labels ────────────────────────────────────────────────────────────────────
 
-const CURRENT_STATE_KEYS = [
-  ['value_type',    'Тип ценности'],
-  ['market_status', 'Статус рынка'],
-  ['consumer_type', 'Тип потребителя'],
-  ['organization',  'Организация управления'],
-  ['strategy',      'Бизнес-стратегия'],
-  ['goal',          'Бизнес-цель'],
-] as const
-
-const SCENARIO_KEYS = [
-  ['innovation_strategy',   'Инновационная стратегия'],
-  ['innovation_type',       'Тип инновации'],
-  ['value_discipline',      'Ценностная дисциплина'],
-  ['leadership_principles', 'Принципы лидерства'],
-  ['growth_strategy',       'Стратегия роста'],
-  ['focus',                 'Фокус'],
-] as const
-
-const LC_FIELDS = [
+const LC_FIELDS: [keyof Strategy, string][] = [
   ['lc_profit',    'Формирование прибыли'],
   ['lc_strategy',  'Рыночная стратегия'],
   ['lc_decisions', 'Принятие решений'],
   ['lc_consumer',  'Тип потребителя'],
   ['lc_market',    'Статус рынка'],
   ['lc_value',     'Тип ценности'],
-] as const
+]
 
-const ASSM_FIELDS = [
+const SCENARIO_KEYS: [string, string][] = [
+  ['innovation_strategy',   'Инновационная стратегия'],
+  ['innovation_type',       'Тип инновации'],
+  ['value_discipline',      'Ценностная дисциплина'],
+  ['leadership_principles', 'Принципы лидерства'],
+  ['growth_strategy',       'Стратегия роста'],
+  ['focus',                 'Фокус'],
+]
+
+const ASSM_FIELDS: [keyof Strategy, string][] = [
   ['assm_planning',    'Планирование'],
   ['assm_growth',      'Рост и производительность'],
   ['assm_advertising', 'Реклама'],
@@ -109,34 +97,53 @@ const ASSM_FIELDS = [
   ['assm_sync',        'Синхронизация'],
   ['assm_creative',    'Творческий вклад'],
   ['assm_interaction', 'Взаимодействие'],
-] as const
+]
 
-// ── Common UI components ──────────────────────────────────────────────────────
+// ── UI helpers ────────────────────────────────────────────────────────────────
+
+const S = {
+  eyebrow: {
+    fontFamily: 'sans-serif' as const,
+    fontSize: 10,
+    letterSpacing: 2.5,
+    textTransform: 'uppercase' as const,
+    color: '#c0392b',
+    fontWeight: 700,
+    marginBottom: 12,
+  },
+  card: {
+    background: 'rgba(255,255,255,0.72)',
+    border: '1px solid rgba(26,37,64,0.09)',
+    borderRadius: 10,
+    padding: '22px 28px',
+    marginBottom: 16,
+  },
+  empty: {
+    fontFamily: 'sans-serif' as const,
+    fontSize: 13,
+    color: 'rgba(26,37,64,0.28)',
+    fontStyle: 'italic' as const,
+    margin: 0,
+  },
+  body: {
+    fontFamily: 'sans-serif' as const,
+    fontSize: 14,
+    color: 'rgba(26,37,64,0.82)',
+    lineHeight: 1.75,
+    margin: 0,
+    whiteSpace: 'pre-wrap' as const,
+  },
+}
 
 function EyebrowLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{
-      fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 2.5,
-      textTransform: 'uppercase', color: '#c0392b', fontWeight: 700,
-      marginBottom: 12,
-    }}>{children}</div>
-  )
+  return <div style={S.eyebrow}>{children}</div>
 }
 
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <div style={{
-      background: 'rgba(255,255,255,0.72)',
-      border: '1px solid rgba(26,37,64,0.09)',
-      borderRadius: 10,
-      padding: '22px 28px',
-      marginBottom: 16,
-      ...style,
-    }}>{children}</div>
-  )
+  return <div style={{ ...S.card, ...style }}>{children}</div>
 }
 
-function SectionBlock({ label, children }: { label: string; children: React.ReactNode }) {
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <Card>
       <EyebrowLabel>{label}</EyebrowLabel>
@@ -145,41 +152,14 @@ function SectionBlock({ label, children }: { label: string; children: React.Reac
   )
 }
 
-function TextBody({ text }: { text: string }) {
-  return (
-    <p style={{
-      fontFamily: 'sans-serif', fontSize: 14, color: 'rgba(26,37,64,0.82)',
-      lineHeight: 1.75, margin: 0, whiteSpace: 'pre-wrap',
-    }}>{text}</p>
-  )
+function Val({ text }: { text: string | null | undefined }) {
+  if (text) {
+    return <p style={S.body}>{text}</p>
+  }
+  return <p style={S.empty}>Не заполнено</p>
 }
 
-
-function ParamsTable({ rows }: { rows: [string, string][] }) {
-  if (!rows.length) return null
-  return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
-      <tbody>
-        {rows.map(([label, value], i) => (
-          <tr key={label} style={{ background: i % 2 === 0 ? 'rgba(26,37,64,0.03)' : 'transparent' }}>
-            <td style={{
-              padding: '8px 14px', border: '1px solid rgba(26,37,64,0.09)',
-              fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)',
-              width: '42%', verticalAlign: 'top',
-            }}>{label}</td>
-            <td style={{
-              padding: '8px 14px', border: '1px solid rgba(26,37,64,0.09)',
-              fontFamily: 'sans-serif', fontSize: 13, color: '#1a2540',
-              fontWeight: 500, verticalAlign: 'top',
-            }}>{value}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )
-}
-
-// ── Method 1 Report ────────────────────────────────────────────────────────────
+// ── Method 1 Report ───────────────────────────────────────────────────────────
 
 function Method1Report({
   assessment, strategy, user, onBack, onDownload, generatingPdf,
@@ -197,38 +177,23 @@ function Method1Report({
   const sym = hexSymbol(combo)
   const companyName = assessment.company_name || user.company_name || user.full_name || 'Компания'
   const dateStr = new Date(assessment.created_at).toLocaleDateString('ru-RU', {
-    day: 'numeric', month: 'long', year: 'numeric'
+    day: 'numeric', month: 'long', year: 'numeric',
   })
 
-  // Current state rows
-  const csRows: [string, string][] = strategy?.current_state
-    ? CURRENT_STATE_KEYS
-        .filter(([k]) => strategy.current_state![k])
-        .map(([k, lbl]) => [lbl, strategy.current_state![k]])
-    : []
+  const targetHex = getTargetHexInfo(combo)
 
-  // Scenario param rows
-  const scRows: [string, string][] = strategy?.scenario
-    ? SCENARIO_KEYS
-        .filter(([k]) => strategy.scenario![k])
-        .map(([k, lbl]) => [lbl, strategy.scenario![k]])
-    : []
-
-  // LC blocks (letter from combo[i])
+  // LC blocks — always show all 6
   const lcBlocks = LC_FIELDS.map(([field, label], i) => ({
     label,
     letter: combo[i] ?? 'A',
-    value: strategy?.[field as keyof Strategy] as string | null ?? null,
+    value: strategy?.[field] as string | null ?? null,
   }))
 
-  // Assumptions (non-empty only)
-  const assmBlocks = ASSM_FIELDS
-    .map(([field, label]) => ({ label, value: strategy?.[field as keyof Strategy] as string | null ?? null }))
-    .filter(b => b.value)
-
-  // Target hexagram for transition section
-  const targetHex = getTargetHexInfo(combo)
-
+  // Scenario table rows — always show all
+  const scRows: [string, string | null][] = SCENARIO_KEYS.map(([k, lbl]) => [
+    lbl,
+    strategy?.scenario?.[k] ?? null,
+  ])
 
   return (
     <div style={{ maxWidth: 820, margin: '0 auto', padding: '48px 40px 80px' }}>
@@ -248,26 +213,20 @@ function Method1Report({
         </button>
       </div>
 
-      {/* Cover */}
+      {/* ── 1. ОБЛОЖКА ── */}
       <div style={{
-        background: '#1a2540',
-        borderRadius: 14,
-        padding: '48px 52px',
-        marginBottom: 32,
-        position: 'relative',
-        overflow: 'hidden',
+        background: '#1a2540', borderRadius: 14, padding: '48px 52px',
+        marginBottom: 32, position: 'relative', overflow: 'hidden',
       }}>
-        {/* Decorative bg symbol */}
         <div style={{
           position: 'absolute', right: 40, top: '50%', transform: 'translateY(-50%)',
           fontFamily: 'Georgia,serif', fontSize: 220, color: 'rgba(255,255,255,0.04)',
           lineHeight: 1, userSelect: 'none', pointerEvents: 'none',
         }}>{sym}</div>
 
-        <div style={{
-          fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 3,
-          textTransform: 'uppercase', color: '#c0392b', fontWeight: 700, marginBottom: 20,
-        }}>СТРАТЕГИЧЕСКИЙ ОТЧЁТ · 64 ДАО</div>
+        <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', color: '#c0392b', fontWeight: 700, marginBottom: 20 }}>
+          СТРАТЕГИЧЕСКИЙ ОТЧЁТ · 64 ДАО
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 28, marginBottom: 28 }}>
           <div style={{ fontFamily: 'Georgia,serif', fontSize: 110, color: 'rgba(255,255,255,0.9)', lineHeight: 1, flexShrink: 0 }}>
@@ -279,21 +238,14 @@ function Method1Report({
                 display: 'inline-block', padding: '3px 10px', borderRadius: 4,
                 fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 1.5,
                 textTransform: 'uppercase', background: 'rgba(192,57,43,0.25)',
-                border: '1px solid rgba(192,57,43,0.4)', color: '#e8a090',
-                marginBottom: 12,
+                border: '1px solid rgba(192,57,43,0.4)', color: '#e8a090', marginBottom: 12,
               }}>
                 {strategy.stratagema_title}
               </div>
             )}
-            {strategy?.title ? (
-              <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 32, fontWeight: 400, color: '#fff', margin: '0 0 8px', lineHeight: 1.2 }}>
-                {strategy.title}
-              </h1>
-            ) : hexNum ? (
-              <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 32, fontWeight: 400, color: '#fff', margin: '0 0 8px', lineHeight: 1.2 }}>
-                {hexName}
-              </h1>
-            ) : null}
+            <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 32, fontWeight: 400, color: '#fff', margin: '0 0 8px', lineHeight: 1.2 }}>
+              {strategy?.title || hexName}
+            </h1>
             {hexNum > 0 && (
               <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>
                 Гексаграмма {hexNum}
@@ -321,169 +273,177 @@ function Method1Report({
         </div>
       )}
 
-      <>
-          {/* 1. Current state table */}
-          {csRows.length > 0 && (
-            <SectionBlock label="Текущее состояние">
-              {strategy?.lifecycle_stage && (
+      {/* ── 2. ЖИЗНЕННЫЙ ЦИКЛ ── */}
+      <Section label="Жизненный цикл">
+        {/* Stage badge */}
+        {strategy?.lifecycle_stage ? (
+          <div style={{
+            display: 'inline-block', padding: '3px 10px', borderRadius: 4,
+            fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
+            background: 'rgba(192,57,43,0.08)', border: '1px solid rgba(192,57,43,0.2)',
+            color: '#c0392b', marginBottom: 14,
+          }}>
+            {strategy.lifecycle_stage}
+          </div>
+        ) : (
+          <div style={{ marginBottom: 14 }}>
+            <span style={{ ...S.empty }}>Стадия не указана</span>
+          </div>
+        )}
+
+        {/* 6 LC blocks */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 20 }}>
+          {lcBlocks.map((b, i) => (
+            <div key={i} style={{
+              background: 'rgba(255,255,255,0.5)',
+              border: '1px solid rgba(26,37,64,0.1)',
+              borderRadius: 8, padding: '12px 14px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{
+                  width: 20, height: 20, borderRadius: '50%',
+                  background: b.letter === 'A' ? 'rgba(30,58,138,0.12)' : 'rgba(26,37,64,0.07)',
+                  border: `1px solid ${b.letter === 'A' ? 'rgba(30,58,138,0.25)' : 'rgba(26,37,64,0.15)'}`,
+                  color: b.letter === 'A' ? '#1e3a8a' : '#1a2540',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'monospace', fontSize: 10, fontWeight: 700, flexShrink: 0,
+                }}>{b.letter}</span>
+                <span style={{
+                  fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 1.2,
+                  textTransform: 'uppercase', color: 'rgba(26,37,64,0.45)', fontWeight: 600,
+                }}>{b.label}</span>
+              </div>
+              {b.value
+                ? <p style={{ fontFamily: 'sans-serif', fontSize: 12.5, color: '#1a2540', lineHeight: 1.65, margin: 0 }}>{b.value}</p>
+                : <p style={S.empty}>Не заполнено</p>
+              }
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      {/* ── 3. СЦЕНАРИЙ ── */}
+      <Section label="Сценарий">
+        {strategy?.scenario_text
+          ? <p style={S.body}>{strategy.scenario_text}</p>
+          : <p style={S.empty}>Описание сценария не заполнено</p>
+        }
+      </Section>
+
+      {/* ── 4. МАРКЕТИНГ ── */}
+      <Section label="Маркетинг">
+        {strategy?.marketing_text
+          ? <p style={S.body}>{strategy.marketing_text}</p>
+          : <p style={S.empty}>Рекомендации по маркетингу не заполнены</p>
+        }
+      </Section>
+
+      {/* ── 5. УПРАВЛЕНИЕ ── */}
+      <Section label="Управление">
+        {strategy?.management_text
+          ? <p style={S.body}>{strategy.management_text}</p>
+          : <p style={S.empty}>Рекомендации по управлению не заполнены</p>
+        }
+      </Section>
+
+      {/* ── 6. ПРЕДПОЛОЖЕНИЯ ── */}
+      <Section label="Предположения · связи с будущим">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 0 }}>
+          {ASSM_FIELDS.map(([field, label], i) => {
+            const val = strategy?.[field] as string | null ?? null
+            return (
+              <div key={String(field)} style={{
+                paddingBottom: 16, marginBottom: 16,
+                borderBottom: i < ASSM_FIELDS.length - 1 ? '1px solid rgba(26,37,64,0.07)' : 'none',
+              }}>
                 <div style={{
-                  display: 'inline-block', padding: '3px 10px', borderRadius: 4,
-                  fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
-                  background: 'rgba(192,57,43,0.08)', border: '1px solid rgba(192,57,43,0.2)',
-                  color: '#c0392b', marginBottom: 14,
+                  fontFamily: 'sans-serif', fontSize: 10, fontWeight: 700,
+                  letterSpacing: 1.5, textTransform: 'uppercase',
+                  color: '#c0392b', marginBottom: 6,
+                }}>{label}</div>
+                {val
+                  ? <p style={S.body}>{val}</p>
+                  : <p style={S.empty}>Предположение не заполнено</p>
+                }
+              </div>
+            )
+          })}
+        </div>
+      </Section>
+
+      {/* ── 7. ЦЕЛЕВОЕ СОСТОЯНИЕ (ПЕРЕХОД) ── */}
+      <Card style={{ border: '1px solid rgba(192,57,43,0.2)', background: 'rgba(192,57,43,0.04)' }}>
+        <EyebrowLabel>Целевое состояние · Переход</EyebrowLabel>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, marginBottom: 16 }}>
+          {targetHex && (
+            <div style={{ textAlign: 'center', flexShrink: 0, minWidth: 80 }}>
+              <div style={{ fontFamily: 'Georgia,serif', fontSize: 64, lineHeight: 1, color: '#1a2540', marginBottom: 6 }}>
+                {targetHex.symbol}
+              </div>
+              <div style={{ fontFamily: 'sans-serif', fontSize: 10, color: '#c0392b', letterSpacing: 1, fontWeight: 600 }}>
+                Гексаграмма {targetHex.num}
+              </div>
+              <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.6)', marginTop: 3 }}>
+                {targetHex.name}
+              </div>
+            </div>
+          )}
+          <div style={{ flex: 1 }}>
+            {strategy?.transition_title ? (
+              <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 400, color: '#1a2540', margin: '0 0 4px' }}>
+                {strategy.transition_title}
+              </h3>
+            ) : (
+              <p style={S.empty}>Название перехода не заполнено</p>
+            )}
+            {strategy?.transition_lifecycle_stage && (
+              <div style={{
+                display: 'inline-block', padding: '2px 8px', borderRadius: 4, marginBottom: 10,
+                fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase',
+                background: 'rgba(192,57,43,0.08)', border: '1px solid rgba(192,57,43,0.2)', color: '#c0392b',
+              }}>
+                {strategy.transition_lifecycle_stage}
+              </div>
+            )}
+          </div>
+        </div>
+        {strategy?.transition_description
+          ? <p style={S.body}>{strategy.transition_description}</p>
+          : <p style={S.empty}>Описание перехода не заполнено</p>
+        }
+      </Card>
+
+      {/* ── 8. ТАБЛИЦА СТРАТАГЕМЫ ── */}
+      <Section label="Таблица стратагемы">
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <tbody>
+            {scRows.map(([label, value], i) => (
+              <tr key={label} style={{ background: i % 2 === 0 ? 'rgba(26,37,64,0.03)' : 'transparent' }}>
+                <td style={{
+                  padding: '8px 14px', border: '1px solid rgba(26,37,64,0.09)',
+                  fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)',
+                  width: '40%', verticalAlign: 'top',
+                }}>{label}</td>
+                <td style={{
+                  padding: '8px 14px', border: '1px solid rgba(26,37,64,0.09)',
+                  fontFamily: 'sans-serif', fontSize: 13, color: value ? '#1a2540' : 'rgba(26,37,64,0.28)',
+                  fontWeight: value ? 500 : 400,
+                  fontStyle: value ? 'normal' : 'italic',
+                  verticalAlign: 'top',
                 }}>
-                  {strategy.lifecycle_stage}
-                </div>
-              )}
-              <ParamsTable rows={csRows} />
-            </SectionBlock>
-          )}
-
-          {/* 2. Lifecycle stage description */}
-          {(strategy?.lifecycle_stage || strategy?.lifecycle_description) && !csRows.length && (
-            <SectionBlock label="Жизненный цикл">
-              {strategy.lifecycle_stage && (
-                <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 400, color: '#1a2540', margin: '0 0 10px' }}>
-                  {strategy.lifecycle_stage}
-                </h3>
-              )}
-              {strategy.lifecycle_description && <TextBody text={strategy.lifecycle_description} />}
-            </SectionBlock>
-          )}
-
-          {/* 3. Lifecycle blocks (6 × letter from combo) */}
-          {lcBlocks.some(b => b.value) && (
-            <SectionBlock label="Профиль по параметрам диагностики">
-              {strategy?.stratagema_title && (
-                <div style={{
-                  display: 'inline-block', padding: '3px 10px', borderRadius: 4,
-                  fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
-                  background: 'rgba(30,58,138,0.08)', border: '1px solid rgba(30,58,138,0.2)',
-                  color: '#1e3a8a', marginBottom: 14,
-                }}>
-                  {strategy.stratagema_title}
-                </div>
-              )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {lcBlocks.map((b, i) => (
-                  <div key={i} style={{
-                    background: 'rgba(255,255,255,0.5)',
-                    border: '1px solid rgba(26,37,64,0.1)',
-                    borderRadius: 8, padding: '12px 14px',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <span style={{
-                        width: 20, height: 20, borderRadius: '50%',
-                        background: b.letter === 'A' ? 'rgba(30,58,138,0.12)' : 'rgba(26,37,64,0.07)',
-                        border: `1px solid ${b.letter === 'A' ? 'rgba(30,58,138,0.25)' : 'rgba(26,37,64,0.15)'}`,
-                        color: b.letter === 'A' ? '#1e3a8a' : '#1a2540',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontFamily: 'monospace', fontSize: 10, fontWeight: 700, flexShrink: 0,
-                      }}>{b.letter}</span>
-                      <span style={{
-                        fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 1.2,
-                        textTransform: 'uppercase', color: 'rgba(26,37,64,0.45)', fontWeight: 600,
-                      }}>{b.label}</span>
-                    </div>
-                    <p style={{
-                      fontFamily: 'sans-serif', fontSize: 12.5, color: '#1a2540',
-                      lineHeight: 1.65, margin: 0,
-                    }}>
-                      {b.value ?? <span style={{ color: 'rgba(26,37,64,0.25)', fontStyle: 'italic' }}>Не заполнено</span>}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </SectionBlock>
-          )}
-
-          {/* 4. Scenario parameters table */}
-          {scRows.length > 0 && (
-            <SectionBlock label="Параметры сценария">
-              <ParamsTable rows={scRows} />
-            </SectionBlock>
-          )}
-
-          {/* 5. Scenario text */}
-          {strategy?.scenario_text && (
-            <SectionBlock label="Стратегический сценарий">
-              <TextBody text={strategy.scenario_text} />
-            </SectionBlock>
-          )}
-
-          {/* 6. Marketing */}
-          {strategy?.marketing_text && (
-            <SectionBlock label="Маркетинг">
-              <TextBody text={strategy.marketing_text} />
-            </SectionBlock>
-          )}
-
-          {/* 7. Management */}
-          {strategy?.management_text && (
-            <SectionBlock label="Управление">
-              <TextBody text={strategy.management_text} />
-            </SectionBlock>
-          )}
-
-          {/* 8. Assumptions */}
-          {assmBlocks.length > 0 && (
-            <SectionBlock label="Предположения · связи с будущим">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 0 }}>
-                {assmBlocks.map((b, i) => (
-                  <div key={i} style={{
-                    paddingBottom: 16, marginBottom: 16,
-                    borderBottom: i < assmBlocks.length - 1 ? '1px solid rgba(26,37,64,0.07)' : 'none',
-                  }}>
-                    <div style={{
-                      fontFamily: 'sans-serif', fontSize: 10, fontWeight: 700,
-                      letterSpacing: 1.5, textTransform: 'uppercase',
-                      color: '#c0392b', marginBottom: 6,
-                    }}>{b.label}</div>
-                    <TextBody text={b.value!} />
-                  </div>
-                ))}
-              </div>
-            </SectionBlock>
-          )}
-
-          {/* 9. Transition / target state */}
-          {(strategy?.transition_title || strategy?.transition_description) && (
-            <Card style={{ border: '1px solid rgba(192,57,43,0.2)', background: 'rgba(192,57,43,0.04)' }}>
-              <EyebrowLabel>Целевое состояние</EyebrowLabel>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20 }}>
-                {targetHex && (
-                  <div style={{ textAlign: 'center', flexShrink: 0, minWidth: 80 }}>
-                    <div style={{ fontFamily: 'Georgia,serif', fontSize: 64, lineHeight: 1, color: '#1a2540', marginBottom: 6 }}>
-                      {targetHex.symbol}
-                    </div>
-                    <div style={{ fontFamily: 'sans-serif', fontSize: 10, color: '#c0392b', letterSpacing: 1, fontWeight: 600 }}>
-                      Гексаграмма {targetHex.num}
-                    </div>
-                    <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.6)', marginTop: 3 }}>
-                      {targetHex.name}
-                    </div>
-                  </div>
-                )}
-                <div style={{ flex: 1 }}>
-                  {strategy?.transition_title && (
-                    <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 400, color: '#1a2540', margin: '0 0 8px' }}>
-                      {strategy.transition_lifecycle_stage
-                        ? `${strategy.transition_title} · ${strategy.transition_lifecycle_stage}`
-                        : strategy.transition_title}
-                    </h3>
-                  )}
-                  {strategy?.transition_description && <TextBody text={strategy.transition_description} />}
-                </div>
-              </div>
-            </Card>
-          )}
-      </>
+                  {value ?? 'Не заполнено'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Section>
 
     </div>
   )
 }
 
-// ── Method 2 Report ────────────────────────────────────────────────────────────
+// ── Method 2 Report ───────────────────────────────────────────────────────────
 
 const BMC_LABELS: Record<string, string> = {
   'Ключевые партнёры':      '01',
@@ -531,7 +491,7 @@ function Method2Report({
   const method2 = assessment.method2_data as Record<string, { score: number; text: string }> | null
   const companyName = assessment.company_name || user.company_name || user.full_name || 'Компания'
   const dateStr = new Date(assessment.created_at).toLocaleDateString('ru-RU', {
-    day: 'numeric', month: 'long', year: 'numeric'
+    day: 'numeric', month: 'long', year: 'numeric',
   })
 
   const blocks = BMC_ORDER
@@ -540,35 +500,20 @@ function Method2Report({
 
   return (
     <div style={{ maxWidth: 820, margin: '0 auto', padding: '48px 40px 80px' }}>
-
-      {/* Back + PDF */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 }}>
-        <button onClick={onBack} className="btn btn-ghost" style={{ fontSize: 13, padding: '8px 16px' }}>
-          ← Назад
-        </button>
-        <button
-          className="btn btn-primary"
-          onClick={onDownload}
-          disabled={generatingPdf}
-          style={{ opacity: generatingPdf ? 0.6 : 1 }}
-        >
+        <button onClick={onBack} className="btn btn-ghost" style={{ fontSize: 13, padding: '8px 16px' }}>← Назад</button>
+        <button className="btn btn-primary" onClick={onDownload} disabled={generatingPdf} style={{ opacity: generatingPdf ? 0.6 : 1 }}>
           {generatingPdf ? 'Формируем PDF…' : '↓ Скачать отчёт PDF'}
         </button>
       </div>
 
-      {/* Cover */}
-      <div style={{
-        background: '#1a2540', borderRadius: 14, padding: '48px 52px', marginBottom: 32,
-      }}>
-        <div style={{
-          fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 3,
-          textTransform: 'uppercase', color: '#c0392b', fontWeight: 700, marginBottom: 20,
-        }}>БИЗНЕС МОДЕЛЬ · 64 ДАО</div>
-
+      <div style={{ background: '#1a2540', borderRadius: 14, padding: '48px 52px', marginBottom: 32 }}>
+        <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', color: '#c0392b', fontWeight: 700, marginBottom: 20 }}>
+          БИЗНЕС МОДЕЛЬ · 64 ДАО
+        </div>
         <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 34, fontWeight: 400, color: '#fff', margin: '0 0 24px', lineHeight: 1.2 }}>
           Анализ бизнес-модели
         </h1>
-
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 18, display: 'flex', gap: 36 }}>
           <div>
             <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 1.5, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: 4 }}>Компания</div>
@@ -583,54 +528,44 @@ function Method2Report({
 
       {blocks.length > 0 ? (
         <>
-          <div style={{ marginBottom: 10 }}>
-            <div style={{
-              fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 2.5,
-              textTransform: 'uppercase', color: '#c0392b', fontWeight: 600, marginBottom: 12,
-            }}>Оценка блоков</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 32 }}>
-              {blocks.map(block => (
-                <div key={block.title} style={{
-                  background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(26,37,64,0.09)',
-                  borderRadius: 10, padding: '16px 18px',
-                }}>
-                  <div style={{ fontFamily: 'sans-serif', fontSize: 11, fontWeight: 600, color: '#1a2540', marginBottom: 10 }}>
-                    {block.num} · {block.title}
-                  </div>
-                  <ScoreDots score={block.score} />
-                </div>
-              ))}
-            </div>
+          <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 2.5, textTransform: 'uppercase', color: '#c0392b', fontWeight: 600, marginBottom: 12 }}>
+            Оценка блоков
           </div>
-
-          <div style={{
-            fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 2.5,
-            textTransform: 'uppercase', color: '#c0392b', fontWeight: 600, marginBottom: 12,
-          }}>Комментарии</div>
-          {blocks.map(block => (
-            <SectionBlock key={block.title} label={`${block.num} · ${block.title}`}>
-              <div style={{ marginBottom: block.text ? 14 : 0 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 32 }}>
+            {blocks.map(block => (
+              <div key={block.title} style={{ background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(26,37,64,0.09)', borderRadius: 10, padding: '16px 18px' }}>
+                <div style={{ fontFamily: 'sans-serif', fontSize: 11, fontWeight: 600, color: '#1a2540', marginBottom: 10 }}>
+                  {block.num} · {block.title}
+                </div>
                 <ScoreDots score={block.score} />
               </div>
+            ))}
+          </div>
+          <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 2.5, textTransform: 'uppercase', color: '#c0392b', fontWeight: 600, marginBottom: 12 }}>
+            Комментарии
+          </div>
+          {blocks.map(block => (
+            <Section key={block.title} label={`${block.num} · ${block.title}`}>
+              <div style={{ marginBottom: block.text ? 14 : 0 }}><ScoreDots score={block.score} /></div>
               {block.text
-                ? <TextBody text={block.text} />
-                : <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.35)', margin: 0, fontStyle: 'italic' }}>Комментарий не добавлен</p>
+                ? <p style={S.body}>{block.text}</p>
+                : <p style={S.empty}>Комментарий не добавлен</p>
               }
-            </SectionBlock>
+            </Section>
           ))}
         </>
       ) : (
-        <SectionBlock label="Бизнес-модель">
+        <Section label="Бизнес-модель">
           <p style={{ fontFamily: 'sans-serif', fontSize: 14, color: 'rgba(26,37,64,0.5)', margin: 0 }}>
             Данные бизнес-модели не заполнены.
           </p>
-        </SectionBlock>
+        </Section>
       )}
     </div>
   )
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ReportPage() {
   const router = useRouter()
@@ -652,13 +587,12 @@ export default function ReportPage() {
         setAssessment(data)
         setIsAdmin(me.role === 'admin')
 
-        // Load strategy for method1
         if (data.method1_combination) {
           try {
-            const s = await getStrategyByCombo(data.method1_combination)
+            const s = await getAssessmentStrategy(id)
             setStrategy(s)
           } catch {
-            // not published — show template, that's OK
+            // strategy not in DB yet
           }
         }
       } catch {
@@ -672,9 +606,7 @@ export default function ReportPage() {
 
   const handleDownload = () => {
     setGeneratingPdf(true)
-    const url = assessmentPdfUrl(id)
-    window.open(url, '_blank')
-    // Reset state after short delay (PDF opens in new tab)
+    window.open(assessmentPdfUrl(id), '_blank')
     setTimeout(() => setGeneratingPdf(false), 2000)
   }
 
@@ -685,7 +617,8 @@ export default function ReportPage() {
   )
   if (!assessment || !user) return null
 
-  const isMethod2 = !!assessment.method2_data && Object.keys(assessment.method2_data).length > 0
+  // Method1 если есть комбинация, иначе Method2
+  const isMethod2 = !assessment.method1_combination
   const backUrl = isAdmin ? '/admin/my-reports' : '/dashboard'
 
   return (
