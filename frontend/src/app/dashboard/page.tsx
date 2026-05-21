@@ -132,13 +132,25 @@ export default function DashboardPage() {
                       {a.status === 'completed' ? 'Готов' : 'Черновик'}
                     </span>
                     {a.status === 'completed' ? (
-                      <button
-                        className="btn btn-ghost"
-                        style={{ padding: '7px 14px', fontSize: 12 }}
-                        onClick={e => { e.stopPropagation(); router.push(`/report/${a.id}`) }}
-                      >
-                        Открыть →
-                      </button>
+                      <>
+                        <button
+                          className="btn btn-ghost"
+                          style={{ padding: '7px 14px', fontSize: 12 }}
+                          onClick={e => { e.stopPropagation(); router.push(`/report/${a.id}`) }}
+                        >
+                          Открыть →
+                        </button>
+                        <a
+                          href={`/api/assessments/${a.id}/pdf`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-ghost"
+                          style={{ padding: '7px 14px', fontSize: 12, textDecoration: 'none' }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          Скачать PDF
+                        </a>
+                      </>
                     ) : (
                       <button className="btn btn-soft" style={{ padding: '7px 14px', fontSize: 12 }}
                         onClick={e => { e.stopPropagation(); router.push('/assessment/start') }}>
