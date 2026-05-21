@@ -15,7 +15,7 @@ from app.config import get_settings
 from app.db import get_db
 from app.models import Assessment, Report, Strategy, User
 from app.pdf import generate_pdf, build_report_html
-from app.schemas import AssessmentCreate, AssessmentOut, ReportOut
+from app.schemas import AssessmentCreate, AssessmentOut, ReportOut, StrategyOut
 
 settings = get_settings()
 router = APIRouter(prefix="/api/assessments", tags=["assessments"])
@@ -52,7 +52,6 @@ async def create_assessment(
     db.add(assessment)
     await db.flush()
 
-    # Перезагружаем с reports для корректного response_model
     result = await db.execute(
         select(Assessment)
         .where(Assessment.id == assessment.id)
@@ -72,7 +71,20 @@ async def list_assessments(
         .options(selectinload(Assessment.reports))
         .order_by(Assessment.created_at.desc())
     )
-    return result.scalars().all()
+    assessments = result.scalars().all()
+
+    # Подгружаем image_url стратегии для каждого assessment
+    out = []
+    for a in assessments:
+        item = AssessmentOut.model_validate(a)
+        if a.method1_combination:
+            strategy = await db.scalar(
+                select(Strategy).where(Strategy.combination == a.method1_combination)
+            )
+            if strategy:
+                item.strategy_image_url = strategy.image_url
+        out.append(item)
+    return out
 
 
 @router.get("/{assessment_id}", response_model=AssessmentOut)
@@ -91,7 +103,6 @@ async def get_assessment(
     if not assessment:
         raise HTTPException(status_code=404, detail="Диагностика не найдена")
 
-    # Только владелец или администратор
     if assessment.user_id != user.id and user.role != "admin":
         raise HTTPException(status_code=403, detail="Нет доступа")
 
@@ -117,7 +128,6 @@ async def delete_assessment(
     if assessment.user_id != user.id and user.role != "admin":
         raise HTTPException(status_code=403, detail="Нет доступа")
 
-    # Удаляем PDF-файлы с диска
     for report in assessment.reports:
         if report.pdf_path:
             try:
@@ -136,7 +146,6 @@ async def generate_report_on_demand(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Генерирует PDF отчёт по запросу и возвращает его запись."""
     from app.schemas import ReportOut as ReportOutSchema
 
     result = await db.execute(
@@ -151,11 +160,9 @@ async def generate_report_on_demand(
     if assessment.user_id != user.id and user.role != "admin":
         raise HTTPException(status_code=403, detail="Нет доступа")
 
-    # Если отчёт уже есть — возвращаем существующий
     if assessment.reports:
         return assessment.reports[0]
 
-    # Подготавливаем данные
     combination = assessment.method1_combination
     company_name = assessment.company_name or user.company_name or "Компания"
     user_name = user.full_name or ""
@@ -204,10 +211,6 @@ async def stream_pdf_on_demand(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Генерирует PDF «на лету» и возвращает его в браузер без сохранения на диск.
-    Открывается в новой вкладке (Content-Disposition: inline).
-    """
     result = await db.execute(
         select(Assessment).where(Assessment.id == assessment_id)
     )
@@ -241,7 +244,6 @@ async def stream_pdf_on_demand(
         method2_data=method2_data,
     )
 
-    # Генерируем во временный файл, читаем байты, удаляем
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
     os.close(tmp_fd)
     try:
@@ -263,3 +265,31 @@ async def stream_pdf_on_demand(
         },
     )
 
+
+@router.get("/{assessment_id}/strategy", response_model=StrategyOut)
+async def get_assessment_strategy(
+    assessment_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Assessment).where(Assessment.id == assessment_id)
+    )
+    assessment = result.scalar_one_or_none()
+
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Диагностика не найдена")
+    if assessment.user_id != user.id and user.role != "admin":
+        raise HTTPException(status_code=403, detail="Нет доступа")
+
+    combination = assessment.method1_combination
+    if not combination:
+        raise HTTPException(status_code=404, detail="Стратегия для этого типа диагностики не применима")
+
+    strategy = await db.scalar(
+        select(Strategy).where(Strategy.combination == combination)
+    )
+    if not strategy:
+        raise HTTPException(status_code=404, detail="Стратегия не найдена")
+
+    return strategy

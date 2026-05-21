@@ -5,6 +5,53 @@ import { getMe, listAssessments, logout, type AuthUser, type Assessment } from '
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
 
+// ── Hexagram data ─────────────────────────────────────────────────────────────
+const HEX_INFO: Record<string, [number, string]> = {
+  'AAAAAA':[1,'Действие'],'BBBBBB':[2,'Реакция'],'ABBBAB':[3,'Появление'],
+  'BABBBA':[4,'Формализация'],'AAABAB':[5,'Бдительность'],'BABAAA':[6,'Раздор'],
+  'BABBBB':[7,'Управление'],'BBBBAB':[8,'Объединение'],'AAABAA':[9,'Развитие'],
+  'AABAAA':[10,'Последовательность'],'AAABBB':[11,'Достижение'],'BBBAAA':[12,'Препятствие'],
+  'ABAAAA':[13,'Осознанность'],'AAAABA':[14,'Процветание'],'BBABBB':[15,'Смирение'],
+  'BBBABB':[16,'Радость'],'ABBAAB':[17,'Соответствие'],'BAABBA':[18,'Диссонанс'],
+  'AABBBB':[19,'Подход'],'BBBBAA':[20,'Наблюдать'],'ABBABA':[21,'Устранять'],
+  'ABABBA':[22,'Изящество'],'BBBBBA':[23,'Разрушение'],'ABBBBB':[24,'Возрождение'],
+  'ABBAAA':[25,'Естественность'],'AAABBA':[26,'Изобилие'],'ABBBBA':[27,'Умеренность'],
+  'BAAAAB':[28,'Избыток'],'BABBAB':[29,'Решимость'],'ABAABA':[30,'Великолепие'],
+  'BBAAAB':[31,'Влияние'],'BAAABB':[32,'Выносливость'],'BBAAAA':[33,'Благоразумие'],
+  'AAAABB':[34,'Сила'],'BBBABA':[35,'Благоприятный'],'ABABBB':[36,'Неблагоприятный'],
+  'ABABAA':[37,'Гармония'],'AABABA':[38,'Полярность'],'BBABAB':[39,'Трудность'],
+  'BABABB':[40,'Избавление'],'AABBBA':[41,'Убыток'],'ABBBAA':[42,'Прибыль'],
+  'AAAAAB':[43,'Прорыв'],'BAAAAA':[44,'Встреча'],'BBBAAB':[45,'Объединение'],
+  'BAABBB':[46,'Самоотдача'],'BABAAB':[47,'Понимание'],'BAABAB':[48,'Глубина'],
+  'ABAAAB':[49,'Реформа'],'BAAABA':[50,'Ценности'],'ABBABB':[51,'Смелость'],
+  'BBABBA':[52,'Сосредоточенность'],'BBABAA':[53,'Готовность'],'AABABB':[54,'Амбиции'],
+  'ABAABB':[55,'Изобилие'],'BBAABA':[56,'Стимулирование'],'BABBAA':[57,'Интуиция'],
+  'AABAAB':[58,'Бодрость'],'BAABAA':[59,'Установление связей'],'AABBAB':[60,'Реализм'],
+  'AABBAA':[61,'Внутренняя правда'],'BBAABB':[62,'Точность'],'ABABAB':[63,'Завершение'],
+  'BABABA':[64,'Незавершённость'],
+}
+
+function hexSymbol(combo: string): string {
+  const info = HEX_INFO[combo]
+  if (!info) return '䷀'
+  return String.fromCodePoint(0x4DC0 + info[0] - 1)
+}
+
+
+
+function hexName(combo: string): string {
+  return HEX_INFO[combo]?.[1] ?? combo
+}
+
+function getTitle(a: Assessment): string {
+  if (a.status !== 'completed' && a.status !== 'paid') return 'Незавершённая диагностика'
+  const company = a.company_name || ''
+  if (a.method2_data !== null && Object.keys(a.method2_data ?? {}).length > 0) {
+    return company ? `Бизнес-модель · ${company}` : 'Бизнес-модель'
+  }
+  return company ? `Стратегический отчёт · ${company}` : 'Стратегический отчёт'
+}
+
 export default function ReportsPage() {
   const router = useRouter()
   const [user, setUser] = useState<AuthUser | null>(null)
@@ -85,44 +132,64 @@ export default function ReportsPage() {
             </div>
           ) : (
             <div style={S.list}>
-              {assessments.map((a, i) => (
-                <div key={a.id}
-                  style={{ ...S.card, cursor: (a.status === 'completed' || a.status === 'paid') ? 'pointer' : 'default' }}
-                  onClick={() => (a.status === 'completed' || a.status === 'paid') && router.push(`/report/${a.id}`)}>
-                  <div style={S.cardNum}>{String(i + 1).padStart(2, '0')}</div>
-                  <div style={S.cardHex}>{a.method1_combination || '——'}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={S.cardMeta}>
-                      {a.method1_combination} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {assessments.map((a, i) => {
+                const combo = a.method1_combination ?? ''
+                const isMethod2 = !!a.method2_data && Object.keys(a.method2_data).length > 0
+                const isDone = a.status === 'completed' || a.status === 'paid'
+                return (
+                  <div key={a.id}
+                    style={{ ...S.card, cursor: isDone ? 'pointer' : 'default' }}
+                    onClick={() => isDone && router.push(`/report/${a.id}`)}>
+
+                    {/* Номер */}
+                    <div style={S.cardNum}>{String(i + 1).padStart(2, '0')}</div>
+
+                    {/* Символ гексаграммы */}
+                    <div style={S.cardHex}>
+                      {isMethod2
+                        ? <span style={{ fontSize: 36, fontFamily: 'Georgia,serif', color: '#1e3a8a' }}>☯</span>
+                        : a.strategy_image_url
+                          ? <img src={`${API}${a.strategy_image_url}`} alt="" style={{ width: 52, height: 52, objectFit: 'contain' }} />
+                          : combo
+                            ? <span style={{ fontFamily: 'Georgia,serif', fontSize: 48, color: '#1e3a8a', lineHeight: 1 }}>{hexSymbol(combo)}</span>
+                            : <span style={{ fontFamily: 'monospace', fontSize: 13, color: 'rgba(26,37,64,0.3)' }}>——</span>
+                      }
                     </div>
-                    <div style={S.cardTitle}>
-                      {a.status === 'completed' || a.status === 'paid'
-                        ? (a.method2_data !== null
-                            ? `Бизнес-модель${a.method1_combination ? ' · ' + a.method1_combination : ''}`
-                            : `Стратегический отчёт${a.method1_combination ? ' · ' + a.method1_combination : ''}`)
-                        : 'Незавершённая диагностика'}
+
+                    {/* Основной текст */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={S.cardMeta}>
+                        {combo && !isMethod2
+                          ? `${hexName(combo)} · `
+                          : ''
+                        }
+                        {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <div style={S.cardTitle}>{getTitle(a)}</div>
+                      <div style={S.cardDetail}>
+                        {a.reports.length > 0 ? `${a.reports.length} отчёт сформирован` : isDone ? 'Отчёт формируется' : 'Черновик'}
+                      </div>
                     </div>
-                    <div style={S.cardDetail}>
-                      {a.reports.length > 0 ? `${a.reports.length} отчёт сформирован` : 'Отчёт формируется'}
+
+                    {/* Действия */}
+                    <div style={S.cardActions}>
+                      <span style={isDone ? S.pillDone : S.pillDraft}>
+                        {isDone ? 'Завершено' : 'Черновик'}
+                      </span>
+                      {a.reports.length > 0 ? (
+                        <a href={`${API}/api/reports/${a.reports[0].id}/download`} target="_blank" rel="noreferrer"
+                          style={S.btnGhost} onClick={e => e.stopPropagation()}>
+                          Скачать PDF
+                        </a>
+                      ) : a.status === 'draft' ? (
+                        <button style={S.btnSoft} onClick={e => { e.stopPropagation(); router.push('/assessment') }}>Продолжить →</button>
+                      ) : (
+                        <button style={S.btnSoft} onClick={e => { e.stopPropagation(); router.push(`/report/${a.id}`) }}>Смотреть отчёт →</button>
+                      )}
                     </div>
                   </div>
-                  <div style={S.cardActions}>
-                    <span style={a.status === 'completed' || a.status === 'paid' ? S.pillDone : S.pillDraft}>
-                      {a.status === 'completed' || a.status === 'paid' ? 'Готов' : 'Черновик'}
-                    </span>
-                    {a.reports.length > 0 ? (
-                      <a href={`${API}/api/reports/${a.reports[0].id}/download`} target="_blank" rel="noreferrer"
-                        style={S.btnGhost} onClick={e => e.stopPropagation()}>
-                        Скачать PDF
-                      </a>
-                    ) : a.status === 'draft' ? (
-                      <button style={S.btnSoft} onClick={e => { e.stopPropagation(); router.push('/assessment') }}>Продолжить →</button>
-                    ) : (
-                      <span style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)' }}>Генерация...</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -166,10 +233,10 @@ const S: Record<string, React.CSSProperties> = {
   grid: { maxWidth: 1200, margin: '0 auto', padding: '0 60px 60px', display: 'grid', gridTemplateColumns: '1fr 320px', gap: 32 },
   listHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   list: { display: 'flex', flexDirection: 'column', gap: 14 },
-  card: { background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '22px 26px', display: 'grid', gridTemplateColumns: '34px 90px 1fr auto', gap: 18, alignItems: 'center' },
+  card: { background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '22px 26px', display: 'grid', gridTemplateColumns: '34px 70px 1fr auto', gap: 18, alignItems: 'center' },
   cardNum: { fontFamily: 'Georgia,serif', fontSize: 22, color: '#c0392b', textAlign: 'center' as const, lineHeight: '1' },
-  cardHex: { fontFamily: 'monospace', fontSize: 13, color: '#1e3a8a', textAlign: 'center' as const, letterSpacing: 2, fontWeight: 700 },
-  cardMeta: { fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)', letterSpacing: 1, textTransform: 'uppercase' as const, marginBottom: 6 },
+  cardHex: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: 56 },
+  cardMeta: { fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)', letterSpacing: 0.5, marginBottom: 6 },
   cardTitle: { fontFamily: 'Georgia,serif', fontSize: 17, color: '#1a2540', marginBottom: 4, fontWeight: 400 },
   cardDetail: { fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.6)', lineHeight: 1.5 },
   cardActions: { display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 8 },

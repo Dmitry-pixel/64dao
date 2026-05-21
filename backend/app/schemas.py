@@ -8,12 +8,10 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 class LoginRequest(BaseModel):
-    """Шаг 1 OTP-flow: только email. Пароль не нужен."""
     email: EmailStr
 
 
 class VerifyOTPRequest(BaseModel):
-    """Шаг 2 OTP-flow: email + 5-значный код. user_id НЕ передаём с фронта."""
     email: EmailStr
     code:  str = Field(min_length=5, max_length=5, pattern=r"^\d{5}$")
 
@@ -23,7 +21,6 @@ class ResendOTPRequest(BaseModel):
 
 
 class RegisterRequest(BaseModel):
-    """Регистрация с паролем — используется при первичной регистрации."""
     email:        EmailStr
     password:     str = Field(min_length=8, max_length=128)
     full_name:    str = Field(min_length=1, max_length=255)
@@ -102,6 +99,7 @@ class AssessmentOut(BaseModel):
     status:              str
     created_at:          datetime
     reports:             list[ReportOut] = []
+    strategy_image_url:  str | None = None
 
 
 # ── Strategies ────────────────────────────────────────────────────────────────
@@ -126,7 +124,6 @@ class StrategyCreate(BaseModel):
     transition_title:           str | None = None
     transition_lifecycle_stage: str | None = None
     transition_description:     str | None = None
-    # Предположения для связи с будущим
     assm_planning:              str | None = None
     assm_growth:                str | None = None
     assm_advertising:           str | None = None
@@ -178,7 +175,6 @@ class StrategyOut(BaseModel):
     transition_lifecycle_stage: str | None
     transition_description:     str | None
     image_url:                  str | None
-    # Предположения для связи с будущим
     assm_planning:              str | None
     assm_growth:                str | None
     assm_advertising:           str | None
@@ -209,12 +205,12 @@ class StrategyListItem(BaseModel):
 # ── Admin ─────────────────────────────────────────────────────────────────────
 
 class LogEntry(BaseModel):
-    type:       str           # "user" | "assessment" | "report"
-    timestamp:  str           # ISO datetime string
+    type:       str
+    timestamp:  str
     user_email: str
     user_name:  str | None
     detail:     str
-    sub:        str | None = None   # доп. подробность (комбинация, статус)
+    sub:        str | None = None
 
 
 class AdminSetupRequest(BaseModel):

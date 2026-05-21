@@ -23,7 +23,6 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    // FastAPI возвращает detail при HTTPException, error при нашем обработчике
     throw new ApiError(res.status, body.detail ?? body.error ?? 'Request failed')
   }
 
@@ -33,11 +32,6 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
-/**
- * Шаг 1: отправляем ТОЛЬКО email.
- * Бэкенд находит пользователя, генерирует OTP, отправляет на почту.
- * Никакого пароля — чистый OTP-flow.
- */
 export async function sendOTP(email: string) {
   return request<{ message: string }>('/api/auth/login', {
     method: 'POST',
@@ -45,11 +39,6 @@ export async function sendOTP(email: string) {
   })
 }
 
-/**
- * Шаг 2: отправляем email + код.
- * Бэкенд верифицирует OTP, ставит httpOnly-куку auth-token.
- * userId НЕ передаём — сервер идентифицирует по email.
- */
 export async function verifyOTP(email: string, code: string) {
   return request<{ success: boolean; role: string }>('/api/auth/verify', {
     method: 'POST',
@@ -83,7 +72,6 @@ export async function logout() {
   return request<{ message: string }>('/api/auth/logout', { method: 'POST' })
 }
 
-// Module-level cache so multiple components (AppNav + page) share one request
 let _meCache: AuthUser | null = null
 let _meFetching: Promise<AuthUser> | null = null
 
@@ -118,6 +106,7 @@ export async function register(data: {
 // ── Assessments ───────────────────────────────────────────────────────────────
 
 export async function createAssessment(data: {
+  method?: 'method1' | 'method2'
   method1_answers?: Record<string, string>
   method1_combination?: string | null
   method2_data?: Record<string, { score: number; text: string }>
@@ -150,7 +139,6 @@ export async function generateReport(assessmentId: string) {
   return request<ReportOut>(`/api/assessments/${assessmentId}/generate-report`, { method: 'POST' })
 }
 
-/** URL для открытия PDF в новой вкладке браузера (без сохранения на диск). */
 export function assessmentPdfUrl(assessmentId: string) {
   return `${API}/api/assessments/${assessmentId}/pdf`
 }
@@ -200,6 +188,10 @@ export async function getStrategyByCombo(combination: string) {
   return request<Strategy>(`/api/strategies/${combination}`)
 }
 
+export async function getAssessmentStrategy(assessmentId: string) {
+  return request<Strategy>(`/api/assessments/${assessmentId}/strategy`)
+}
+
 export interface Strategy {
   id: string
   combination: string
@@ -222,7 +214,6 @@ export interface Strategy {
   transition_lifecycle_stage: string | null
   transition_description: string | null
   image_url: string | null
-  // Предположения (связи с будущим)
   assm_planning: string | null
   assm_growth: string | null
   assm_advertising: string | null
@@ -282,10 +273,12 @@ export interface LogEntry {
 export interface Assessment {
   id: string
   user_id: string
+  method: 'method1' | 'method2' | null
   method1_combination: string | null
   method2_data: Record<string, { score: number; text: string }> | null
   company_name: string | null
   status: 'draft' | 'completed' | 'paid'
   created_at: string
   reports: ReportOut[]
+  strategy_image_url: string | null
 }

@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { createAssessment } from '@/lib/api'
 import { AppNav } from '@/components/AppNav'
 
-// Маппинг комбинации → номер гексаграммы (по данным проекта)
 const HEXAGRAM_DATA: { n: number; combo: string }[] = [
   {n:1,combo:'AAAAAA'},{n:2,combo:'BBBBBB'},{n:3,combo:'ABBBAB'},{n:4,combo:'BABBBA'},
   {n:5,combo:'AAABAB'},{n:6,combo:'BABAAA'},{n:7,combo:'BABBBB'},{n:8,combo:'BBBBAB'},
@@ -97,7 +96,6 @@ export default function Method1Page() {
       setStep(step + 1)
       setPicked(newAnswers[step + 1] ?? 'A')
     } else {
-      // Последний вопрос — сохраняем
       submit(newAnswers)
     }
   }
@@ -114,6 +112,7 @@ export default function Method1Page() {
     const combo = Object.values(finalAnswers).join('')
     try {
       const assessment = await createAssessment({
+        method: 'method1',
         method1_answers: Object.fromEntries(
           Object.entries(finalAnswers).map(([k, v]) => [String(Number(k) + 1), v])
         ),
