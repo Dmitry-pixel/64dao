@@ -110,7 +110,7 @@ export default function DashboardPage() {
                 <div
                   key={a.id}
                   className="dash-card"
-                  onClick={() => a.status === 'completed' && a.method1_combination ? router.push(`/report/${a.id}`) : undefined}
+                  onClick={() => a.status === 'completed' ? router.push(`/report/${a.id}`) : undefined}
                 >
                   <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
                   <div className="hex-block">{a.method2_data && !a.method1_combination ? '䷿' : hexFor(a.method1_combination ?? '')}</div>
@@ -122,7 +122,7 @@ export default function DashboardPage() {
                       {a.status === 'completed'
                         ? (a.method2_data && !a.method1_combination
                             ? `Бизнес-модель · ${a.company_name || user?.company_name || 'Компания'}`
-                            : `Стратегия · ${a.company_name || user?.company_name || 'Компания'}`)
+                            : `Стратегический профиль компании · ${a.company_name || user?.company_name || 'Компания'}`)
                         : 'Диагностика в процессе'}
                     </div>
                     <div className="dash-detail">{a.status === 'draft' ? 'Черновик' : 'Завершено'}</div>
