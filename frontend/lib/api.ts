@@ -227,6 +227,11 @@ export interface Strategy {
   assm_sync: string | null
   assm_creative: string | null
   assm_interaction: string | null
+  assm_resources: string | null
+  assm_research: string | null
+  assm_trade: string | null
+  assm_failures: string | null
+  assm_success: string | null
   is_published: boolean
   updated_at: string
 }
