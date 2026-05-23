@@ -150,7 +150,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <div className="dash-meta">
-                      {a.method2_data && !a.method1_combination ? 'Метод 2 · Бизнес-модель' : hexNameFor(a.method1_combination ?? '')} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {a.method2_data && !a.method1_combination ? 'Метод 2 · Бизнес-модель' : `${hexNameFor(a.method1_combination ?? '')} · Метод 1 Диагностика`} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </div>
                     <div className="dash-title">
                       {a.status === 'completed'
