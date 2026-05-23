@@ -69,6 +69,6 @@ async def upsert_strategy(
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(strategy, field, value)
 
-    await db.commit()
+    await db.flush()
     await db.refresh(strategy)
     return strategy

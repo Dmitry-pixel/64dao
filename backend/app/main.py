@@ -11,13 +11,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from app.limiter import limiter
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from app.config import get_settings
 from app.pdf import close_browser
-from app.routers import auth, assessments, reports, admin
+from app.routers import auth, assessments, reports, admin, strategies
 
 settings = get_settings()
 
@@ -30,7 +28,6 @@ logger = logging.getLogger(__name__)
 # ── Rate limiter (in-memory) ──────────────────────────────────────────────────
 # Переключение на Redis одной строкой:
 # limiter = Limiter(key_func=get_remote_address, storage_uri="redis://localhost:6379")
-
 
 
 @asynccontextmanager
@@ -83,6 +80,7 @@ app.include_router(auth.router)
 app.include_router(assessments.router)
 app.include_router(reports.router)
 app.include_router(admin.router)
+app.include_router(strategies.router)
 
 # ── Static uploads ────────────────────────────────────────────────────────────
 uploads_parent = str(Path(settings.uploads_dir).parent)

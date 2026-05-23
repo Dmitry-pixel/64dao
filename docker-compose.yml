@@ -78,7 +78,8 @@ services:
       - ./frontend/.env.local
     environment:
       NODE_ENV:               production
-      NEXT_PUBLIC_API_URL:    ${APP_URL:-http://localhost}/api
+      # NEXT_PUBLIC_API_URL — build-time переменная, задаётся через build.args выше.
+      # Runtime env для NEXT_PUBLIC_* не применяется (бакается в JS-бандл при сборке).
     networks:
       - internal
     depends_on:
