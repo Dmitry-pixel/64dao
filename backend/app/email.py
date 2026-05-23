@@ -134,3 +134,22 @@ async def send_welcome_email(to: str, name: str) -> None:
         logger.info("=== DEBUG WELCOME === email=%s name=%s ===", to, name)
         return
     await _send_message(to, subject, _wrap_html(body))
+
+
+async def send_support_email(from_email: str, from_name: str | None, message: str) -> None:
+    """Отправляет сообщение пользователя на адрес поддержки (smtp_from_address)."""
+    admin_email = settings.smtp_from_address
+    if not admin_email:
+        logger.warning("send_support_email: smtp_from_address не настроен")
+        return
+    name_display = from_name or from_email
+    subject = f"Поддержка 64DAO — сообщение от {name_display}"
+    body_html = (
+        f"<p><b>От:</b> {name_display} ({from_email})</p>"
+        f"<p><b>Сообщение:</b></p>"
+        f"<p style='white-space:pre-wrap;'>{message}</p>"
+    )
+    if settings.debug:
+        logger.info("=== DEBUG SUPPORT === from=%s message=%s ===", from_email, message)
+        return
+    await _send_message(admin_email, subject, _wrap_html(body_html))

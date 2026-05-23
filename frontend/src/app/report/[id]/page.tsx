@@ -489,7 +489,10 @@ function Method2Report({
 
   const blocks = BMC_ORDER
     .filter(key => method2?.[key])
-    .map(key => ({ title: key, num: BMC_LABELS[key] ?? '', ...method2![key] }))
+    .map(key => {
+      const b = method2![key]
+      return { title: key, num: BMC_LABELS[key] ?? '', score: Math.round(Number(b.score)) || 0, text: b.text ?? '' }
+    })
 
   return (
     <div style={{ maxWidth: 820, margin: '0 auto', padding: '48px 40px 80px' }}>

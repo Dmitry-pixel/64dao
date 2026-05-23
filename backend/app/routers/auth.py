@@ -14,7 +14,7 @@ from app.auth import (
     get_current_user,
 )
 from app.db import get_db
-from app.email import send_otp_email, send_welcome_email, send_forgot_password_email
+from app.email import send_otp_email, send_welcome_email, send_forgot_password_email, send_support_email
 from app.limiter import limiter
 from app.models import User
 from app.schemas import (
@@ -217,3 +217,29 @@ async def logout(response: Response):
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)):
     return user
+
+
+# ── Support ───────────────────────────────────────────────────────────────────
+
+from pydantic import BaseModel as _BaseModel
+
+class SupportRequest(_BaseModel):
+    message: str
+
+@router.post("/support", response_model=SuccessResponse)
+async def support(
+    body: SupportRequest,
+    user: User = Depends(get_current_user),
+):
+    if not body.message.strip():
+        raise HTTPException(status_code=400, detail="Сообщение не может быть пустым")
+    try:
+        await send_support_email(
+            from_email=user.email,
+            from_name=user.full_name,
+            message=body.message.strip(),
+        )
+    except Exception as exc:
+        logger.error("send_support_email failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Не удалось отправить сообщение")
+    return SuccessResponse(message="Сообщение отправлено")

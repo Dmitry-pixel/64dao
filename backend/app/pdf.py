@@ -106,7 +106,12 @@ def _score_bar(score: int) -> str:
         f'margin-right:3px;background:{"#1e3a8a" if n <= score else "#e5e7eb"};"></span>'
         for n in range(1, 6)
     )
-    return f'<div style="margin-bottom:6px;">{bars}</div>'
+    return (
+        f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
+        f'{bars}'
+        f'<span style="font-size:11px;color:rgba(26,37,64,0.5);font-family:Arial,sans-serif;">{score}&nbsp;/&nbsp;5</span>'
+        f'</div>'
+    )
 
 
 def _table_rows(rows: list[tuple[str, str | None]]) -> str:
@@ -450,8 +455,8 @@ def build_report_html(
     bmc_comments = ""
     for label in BMC_KEYS:
         block = method2_data.get(label, {})
-        score = int(block.get("score", 0)) if block else 0
-        text  = str(block.get("text", "")) if block else ""
+        score = max(0, min(5, int(block.get("score") or 0))) if block else 0
+        text  = str(block.get("text") or "") if block else ""
         # Карточка оценки
         bmc_score_grid += f"""
         <div style="border:1px solid rgba(26,37,64,0.1);border-radius:5px;

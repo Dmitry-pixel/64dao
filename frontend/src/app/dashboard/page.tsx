@@ -33,6 +33,31 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [supportOpen, setSupportOpen] = useState(false)
+  const [supportText, setSupportText] = useState('')
+  const [supportSending, setSupportSending] = useState(false)
+  const [supportDone, setSupportDone] = useState(false)
+
+  const handleSupport = async () => {
+    if (!supportText.trim()) return
+    setSupportSending(true)
+    try {
+      const res = await fetch('/api/auth/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ message: supportText.trim() }),
+      })
+      if (!res.ok) throw new Error()
+      setSupportDone(true)
+      setSupportText('')
+      setTimeout(() => { setSupportOpen(false); setSupportDone(false) }, 2000)
+    } catch {
+      alert('Не удалось отправить сообщение. Попробуйте позже.')
+    } finally {
+      setSupportSending(false)
+    }
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -177,7 +202,7 @@ export default function DashboardPage() {
             <p className="faint" style={{ lineHeight: 1.6, marginBottom: 12 }}>
               Вопрос по отчёту или диагностике? Напишите нам — ответим в течение рабочего дня.
             </p>
-            <button className="btn btn-ghost" style={{ padding: '8px 14px', fontSize: 12 }}>Написать в поддержку</button>
+            <button className="btn btn-ghost" style={{ padding: '8px 14px', fontSize: 12 }} onClick={() => setSupportOpen(true)}>Написать в поддержку</button>
           </div>
           <div className="card-flat">
             <span className="label-red" style={{ display: 'block', marginBottom: 10 }}>Статистика</span>
@@ -197,6 +222,60 @@ export default function DashboardPage() {
         </aside>
       </div>
       {/* Диалог подтверждения удаления */}
+      {/* Модал поддержки */}
+      {supportOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => { setSupportOpen(false); setSupportDone(false) }}
+        >
+          <div
+            style={{ background: '#fff', borderRadius: 10, padding: '32px 36px', maxWidth: 460, width: '90%', boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 400, color: '#1a2540', margin: '0 0 8px' }}>Написать в поддержку</h3>
+            <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.55)', margin: '0 0 18px', lineHeight: 1.5 }}>
+              Опишите ваш вопрос — мы ответим в течение рабочего дня.
+            </p>
+            {supportDone ? (
+              <p style={{ fontFamily: 'sans-serif', fontSize: 14, color: '#1a7a4a', textAlign: 'center', padding: '16px 0' }}>
+                ✓ Сообщение отправлено
+              </p>
+            ) : (
+              <>
+                <textarea
+                  value={supportText}
+                  onChange={e => setSupportText(e.target.value)}
+                  placeholder="Ваш вопрос или проблема…"
+                  rows={5}
+                  style={{
+                    width: '100%', boxSizing: 'border-box', padding: '10px 14px',
+                    fontFamily: 'sans-serif', fontSize: 13, lineHeight: 1.6,
+                    border: '1px solid rgba(26,37,64,0.2)', borderRadius: 6,
+                    resize: 'vertical', outline: 'none', color: '#1a2540',
+                    marginBottom: 16,
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                  <button
+                    style={{ background: 'none', border: '1px solid rgba(26,37,64,0.2)', borderRadius: 6, padding: '9px 18px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', color: '#1a2540' }}
+                    onClick={() => setSupportOpen(false)}
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    style={{ background: '#1a2540', border: 'none', borderRadius: 6, padding: '9px 18px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', color: '#fff', opacity: supportSending || !supportText.trim() ? 0.5 : 1 }}
+                    disabled={supportSending || !supportText.trim()}
+                    onClick={handleSupport}
+                  >
+                    {supportSending ? 'Отправляем…' : 'Отправить'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {confirmId && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
