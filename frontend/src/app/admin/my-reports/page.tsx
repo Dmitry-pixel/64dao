@@ -131,7 +131,7 @@ export default function AdminMyReportsPage() {
                       {a.status === 'completed'
                         ? (isMethod2(a)
                             ? `Бизнес-модель${a.company_name ? ' · ' + a.company_name : ''}`
-                            : `Стратегия «${a.method1_combination ?? '—'}»`)
+                            : `Стратегический профиль компании · ${a.company_name || 'Компания'}`)
                         : 'Диагностика в процессе'}
                     </div>
                     <div className="dash-detail">{a.status === 'draft' ? 'Черновик' : 'Завершено'}</div>
