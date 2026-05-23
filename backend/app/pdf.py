@@ -141,8 +141,8 @@ CURRENT_STATE_LABELS = {
 }
 
 SCENARIO_LABELS = {
-    "innovation_strategy":   "Инновационная стратегия",
-    "innovation_type":       "Тип инновации",
+    "innovation_strategy":   "Стратегия изменений",
+    "innovation_type":       "Тип изменений",
     "value_discipline":      "Ценностная дисциплина",
     "leadership_principles": "Принципы лидерства",
     "growth_strategy":       "Стратегия роста",

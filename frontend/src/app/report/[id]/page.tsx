@@ -75,8 +75,8 @@ const LC_FIELDS: [keyof Strategy, string][] = [
 ]
 
 const SCENARIO_KEYS: [string, string][] = [
-  ['innovation_strategy',   'Инновационная стратегия'],
-  ['innovation_type',       'Тип инновации'],
+  ['innovation_strategy',   'Стратегия изменений'],
+  ['innovation_type',       'Тип изменений'],
   ['value_discipline',      'Ценностная дисциплина'],
   ['leadership_principles', 'Принципы лидерства'],
   ['growth_strategy',       'Стратегия роста'],
