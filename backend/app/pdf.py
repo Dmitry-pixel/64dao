@@ -75,11 +75,12 @@ def e(text: str | None) -> str:
 
 
 # ── SVG hexagram (font-independent, matches HexagramSVG component) ────────────
-def _hexagram_svg(combination: str, size: int = 90, color: str = "rgba(26,37,64,0.75)") -> str:
+def _hexagram_svg(combination: str, size: int = 110, color: str = "#1a2540") -> str:
     """
     Генерирует inline SVG гексаграммы по той же логике, что HexagramSVG во фронтенде.
     i=0 = нижняя линия (line 1), i=5 = верхняя (line 6).
     y = y_offset + (5 - i) * step → line 6 визуально сверху, line 1 снизу.
+    Используем solid hex цвет (без rgba) для надёжного рендера в Playwright PDF.
     """
     line_h = size * 0.10
     gap    = size * 0.06
@@ -112,7 +113,7 @@ def _hexagram_svg(combination: str, size: int = 90, color: str = "rgba(26,37,64,
 
     return (
         f'<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" '
-        f'xmlns="http://www.w3.org/2000/svg">'
+        f'xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;">'
         + "".join(rects)
         + "</svg>"
     )
@@ -543,11 +544,11 @@ def build_report_html(
         hex_entry = _HEXAGRAM_BY_COMBO.get(combination)
         if hex_entry and combination:
             _, hex_name_str = hex_entry
-            svg = _hexagram_svg(combination, size=90)
+            svg = _hexagram_svg(combination, size=110)
             cover_combo = (
-                f'<div style="margin-top:28px;">'
-                f'<div style="margin-bottom:10px;">{svg}</div>'
-                f'<div style="font-size:12px;color:rgba(26,37,64,0.5);font-family:Arial,sans-serif;'
+                f'<div style="margin-top:28px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+                f'<div style="margin-bottom:10px;display:block;">{svg}</div>'
+                f'<div style="font-size:12px;color:#8a94b0;font-family:Arial,sans-serif;'
                 f'letter-spacing:2px;font-weight:600;">{e(hex_name_str)}</div>'
                 f'</div>'
             )
