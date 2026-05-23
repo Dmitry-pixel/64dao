@@ -2,8 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { adminApi, getMe } from '@/lib/api'
-import { hexFor } from '@/components/AdminNav'
-import { AdminNav, AdminSide } from '@/components/AdminNav'
+import { hexFor, hexNameFor, AdminNav, AdminSide } from '@/components/AdminNav'
 
 function PurchasesChart({ data }: { data: { date: string; count: number; amount: number }[] }) {
   if (!data || data.length === 0) return null
@@ -202,7 +201,7 @@ export default function AdminStatsPage() {
                     <tr key={a.id}>
                       <td>
                         <span className="hex hex-sm">{hexFor(a.method1_combination ?? '')}</span>
-                        {' '}<span style={{ fontFamily: 'monospace', fontSize: 12 }}>{a.method1_combination ?? '—'}</span>
+                        {' '}<span style={{ fontFamily: 'sans-serif', fontSize: 13 }}>{hexNameFor(a.method1_combination ?? '')}</span>
                       </td>
                       <td>
                         <span className={`pill pill-${a.status}`}>{a.status}</span>

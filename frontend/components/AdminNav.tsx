@@ -7,10 +7,40 @@ import { Logo } from '@/components/Logo'
 
 const HEX_TRIGRAMS = ['䷀','䷁','䷂','䷃','䷄','䷅','䷆','䷇','䷈','䷉','䷊','䷋','䷌','䷍','䷎','䷏','䷐','䷑','䷒','䷓','䷔','䷕','䷖','䷗','䷘','䷙','䷚','䷛','䷜','䷝','䷞','䷟','䷠','䷡','䷢','䷣','䷤','䷥','䷦','䷧','䷨','䷩','䷪','䷫','䷬','䷭','䷮','䷯','䷰','䷱','䷲','䷳','䷴','䷵','䷶','䷷','䷸','䷹','䷺','䷻','䷼','䷽','䷾','䷿']
 
+const HEX_NAMES: Record<string, string> = {
+  'AAAAAA':'Действие','BBBBBB':'Реакция','ABBBAB':'Появление',
+  'BABBBA':'Формализация','AAABAB':'Бдительность','BABAAA':'Раздор',
+  'BABBBB':'Управление','BBBBAB':'Объединение','AAABAA':'Развитие',
+  'AABAAA':'Последовательность','AAABBB':'Достижение','BBBAAA':'Препятствие',
+  'ABAAAA':'Осознанность','AAAABA':'Процветание','BBABBB':'Смирение',
+  'BBBABB':'Радость','ABBAAB':'Соответствие','BAABBA':'Диссонанс',
+  'AABBBB':'Подход','BBBBAA':'Наблюдать','ABBABA':'Устранять',
+  'ABABBA':'Изящество','BBBBBA':'Разрушение','ABBBBB':'Возрождение',
+  'ABBAAA':'Естественность','AAABBA':'Изобилие','ABBBBA':'Умеренность',
+  'BAAAAB':'Избыток','BABBAB':'Решимость','ABAABA':'Великолепие',
+  'BBAAAB':'Влияние','BAAABB':'Выносливость','BBAAAA':'Благоразумие',
+  'AAAABB':'Сила','BBBABA':'Благоприятный','ABABBB':'Неблагоприятный',
+  'ABABAA':'Гармония','AABABA':'Полярность','BBABAB':'Трудность',
+  'BABABB':'Избавление','AABBBA':'Убыток','ABBBAA':'Прибыль',
+  'AAAAAB':'Прорыв','BAAAAA':'Встреча','BBBAAB':'Объединение',
+  'BAABBB':'Самоотдача','BABAAB':'Понимание','BAABAB':'Глубина',
+  'ABAAAB':'Реформа','BAAABA':'Ценности','ABBABB':'Смелость',
+  'BBABBA':'Сосредоточенность','BBABAA':'Готовность','AABABB':'Амбиции',
+  'ABAABB':'Изобилие','BBAABA':'Стимулирование','BABBAA':'Интуиция',
+  'AABAAB':'Бодрость','BAABAA':'Установление связей','AABBAB':'Реализм',
+  'AABBAA':'Внутренняя правда','BBAABB':'Точность','ABABAB':'Завершение',
+  'BABABA':'Незавершённость',
+}
+
 export function hexFor(combo: string): string {
   if (!combo || combo.length !== 6) return '䷀'
   const idx = parseInt([...combo].map(c => c === 'B' ? '1' : '0').join(''), 2)
   return HEX_TRIGRAMS[idx] || '䷀'
+}
+
+export function hexNameFor(combo: string): string {
+  if (!combo || combo.length !== 6) return '—'
+  return HEX_NAMES[combo] ?? combo
 }
 
 interface AdminNavProps {
