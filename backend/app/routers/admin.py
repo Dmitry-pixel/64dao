@@ -397,27 +397,8 @@ async def list_all_assessments(
 
 
 # ── Impersonation ─────────────────────────────────────────────────────────────
-
-@router.post("/impersonate/{user_id}", response_model=SuccessResponse)
-async def start_impersonation(
-    user_id: str,
-    response: Response,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    """Админ входит в систему от лица указанного пользователя."""
-    target = await db.scalar(select(User).where(User.id == user_id))
-    if not target:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-    if target.role == "admin":
-        raise HTTPException(status_code=400, detail="Нельзя имперсонировать администратора")
-
-    token = create_impersonation_token(
-        str(target.id), target.email, target.role, str(admin.id)
-    )
-    set_auth_cookie(response, token)
-    return SuccessResponse(message=f"Вы вошли как {target.email}")
-
+# ВАЖНО: статический маршрут /impersonate/stop должен быть ВЫШЕ динамического
+# /impersonate/{user_id}, иначе FastAPI трактует "stop" как user_id.
 
 @router.post("/impersonate/stop", response_model=SuccessResponse)
 async def stop_impersonation(
@@ -442,6 +423,27 @@ async def stop_impersonation(
     new_token = create_token(str(admin.id), admin.email, admin.role)
     set_auth_cookie(response, new_token)
     return SuccessResponse(message="Вернулись в аккаунт администратора")
+
+
+@router.post("/impersonate/{user_id}", response_model=SuccessResponse)
+async def start_impersonation(
+    user_id: str,
+    response: Response,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Админ входит в систему от лица указанного пользователя."""
+    target = await db.scalar(select(User).where(User.id == user_id))
+    if not target:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if target.role == "admin":
+        raise HTTPException(status_code=400, detail="Нельзя имперсонировать администратора")
+
+    token = create_impersonation_token(
+        str(target.id), target.email, target.role, str(admin.id)
+    )
+    set_auth_cookie(response, token)
+    return SuccessResponse(message=f"Вы вошли как {target.email}")
 
 
 import json
