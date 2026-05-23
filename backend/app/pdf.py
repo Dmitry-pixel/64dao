@@ -74,6 +74,50 @@ def e(text: str | None) -> str:
     return html_lib.escape(text or "", quote=True)
 
 
+# ── SVG hexagram (font-independent, matches HexagramSVG component) ────────────
+def _hexagram_svg(combination: str, size: int = 90, color: str = "rgba(26,37,64,0.75)") -> str:
+    """
+    Генерирует inline SVG гексаграммы по той же логике, что HexagramSVG во фронтенде.
+    i=0 = нижняя линия (line 1), i=5 = верхняя (line 6).
+    y = y_offset + (5 - i) * step → line 6 визуально сверху, line 1 снизу.
+    """
+    line_h = size * 0.10
+    gap    = size * 0.06
+    step   = line_h + gap
+    total_h = 6 * line_h + 5 * gap
+    y_off  = (size - total_h) / 2
+    w      = size * 0.82
+    x0     = (size - w) / 2
+    brk    = w * 0.22
+    rx     = line_h / 4
+
+    rects: list[str] = []
+    for i, ch in enumerate(combination):
+        y = y_off + (5 - i) * step
+        if ch == "A":
+            rects.append(
+                f'<rect x="{x0:.2f}" y="{y:.2f}" width="{w:.2f}" '
+                f'height="{line_h:.2f}" fill="{color}" rx="{rx:.2f}"/>'
+            )
+        else:
+            half = (w - brk) / 2
+            rects.append(
+                f'<rect x="{x0:.2f}" y="{y:.2f}" width="{half:.2f}" '
+                f'height="{line_h:.2f}" fill="{color}" rx="{rx:.2f}"/>'
+            )
+            rects.append(
+                f'<rect x="{x0 + half + brk:.2f}" y="{y:.2f}" width="{half:.2f}" '
+                f'height="{line_h:.2f}" fill="{color}" rx="{rx:.2f}"/>'
+            )
+
+    return (
+        f'<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" '
+        f'xmlns="http://www.w3.org/2000/svg">'
+        + "".join(rects)
+        + "</svg>"
+    )
+
+
 # ── PDF generation ────────────────────────────────────────────────────────────
 async def generate_pdf(html_content: str, output_path: str) -> str:
     """
@@ -498,12 +542,11 @@ def build_report_html(
         cover_title = "Стратегический<br>профиль компании"
         hex_entry = _HEXAGRAM_BY_COMBO.get(combination)
         if hex_entry and combination:
-            hex_num, hex_name_str = hex_entry
-            hex_unicode = chr(0x4DC0 + hex_num - 1)
+            _, hex_name_str = hex_entry
+            svg = _hexagram_svg(combination, size=90)
             cover_combo = (
                 f'<div style="margin-top:28px;">'
-                f'<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:90px;'
-                f'line-height:1;color:rgba(26,37,64,0.75);margin-bottom:10px;">{hex_unicode}</div>'
+                f'<div style="margin-bottom:10px;">{svg}</div>'
                 f'<div style="font-size:12px;color:rgba(26,37,64,0.5);font-family:Arial,sans-serif;'
                 f'letter-spacing:2px;font-weight:600;">{e(hex_name_str)}</div>'
                 f'</div>'
