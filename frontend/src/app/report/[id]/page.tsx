@@ -278,41 +278,32 @@ function Method1Report({
         </div>
       )}
 
-      {/* ── 2. ЖИЗНЕННЫЙ ЦИКЛ ── */}
-      <Section label="Жизненный цикл">
-        {/* Stage badge */}
+      {/* ── 2. СТАДИЯ ЖИЗНЕННОГО ЦИКЛА ── */}
+      <Section label="Стадия жизненного цикла">
         {strategy?.lifecycle_stage ? (
           <div style={{
-            display: 'inline-block', padding: '3px 10px', borderRadius: 4,
-            fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
+            display: 'inline-block', padding: '5px 16px', borderRadius: 6,
+            fontFamily: 'sans-serif', fontSize: 14, letterSpacing: 0.5,
             background: 'rgba(192,57,43,0.08)', border: '1px solid rgba(192,57,43,0.2)',
-            color: '#c0392b', marginBottom: 14,
+            color: '#c0392b',
           }}>
             {strategy.lifecycle_stage}
           </div>
         ) : (
-          <div style={{ marginBottom: 14 }}>
-            <span style={{ ...S.empty }}>Стадия не указана</span>
-          </div>
+          <p style={S.empty}>Стадия не указана</p>
         )}
+      </Section>
 
-        {/* 6 LC blocks */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 20 }}>
+      {/* ── 3. ОПИСАНИЕ СТАДИИ (6 блоков ЖЦ) ── */}
+      <Section label="Описание стадии">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {lcBlocks.map((b, i) => (
             <div key={i} style={{
               background: 'rgba(255,255,255,0.5)',
               border: '1px solid rgba(26,37,64,0.1)',
               borderRadius: 8, padding: '12px 14px',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <span style={{
-                  width: 20, height: 20, borderRadius: '50%',
-                  background: b.letter === 'A' ? 'rgba(30,58,138,0.12)' : 'rgba(26,37,64,0.07)',
-                  border: `1px solid ${b.letter === 'A' ? 'rgba(30,58,138,0.25)' : 'rgba(26,37,64,0.15)'}`,
-                  color: b.letter === 'A' ? '#1e3a8a' : '#1a2540',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: 'monospace', fontSize: 10, fontWeight: 700, flexShrink: 0,
-                }}>{b.letter}</span>
+              <div style={{ marginBottom: 6 }}>
                 <span style={{
                   fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 1.2,
                   textTransform: 'uppercase', color: 'rgba(26,37,64,0.45)', fontWeight: 600,
@@ -327,8 +318,8 @@ function Method1Report({
         </div>
       </Section>
 
-      {/* ── 3. СЦЕНАРИЙ СТРАТАГЕМЫ (ТАБЛИЦА) ── */}
-      <Section label="Сценарий стратагемы">
+      {/* ── 4. ТАБЛИЦА СТРАТАГЕМЫ ── */}
+      <Section label="Таблица стратагемы">
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
             {scRows.map(([label, value], i) => (
@@ -353,7 +344,22 @@ function Method1Report({
         </table>
       </Section>
 
-      {/* ── 4. ПРЕДПОЛОЖЕНИЯ ── */}
+      {/* ── 5. СЦЕНАРИЙ РАЗВИТИЯ ── */}
+      <Section label="Сценарий развития">
+        <Val text={strategy?.scenario_text} />
+      </Section>
+
+      {/* ── 6. МАРКЕТИНГ ── */}
+      <Section label="Маркетинг">
+        <Val text={strategy?.marketing_text} />
+      </Section>
+
+      {/* ── 7. УПРАВЛЕНИЕ ── */}
+      <Section label="Управление">
+        <Val text={strategy?.management_text} />
+      </Section>
+
+      {/* ── 8. ПРЕДПОЛОЖЕНИЯ ── */}
       <Section label="Предположения · связи с будущим">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 0 }}>
           {ASSM_FIELDS.map(([field, label], i) => {
@@ -370,7 +376,7 @@ function Method1Report({
                 }}>{label}</div>
                 {val
                   ? <p style={S.body}>{val}</p>
-                  : <p style={S.empty}>Предположение не заполнено</p>
+                  : <p style={S.empty}>Не заполнено</p>
                 }
               </div>
             )
@@ -378,26 +384,32 @@ function Method1Report({
         </div>
       </Section>
 
-      {/* ── 5. ЦЕЛЕВОЕ СОСТОЯНИЕ (ПЕРЕХОД) ── */}
+      {/* ── 9. ЦЕЛЕВОЕ СОСТОЯНИЕ (ПЕРЕХОД) ── */}
       <Card style={{ border: '1px solid rgba(192,57,43,0.2)', background: 'rgba(192,57,43,0.04)' }}>
-        <EyebrowLabel>Целевое состояние · Переход</EyebrowLabel>
+        <EyebrowLabel>Переход</EyebrowLabel>
+        <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(26,37,64,0.4)', marginBottom: 16 }}>
+          Целевое состояние
+        </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, marginBottom: 16 }}>
           {targetHex && (
-            <div style={{ textAlign: 'center', flexShrink: 0, minWidth: 80 }}>
-              <div style={{ fontFamily: 'Georgia,serif', fontSize: 64, lineHeight: 1, color: '#1a2540', marginBottom: 6 }}>
+            <div style={{
+              background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(26,37,64,0.1)',
+              borderRadius: 10, padding: '16px 20px', textAlign: 'center', flexShrink: 0, minWidth: 100,
+            }}>
+              <div style={{ fontFamily: 'Georgia,serif', fontSize: 56, lineHeight: 1, color: '#1a2540', marginBottom: 8 }}>
                 {targetHex.symbol}
               </div>
-              <div style={{ fontFamily: 'sans-serif', fontSize: 10, color: '#c0392b', letterSpacing: 1, fontWeight: 600 }}>
+              <div style={{ fontFamily: 'sans-serif', fontSize: 9, color: '#c0392b', letterSpacing: 1.2, fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>
                 Гексаграмма {targetHex.num}
               </div>
-              <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.6)', marginTop: 3 }}>
+              <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)' }}>
                 {targetHex.name}
               </div>
             </div>
           )}
           <div style={{ flex: 1 }}>
             {strategy?.transition_title ? (
-              <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 400, color: '#1a2540', margin: '0 0 4px' }}>
+              <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 400, color: '#1a2540', margin: '0 0 8px' }}>
                 {strategy.transition_title}
               </h3>
             ) : (
@@ -412,12 +424,12 @@ function Method1Report({
                 {strategy.transition_lifecycle_stage}
               </div>
             )}
+            {strategy?.transition_description
+              ? <p style={{ ...S.body, marginTop: 8 }}>{strategy.transition_description}</p>
+              : <p style={S.empty}>Описание перехода не заполнено</p>
+            }
           </div>
         </div>
-        {strategy?.transition_description
-          ? <p style={S.body}>{strategy.transition_description}</p>
-          : <p style={S.empty}>Описание перехода не заполнено</p>
-        }
       </Card>
 
     </div>

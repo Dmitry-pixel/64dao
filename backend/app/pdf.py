@@ -400,15 +400,10 @@ def _lifecycle_blocks(strategy: Any, combination: str) -> str:
 
     blocks_html = ""
     for i, (field, label) in enumerate(_LC_LABELS):
-        letter = combination[i] if i < len(combination) else "A"
         value = (getattr(strategy, field, None) or "") if strategy else ""
-        badge_bg = "rgba(30,58,138,0.1)" if letter == "A" else "rgba(26,37,64,0.06)"
-        badge_color = "#1e3a8a" if letter == "A" else "#1a2540"
-        badge_border = "rgba(30,58,138,0.2)" if letter == "A" else "rgba(26,37,64,0.15)"
         blocks_html += f"""
 <div style="background:rgba(255,255,255,0.5);border:1px solid rgba(26,37,64,0.1);border-radius:6px;padding:12px 14px;">
-  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-    <span style="width:18px;height:18px;border-radius:50%;background:{badge_bg};border:1px solid {badge_border};color:{badge_color};display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:10px;font-weight:700;flex-shrink:0;">{letter}</span>
+  <div style="margin-bottom:6px;">
     <span style="font-size:9px;font-family:Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;color:rgba(26,37,64,0.45);font-weight:600;">{e(label)}</span>
   </div>
   <p style="font-size:12px;color:#1a2540;line-height:1.6;margin:0;font-family:Arial,sans-serif;">{e(value) if value else '<em style="opacity:0.35;">Не заполнено</em>'}</p>
@@ -508,9 +503,16 @@ def build_report_html(
         
 
 
-    # ── Страница 1 (только для Method 1) ──────────────────────────────────
+    # ── Страница 1 (только для Method 1): Жизненный цикл + Таблица ──────
     page1 = ""
     if not is_method2:
+        lifecycle_badge_html = (
+            f'<div style="display:inline-block;padding:4px 14px;border-radius:4px;font-size:13px;'
+            f'font-family:Arial,sans-serif;background:rgba(192,57,43,0.08);'
+            f'border:1px solid rgba(192,57,43,0.2);color:#c0392b;margin-bottom:20px;">'
+            f'{e(strategy.lifecycle_stage or "")}</div>'
+        ) if strategy and strategy.lifecycle_stage else ""
+
         page1 = f"""
 <div style="padding:40px 50px;page-break-after:always;background:#e8e4db;min-height:297mm;">
   <div style="display:flex;justify-content:space-between;align-items:center;
@@ -520,11 +522,12 @@ def build_report_html(
       {e(company_name)} · стр. 1
     </span>
   </div>
-  <div style="font-size:10px;color:rgba(26,37,64,0.3);letter-spacing:2px;
-              text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:6px;">жизненный цикл</div>
-  <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin-bottom:20px;">Стратегический профиль</h1>
-  {f'<div style="display:inline-block;padding:3px 10px;border-radius:3px;font-size:10px;font-family:Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.2);color:#c0392b;margin-bottom:12px;">{e(strategy.lifecycle_stage or "")}</div>' if strategy and strategy.lifecycle_stage else ""}
+  <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 10px;">Стадия жизненного цикла</h2>
+  {lifecycle_badge_html}
+  <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 12px;">Описание стадии</h2>
   {_lifecycle_blocks(strategy, combination) if strategy else ""}
+  <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:24px 0 12px;">Таблица стратагемы</h2>
+  {_table_rows(sc_rows)}
   <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
               display:flex;justify-content:space-between;font-family:Arial,sans-serif;
               font-size:10px;color:rgba(26,37,64,0.3);">
@@ -532,9 +535,18 @@ def build_report_html(
   </div>
 </div>"""
 
-    # ── Страница 2 (сценарий) — только для Method 1 ──────────────────────
+    # ── Страница 2: Сценарий + Маркетинг + Управление + Предположения + Переход ──
     page2 = ""
     if strategy and not is_method2:
+        def _text_block(text: str | None) -> str:
+            val = (e(text) if text else '<em style="opacity:0.4;">Не заполнено</em>')
+            return (
+                '<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;'
+                'background:rgba(255,255,255,0.4);margin-bottom:20px;">'
+                f'<p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">{val}</p>'
+                '</div>'
+            )
+
         page2 = f"""
         <div style="padding:40px 50px;page-break-after:always;background:#e8e4db;min-height:297mm;">
           <div style="display:flex;justify-content:space-between;align-items:center;
@@ -544,33 +556,12 @@ def build_report_html(
               {e(company_name)} · стр. 2
             </span>
           </div>
-          <div style="font-size:10px;color:rgba(26,37,64,0.3);letter-spacing:2px;
-                      text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:6px;">
-            стратегические требования
-          </div>
-          <h1 style="font-size:28px;font-weight:400;color:#1a2540;margin:0 0 20px;">
-            Сценарий и рекомендации
-          </h1>
-          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin-bottom:12px;">Сценарий стратагемы</h2>
-          {_table_rows(sc_rows)}
-          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Описание стратегии</h2>
-          <div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);">
-            <p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">
-              {e(strategy.scenario_text) if strategy.scenario_text else '<em style="opacity:0.4;">Не заполнено</em>'}
-            </p>
-          </div>
-          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Маркетинг</h2>
-          <div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);">
-            <p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">
-              {e(strategy.marketing_text) if strategy.marketing_text else '<em style="opacity:0.4;">Не заполнено</em>'}
-            </p>
-          </div>
-          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:20px 0 12px;">Управление</h2>
-          <div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;background:rgba(255,255,255,0.4);">
-            <p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">
-              {e(strategy.management_text) if strategy.management_text else '<em style="opacity:0.4;">Не заполнено</em>'}
-            </p>
-          </div>
+          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 12px;">Сценарий развития</h2>
+          {_text_block(strategy.scenario_text)}
+          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 12px;">Маркетинг</h2>
+          {_text_block(strategy.marketing_text)}
+          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 12px;">Управление</h2>
+          {_text_block(strategy.management_text)}
           {assumptions_html}
           {transition_html}
           <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
