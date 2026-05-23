@@ -130,7 +130,7 @@ function AssessmentInner() {
     setSubmitting(true)
     const method2_data: Record<string, { score: number; text: string }> = {}
     BMC_BLOCKS.forEach((b, i) => {
-      method2_data[b.title] = { score: bmcScores[i] || 3, text: bmcTexts[i] || '' }
+      method2_data[b.title] = { score: bmcScores[i] || 1, text: bmcTexts[i] || '' }
     })
     try {
       const { createAssessment } = await import('@/lib/api')
