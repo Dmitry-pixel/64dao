@@ -543,12 +543,14 @@ def build_report_html(
         cover_title = "Стратегический<br>профиль компании"
         hex_entry = _HEXAGRAM_BY_COMBO.get(combination)
         if hex_entry and combination:
-            _, hex_name_str = hex_entry
-            svg = _hexagram_svg(combination, size=110)
+            hex_num, hex_name_str = hex_entry
+            # Используем тот же Unicode-символ, что и в HTML-отчёте браузера
+            hex_char = chr(0x4DC0 + hex_num - 1)
             cover_combo = (
-                f'<div style="margin-top:28px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
-                f'<div style="margin-bottom:10px;display:block;">{svg}</div>'
-                f'<div style="font-size:12px;color:#8a94b0;font-family:Arial,sans-serif;'
+                f'<div style="margin-top:28px;">'
+                f'<div style="font-size:100px;line-height:1;color:#1a2540;margin-bottom:10px;'
+                f'font-family:Georgia,\'Times New Roman\',serif;">{hex_char}</div>'
+                f'<div style="font-size:12px;color:rgba(26,37,64,0.5);font-family:Arial,sans-serif;'
                 f'letter-spacing:2px;font-weight:600;">{e(hex_name_str)}</div>'
                 f'</div>'
             )
