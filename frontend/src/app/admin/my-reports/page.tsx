@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getMe, listAssessments, reportDownloadUrl, deleteAssessment, generateReport } from '@/lib/api'
-import { AdminNav, AdminSide, hexFor, hexNameFor } from '@/components/AdminNav'
+import { AdminNav, AdminSide, hexFor, hexNameFor, HexagramSVG } from '@/components/AdminNav'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
 
@@ -116,10 +116,10 @@ export default function AdminMyReportsPage() {
                   <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
                   <div className="hex-block">
                     {isMethod2(a)
-                      ? '䷿'
+                      ? <HexagramSVG combo="BABABA" size={48} color="var(--blue)" />
                       : a.strategy_image_url
                         ? <img src={`${API}${a.strategy_image_url}`} alt="" style={{ width: 48, height: 48, objectFit: 'contain' }} />
-                        : hexFor(a.method1_combination ?? '')}
+                        : <HexagramSVG combo={a.method1_combination ?? 'AAAAAA'} size={48} color="var(--blue)" />}
                   </div>
                   <div>
                     <div className="dash-meta">

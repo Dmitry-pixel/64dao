@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getMe, listAssessments, deleteAssessment } from '@/lib/api'
 import { AppNav } from '@/components/AppNav'
+import { HexagramSVG } from '@/components/AdminNav'
 
 // combination → hexagram number (King Wen sequence)
 const HEX_NUM: Record<string, number> = {
@@ -142,10 +143,10 @@ export default function DashboardPage() {
                   <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
                   <div className="hex-block">
                     {a.method2_data && !a.method1_combination
-                      ? '䷿'
+                      ? <HexagramSVG combo="BABABA" size={48} color="var(--blue)" />
                       : a.strategy_image_url
                         ? <img src={`${API}${a.strategy_image_url}`} alt="" style={{ width: 48, height: 48, objectFit: 'contain' }} />
-                        : hexFor(a.method1_combination ?? '')}
+                        : <HexagramSVG combo={a.method1_combination ?? 'AAAAAA'} size={48} color="var(--blue)" />}
                   </div>
                   <div>
                     <div className="dash-meta">
