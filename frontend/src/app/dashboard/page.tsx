@@ -26,6 +26,8 @@ function hexFor(combo: string): string {
   return String.fromCodePoint(0x4DC0 + n - 1)
 }
 
+const API = process.env.NEXT_PUBLIC_API_URL || ''
+
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
@@ -138,7 +140,13 @@ export default function DashboardPage() {
                   onClick={() => a.status === 'completed' ? router.push(`/report/${a.id}`) : undefined}
                 >
                   <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
-                  <div className="hex-block">{a.method2_data && !a.method1_combination ? '䷿' : hexFor(a.method1_combination ?? '')}</div>
+                  <div className="hex-block">
+                    {a.method2_data && !a.method1_combination
+                      ? '䷿'
+                      : a.strategy_image_url
+                        ? <img src={`${API}${a.strategy_image_url}`} alt="" style={{ width: 48, height: 48, objectFit: 'contain' }} />
+                        : hexFor(a.method1_combination ?? '')}
+                  </div>
                   <div>
                     <div className="dash-meta">
                       {a.method2_data && !a.method1_combination ? 'Метод 2 · Бизнес-модель' : 'Метод 1 · Диагностика'} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}

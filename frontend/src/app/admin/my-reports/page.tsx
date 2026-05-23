@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { getMe, listAssessments, reportDownloadUrl, deleteAssessment, generateReport } from '@/lib/api'
 import { AdminNav, AdminSide, hexFor, hexNameFor } from '@/components/AdminNav'
 
+const API = process.env.NEXT_PUBLIC_API_URL || ''
+
 function isMethod2(a: any): boolean {
   return !!a.method2_data && !a.method1_combination
 }
@@ -112,7 +114,13 @@ export default function AdminMyReportsPage() {
                   style={{ cursor: a.status === 'completed' ? 'pointer' : 'default' }}
                 >
                   <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
-                  <div className="hex-block">{isMethod2(a) ? '䷿' : hexFor(a.method1_combination ?? '')}</div>
+                  <div className="hex-block">
+                    {isMethod2(a)
+                      ? '䷿'
+                      : a.strategy_image_url
+                        ? <img src={`${API}${a.strategy_image_url}`} alt="" style={{ width: 48, height: 48, objectFit: 'contain' }} />
+                        : hexFor(a.method1_combination ?? '')}
+                  </div>
                   <div>
                     <div className="dash-meta">
                       {isMethod2(a)
