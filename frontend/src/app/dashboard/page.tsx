@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getMe, listAssessments, deleteAssessment } from '@/lib/api'
 import { AppNav } from '@/components/AppNav'
-import { HexagramSVG } from '@/components/AdminNav'
+import { hexNameFor } from '@/components/AdminNav'
 
 // combination → hexagram number (King Wen sequence)
 const HEX_NUM: Record<string, number> = {
@@ -26,8 +26,6 @@ function hexFor(combo: string): string {
   if (!n) return '䷀'
   return String.fromCodePoint(0x4DC0 + n - 1)
 }
-
-const API = process.env.NEXT_PUBLIC_API_URL || ''
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -141,16 +139,12 @@ export default function DashboardPage() {
                   onClick={() => a.status === 'completed' ? router.push(`/report/${a.id}`) : undefined}
                 >
                   <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
-                  <div className="hex-block">
-                    {a.method2_data && !a.method1_combination
-                      ? <HexagramSVG combo="BABABA" size={48} color="#1e3a8a" />
-                      : a.strategy_image_url
-                        ? <img src={`${API}${a.strategy_image_url}`} alt="" style={{ width: 48, height: 48, objectFit: 'contain' }} />
-                        : <HexagramSVG combo={a.method1_combination ?? 'AAAAAA'} size={48} color="#1e3a8a" />}
+                  <div className="hex-block" style={{ fontFamily: 'Georgia,serif', fontSize: 40, color: '#1e3a8a', lineHeight: 1 }}>
+                    {a.method2_data && !a.method1_combination ? '䷿' : hexFor(a.method1_combination ?? '')}
                   </div>
                   <div>
                     <div className="dash-meta">
-                      {a.method2_data && !a.method1_combination ? 'Метод 2 · Бизнес-модель' : 'Метод 1 · Диагностика'} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {a.method2_data && !a.method1_combination ? 'Метод 2 · Бизнес-модель' : hexNameFor(a.method1_combination ?? '')} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </div>
                     <div className="dash-title">
                       {a.status === 'completed'
