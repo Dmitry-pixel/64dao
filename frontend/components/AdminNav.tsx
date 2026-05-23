@@ -119,6 +119,11 @@ export function AdminSide({ current }: AdminSideProps) {
         Мои отчёты <span className="num">{myReportsCount ?? '—'}</span>
       </Link>
 
+      <h4>Документы</h4>
+      <Link href="/admin/documents/user-agreement" className={current === 'doc-user-agreement' ? 'on' : ''}>Пользовательское соглашение</Link>
+      <Link href="/admin/documents/privacy-policy" className={current === 'doc-privacy-policy' ? 'on' : ''}>Политика обработки ПД</Link>
+      <Link href="/admin/documents/personal-data-consent" className={current === 'doc-personal-data-consent' ? 'on' : ''}>Согласие на обработку ПД</Link>
+
       <h4>Система</h4>
       <Link href="/admin/pricing" className={current === 'pricing' ? 'on' : ''}>Тариф & цена</Link>
       <Link href="/admin/email-templates" className={current === 'email-templates' ? 'on' : ''}>Email-шаблоны</Link>

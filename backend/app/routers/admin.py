@@ -560,6 +560,56 @@ async def update_email_templates(body: dict, _: User = Depends(require_admin)):
     return {"ok": True}
 
 
+# ── Documents (юридические документы) ───────────────────────────────────────
+
+DOCS_DIR = Path("/var/www/64dao/uploads/docs")
+
+ALLOWED_DOC_SLUGS = {
+    "user-agreement":       "Пользовательское соглашение",
+    "privacy-policy":       "Политика обработки персональных данных",
+    "personal-data-consent":"Согласие на обработку персональных данных",
+}
+
+
+def _read_doc(slug: str) -> dict:
+    path = DOCS_DIR / f"{slug}.json"
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {
+            "slug":       slug,
+            "title":      ALLOWED_DOC_SLUGS.get(slug, slug),
+            "content":    "",
+            "published":  False,
+            "updated_at": None,
+        }
+
+
+def _write_doc(slug: str, data: dict) -> None:
+    DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    path = DOCS_DIR / f"{slug}.json"
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+@router.get("/documents/{slug}")
+async def get_document(slug: str, _: User = Depends(require_admin)):
+    if slug not in ALLOWED_DOC_SLUGS:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    return _read_doc(slug)
+
+
+@router.put("/documents/{slug}")
+async def save_document(slug: str, body: dict, _: User = Depends(require_admin)):
+    if slug not in ALLOWED_DOC_SLUGS:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    from datetime import datetime, timezone
+    body["slug"] = slug
+    body["title"] = ALLOWED_DOC_SLUGS[slug]
+    body["updated_at"] = datetime.now(timezone.utc).isoformat()
+    _write_doc(slug, body)
+    return {"ok": True}
+
+
 @router.get("/impersonate/status", response_model=ImpersonateStatus)
 async def impersonation_status(
     request: Request,
