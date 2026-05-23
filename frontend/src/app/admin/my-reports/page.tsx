@@ -3,15 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getMe, listAssessments, reportDownloadUrl, deleteAssessment, generateReport } from '@/lib/api'
-import { AdminNav, AdminSide } from '@/components/AdminNav'
-
-const HEX_TRIGRAMS = ['䷀','䷁','䷂','䷃','䷄','䷅','䷆','䷇','䷈','䷉','䷊','䷋','䷌','䷍','䷎','䷏','䷐','䷑','䷒','䷓','䷔','䷕','䷖','䷗','䷘','䷙','䷚','䷛','䷜','䷝','䷞','䷟','䷠','䷡','䷢','䷣','䷤','䷥','䷦','䷧','䷨','䷩','䷪','䷫','䷬','䷭','䷮','䷯','䷰','䷱','䷲','䷳','䷴','䷵','䷶','䷷','䷸','䷹','䷺','䷻','䷼','䷽','䷾','䷿']
-
-function hexFor(combo: string): string {
-  if (!combo || combo.length !== 6) return '䷀'
-  const idx = parseInt([...combo].map(c => c === 'B' ? '1' : '0').join(''), 2)
-  return HEX_TRIGRAMS[idx] || '䷀'
-}
+import { AdminNav, AdminSide, hexFor, hexNameFor } from '@/components/AdminNav'
 
 function isMethod2(a: any): boolean {
   return !!a.method2_data && !a.method1_combination
@@ -125,7 +117,7 @@ export default function AdminMyReportsPage() {
                     <div className="dash-meta">
                       {isMethod2(a)
                         ? `Метод 2 · Бизнес-модель`
-                        : (a.method1_combination ?? '—')} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        : hexNameFor(a.method1_combination ?? '')} · {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </div>
                     <div className="dash-title">
                       {a.status === 'completed'
