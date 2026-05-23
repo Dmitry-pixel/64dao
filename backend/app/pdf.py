@@ -94,7 +94,7 @@ def _hexagram_svg(combination: str, size: int = 110, color: str = "#1a2540") -> 
 
     rects: list[str] = []
     for i, ch in enumerate(combination):
-        y = y_off + (5 - i) * step
+        y = y_off + i * step
         if ch == "A":
             rects.append(
                 f'<rect x="{x0:.2f}" y="{y:.2f}" width="{w:.2f}" '
