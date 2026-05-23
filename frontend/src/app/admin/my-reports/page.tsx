@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getMe, listAssessments, reportDownloadUrl, deleteAssessment, generateReport } from '@/lib/api'
+import { getMe, listAssessments, deleteAssessment } from '@/lib/api'
 import { AdminNav, AdminSide, hexFor, hexNameFor } from '@/components/AdminNav'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
@@ -18,7 +18,6 @@ export default function AdminMyReportsPage() {
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
-  const [generatingId, setGeneratingId] = useState<string | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -50,21 +49,6 @@ export default function AdminMyReportsPage() {
     }
   }
 
-  const handleDownload = async (assessmentId: string) => {
-    setGeneratingId(assessmentId)
-    try {
-      const report = await generateReport(assessmentId)
-      // Обновляем список чтобы кнопка стала активной
-      setAssessments(prev => prev.map(a =>
-        a.id === assessmentId ? { ...a, reports: [report] } : a
-      ))
-      window.open(reportDownloadUrl(report.id), '_blank')
-    } catch {
-      alert('Не удалось сформировать отчёт. Попробуйте ещё раз.')
-    } finally {
-      setGeneratingId(null)
-    }
-  }
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', color: 'var(--text-mute)' }}>
@@ -149,27 +133,16 @@ export default function AdminMyReportsPage() {
                         >
                           Смотреть отчёт
                         </button>
-                        {a.reports?.length > 0 ? (
-                          <a
-                            href={reportDownloadUrl(a.reports[0].id)}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={e => e.stopPropagation()}
-                            className="btn btn-primary"
-                            style={{ padding: '7px 14px', fontSize: 12 }}
-                          >
-                            Скачать отчёт
-                          </a>
-                        ) : (
-                          <button
-                            className="btn btn-primary"
-                            style={{ padding: '7px 14px', fontSize: 12, opacity: generatingId === a.id ? 0.6 : 1 }}
-                            disabled={generatingId === a.id}
-                            onClick={e => { e.stopPropagation(); handleDownload(a.id) }}
-                          >
-                            {generatingId === a.id ? 'Формируем…' : 'Скачать отчёт'}
-                          </button>
-                        )}
+                        <a
+                          href={`/api/assessments/${a.id}/pdf`}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          className="btn btn-primary"
+                          style={{ padding: '7px 14px', fontSize: 12, textDecoration: 'none' }}
+                        >
+                          Скачать PDF
+                        </a>
                       </>
                     ) : (
                       <button
