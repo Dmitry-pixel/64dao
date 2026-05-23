@@ -497,14 +497,19 @@ def build_report_html(
         cover_label = "Отчёт по стратегической диагностике"
         cover_title = "Стратегический<br>профиль компании"
         hex_entry = _HEXAGRAM_BY_COMBO.get(combination)
-        hex_name_str = hex_entry[1] if hex_entry else ""
-        lines_html = ""
-        for ch in combination:  # индекс 0 = нижняя линия → рисуем снизу вверх (коррекция переворота в PDF)
-            if ch == "A":
-                lines_html += '<div style="width:80px;height:8px;background:rgba(26,37,64,0.75);border-radius:2px;margin-bottom:6px;"></div>'
-            else:
-                lines_html += '<div style="display:flex;gap:10px;margin-bottom:6px;"><div style="width:35px;height:8px;background:rgba(26,37,64,0.75);border-radius:2px;"></div><div style="width:35px;height:8px;background:rgba(26,37,64,0.75);border-radius:2px;"></div></div>'
-        cover_combo = f'<div style="margin-top:28px;"><div style="display:flex;flex-direction:column;margin-bottom:10px;">{lines_html}</div><div style="font-size:12px;color:rgba(26,37,64,0.5);font-family:Arial,sans-serif;letter-spacing:2px;font-weight:600;">{hex_name_str}</div></div>' if combination else ""
+        if hex_entry and combination:
+            hex_num, hex_name_str = hex_entry
+            hex_unicode = chr(0x4DC0 + hex_num - 1)
+            cover_combo = (
+                f'<div style="margin-top:28px;">'
+                f'<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:90px;'
+                f'line-height:1;color:rgba(26,37,64,0.75);margin-bottom:10px;">{hex_unicode}</div>'
+                f'<div style="font-size:12px;color:rgba(26,37,64,0.5);font-family:Arial,sans-serif;'
+                f'letter-spacing:2px;font-weight:600;">{e(hex_name_str)}</div>'
+                f'</div>'
+            )
+        else:
+            cover_combo = ""
         
 
 
