@@ -499,7 +499,7 @@ def build_report_html(
         hex_entry = _HEXAGRAM_BY_COMBO.get(combination)
         hex_name_str = hex_entry[1] if hex_entry else ""
         lines_html = ""
-        for ch in combination:
+        for ch in reversed(combination):  # индекс 0 = нижняя линия → рисуем сверху вниз
             if ch == "A":
                 lines_html += '<div style="width:80px;height:8px;background:rgba(26,37,64,0.75);border-radius:2px;margin-bottom:6px;"></div>'
             else:
