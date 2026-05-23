@@ -116,10 +116,10 @@ export default function AdminMyReportsPage() {
                   <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
                   <div className="hex-block">
                     {isMethod2(a)
-                      ? <HexagramSVG combo="BABABA" size={48} color="var(--blue)" />
+                      ? <HexagramSVG combo="BABABA" size={48} color="#1e3a8a" />
                       : a.strategy_image_url
                         ? <img src={`${API}${a.strategy_image_url}`} alt="" style={{ width: 48, height: 48, objectFit: 'contain' }} />
-                        : <HexagramSVG combo={a.method1_combination ?? 'AAAAAA'} size={48} color="var(--blue)" />}
+                        : <HexagramSVG combo={a.method1_combination ?? 'AAAAAA'} size={48} color="#1e3a8a" />}
                   </div>
                   <div>
                     <div className="dash-meta">
