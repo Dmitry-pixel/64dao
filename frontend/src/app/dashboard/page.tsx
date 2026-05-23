@@ -27,6 +27,8 @@ function hexFor(combo: string): string {
   return String.fromCodePoint(0x4DC0 + n - 1)
 }
 
+const API = process.env.NEXT_PUBLIC_API_URL || ''
+
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
@@ -139,8 +141,12 @@ export default function DashboardPage() {
                   onClick={() => a.status === 'completed' ? router.push(`/report/${a.id}`) : undefined}
                 >
                   <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
-                  <div className="hex-block" style={{ fontFamily: 'Georgia,serif', fontSize: 40, color: '#1e3a8a', lineHeight: 1 }}>
-                    {a.method2_data && !a.method1_combination ? '䷿' : hexFor(a.method1_combination ?? '')}
+                  <div className="hex-block">
+                    {a.method2_data && !a.method1_combination
+                      ? <span style={{ fontFamily: 'Georgia,serif', fontSize: 40, color: '#1e3a8a', lineHeight: 1 }}>䷿</span>
+                      : a.strategy_image_url
+                        ? <img src={`${API}${a.strategy_image_url}`} alt="" style={{ width: 48, height: 48, objectFit: 'contain' }} />
+                        : <span style={{ fontFamily: 'Georgia,serif', fontSize: 40, color: '#1e3a8a', lineHeight: 1 }}>{hexFor(a.method1_combination ?? '')}</span>}
                   </div>
                   <div>
                     <div className="dash-meta">

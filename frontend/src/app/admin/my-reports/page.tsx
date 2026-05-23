@@ -114,8 +114,12 @@ export default function AdminMyReportsPage() {
                   style={{ cursor: a.status === 'completed' ? 'pointer' : 'default' }}
                 >
                   <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
-                  <div className="hex-block" style={{ fontFamily: 'Georgia,serif', fontSize: 40, color: '#1e3a8a', lineHeight: 1 }}>
-                    {isMethod2(a) ? '䷿' : hexFor(a.method1_combination ?? '')}
+                  <div className="hex-block">
+                    {isMethod2(a)
+                      ? <span style={{ fontFamily: 'Georgia,serif', fontSize: 40, color: '#1e3a8a', lineHeight: 1 }}>䷿</span>
+                      : a.strategy_image_url
+                        ? <img src={`${API}${a.strategy_image_url}`} alt="" style={{ width: 48, height: 48, objectFit: 'contain' }} />
+                        : <span style={{ fontFamily: 'Georgia,serif', fontSize: 40, color: '#1e3a8a', lineHeight: 1 }}>{hexFor(a.method1_combination ?? '')}</span>}
                   </div>
                   <div>
                     <div className="dash-meta">
