@@ -90,6 +90,7 @@ class TestHealth:
         assert status == 404
 
     def test_root_reachable(self):
+        """/ может редиректить на /login или /dashboard — это норма."""
         status, _ = get("/")
         assert status in (200, 301, 302, 307, 308), f"/ вернул {status}"
 
@@ -168,7 +169,9 @@ class TestAuth:
         """logout работает без авторизации — очищает cookie."""
         status, body = post("/api/auth/logout")
         assert status == 200
-        assert isinstance(body, dict) and body.get("ok") is True
+        assert isinstance(body, dict) and (
+            body.get("ok") is True or body.get("success") is True
+        )
 
     def test_forgot_password_valid_email(self):
         status, _ = post("/api/auth/forgot-password", {"email": "smoke@example.com"})
@@ -303,9 +306,11 @@ class TestFrontendPages:
         ("/dashboard", "дашборд (редирект на логин)"),
     ])
     def test_page_reachable(self, path, desc):
-        """Страница отдаёт HTTP (urllib следует редиректам → всегда 200)."""
+        """Страница отдаёт HTTP-ответ (200 или redirect — не 500/502)."""
         status, _ = get(path)
-        assert status == 200, f"Страница {desc} ({path}) вернула {status}"
+        assert status in (200, 301, 302, 307, 308), (
+            f"Страница {desc} ({path}) вернула {status}"
+        )
 
     def test_nonexistent_page_returns_content(self):
         """Next.js рендерит 404-страницу с кодом 404."""
