@@ -73,16 +73,21 @@ async def list_assessments(
     )
     assessments = result.scalars().all()
 
-    # Подгружаем image_url стратегии для каждого assessment
+    # Подгружаем image_url стратегий одним запросом (избегаем N+1)
+    combinations = {a.method1_combination for a in assessments if a.method1_combination}
+    strategies_map: dict[str, str | None] = {}
+    if combinations:
+        strat_result = await db.execute(
+            select(Strategy.combination, Strategy.image_url)
+            .where(Strategy.combination.in_(combinations))
+        )
+        strategies_map = {row.combination: row.image_url for row in strat_result}
+
     out = []
     for a in assessments:
         item = AssessmentOut.model_validate(a)
-        if a.method1_combination:
-            strategy = await db.scalar(
-                select(Strategy).where(Strategy.combination == a.method1_combination)
-            )
-            if strategy:
-                item.strategy_image_url = strategy.image_url
+        if a.method1_combination and a.method1_combination in strategies_map:
+            item.strategy_image_url = strategies_map[a.method1_combination]
         out.append(item)
     return out
 
