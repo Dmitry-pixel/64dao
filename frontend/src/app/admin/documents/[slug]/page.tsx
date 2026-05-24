@@ -10,12 +10,14 @@ const DOC_TITLES: Record<string, string> = {
   'user-agreement':        'Пользовательское соглашение',
   'privacy-policy':        'Политика обработки персональных данных',
   'personal-data-consent': 'Согласие на обработку персональных данных',
+  'about':                 'О нас',
 }
 
 const DOC_SIDEBAR_KEY: Record<string, string> = {
   'user-agreement':        'doc-user-agreement',
   'privacy-policy':        'doc-privacy-policy',
   'personal-data-consent': 'doc-personal-data-consent',
+  'about':                 'doc-about',
 }
 
 interface DocData {

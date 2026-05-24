@@ -15,6 +15,7 @@ ALLOWED_DOC_SLUGS = {
     "user-agreement",
     "privacy-policy",
     "personal-data-consent",
+    "about",
 }
 
 
