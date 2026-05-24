@@ -39,7 +39,7 @@ export default function AdminUsersPage() {
     setImpersonating(userId)
     try {
       await adminApi.impersonate(userId)
-      router.push('/dashboard')
+      window.location.href = '/dashboard'
     } catch (e: any) {
       alert(e.message ?? 'Ошибка')
       setImpersonating(null)
