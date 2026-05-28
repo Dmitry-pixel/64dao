@@ -180,6 +180,9 @@ export const adminApi = {
 
   setUserRole: (userId: string, role: 'user' | 'admin') =>
     request(`/api/admin/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+
+  deleteUser: (userId: string) =>
+    request(`/api/admin/users/${userId}`, { method: 'DELETE' }),
 }
 
 // ── Strategies (public/user) ──────────────────────────────────────────────────

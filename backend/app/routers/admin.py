@@ -59,7 +59,9 @@ async def get_stats(
 ):
     total_users        = await db.scalar(select(func.count(User.id))) or 0
     total_assessments  = await db.scalar(select(func.count(Assessment.id))) or 0
-    total_reports      = await db.scalar(select(func.count(Report.id))) or 0
+    total_reports      = await db.scalar(
+        select(func.count(Assessment.id)).where(Assessment.status.in_(["completed", "paid"]))
+    ) or 0
     published_strategies = await db.scalar(
         select(func.count(Strategy.id)).where(Strategy.is_published == True)
     ) or 0
@@ -306,6 +308,22 @@ async def set_user_role(
     user.role = body.role
     await db.flush()
     return SuccessResponse(message=f"Роль изменена на {body.role}")
+
+
+@router.delete("/users/{user_id}", response_model=SuccessResponse)
+async def delete_user(
+    user_id: str,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if str(admin.id) == user_id:
+        raise HTTPException(status_code=400, detail="Нельзя удалить самого себя")
+    user = await db.scalar(select(User).where(User.id == user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    await db.delete(user)
+    await db.flush()
+    return SuccessResponse(message="Пользователь удалён")
 
 
 # ── Activity log ──────────────────────────────────────────────────────────────

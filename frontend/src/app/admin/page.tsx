@@ -156,7 +156,7 @@ export default function AdminPage() {
 
 
   async function changeRole(id: string, role: string) {
-    await adminApi.updateUserRole(id, role)
+    await adminApi.setUserRole(id, role as 'user' | 'admin')
     setUsers((prev: any[]) => prev.map((u: any) => u.id === id ? { ...u, role } : u))
   }
 
