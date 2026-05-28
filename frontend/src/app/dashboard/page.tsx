@@ -40,7 +40,7 @@ export default function DashboardPage() {
   const [supportText, setSupportText] = useState('')
   const [supportSending, setSupportSending] = useState(false)
   const [supportDone, setSupportDone] = useState(false)
-  const [credits, setCredits] = useState<number | null>(null)
+  const [credits, setCredits] = useState<number>(0)
 
   const handleSupport = async () => {
     if (!supportText.trim()) return
@@ -213,7 +213,7 @@ export default function DashboardPage() {
         <aside className="dash-side">
 
           {/* ── Баннер доступных диагностик ── */}
-          {credits !== null && credits > 0 && (
+          {credits > 0 && (
             <div style={{
               background: 'linear-gradient(135deg, #1a4a3a 0%, #1e6347 100%)',
               border: '1px solid rgba(52,199,89,0.35)',
@@ -257,7 +257,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {credits !== null && credits === 0 && (
+          {credits === 0 && (
             <div style={{
               background: 'rgba(26,37,64,0.04)',
               border: '1px solid rgba(26,37,64,0.12)',
@@ -302,7 +302,7 @@ export default function DashboardPage() {
               <span style={{ color: 'var(--text-mute)' }}>Всего</span>
               <strong>{assessments.length}</strong>
             </div>
-            {credits !== null && (
+            {(
               <div style={{
                 display: 'flex', justifyContent: 'space-between',
                 fontFamily: 'sans-serif', fontSize: 13,
