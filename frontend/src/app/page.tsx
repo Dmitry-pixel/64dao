@@ -17,8 +17,8 @@ export default function HomePage() {
     btn.textContent = 'Спасибо, ответим в течение суток'
     setTimeout(() => {
       btn.disabled = false
-      btn.textContent = 'Отправить';
-      (e.target as HTMLFormElement).reset()
+      btn.textContent = 'Отправить'
+      ;(e.target as HTMLFormElement).reset()
     }, 3500)
   }
 
@@ -55,19 +55,16 @@ export default function HomePage() {
     const mqHandler = (e: MediaQueryListEvent) => { if (e.matches) closeMobileMenu() }
     mq.addEventListener('change', mqHandler)
 
-    // Header scroll
     const header = document.getElementById('header')
     const onScroll = () => { header?.classList.toggle('scrolled', window.scrollY > 8) }
     window.addEventListener('scroll', onScroll, { passive: true })
     onScroll()
 
-    // Cookie notice
     const t = setTimeout(() => {
       try { if (localStorage.getItem('64dao-cookie') === '1') return } catch(e) {}
       cookieRef.current?.classList.add('visible')
     }, 2500)
 
-    // Smooth anchor scroll
     document.querySelectorAll('a[href^="#"]').forEach(a => {
       a.addEventListener('click', (e) => {
         const id = (a as HTMLAnchorElement).getAttribute('href')
@@ -80,7 +77,6 @@ export default function HomePage() {
       })
     })
 
-    // Fade-in on intersect
     const io = new IntersectionObserver(entries => {
       entries.forEach(e => {
         if (e.isIntersecting) {
@@ -937,7 +933,7 @@ export default function HomePage() {
     .hex-label{ font-size: 12px; }
   }
       `}</style>
-<!-- ========== HEADER ========== -->
+{/* ========== HEADER ========== */}
 <header className="site-header" id="header">
   <div className="wrap header-inner">
     <a href="#" className="logo" aria-label="64 ДАО">
@@ -954,7 +950,7 @@ export default function HomePage() {
   </div>
 </header>
 
-<!-- ========== MOBILE MENU ========== -->
+{/* ========== MOBILE MENU ========== */}
 <div className="mobile-menu" id="mobile-menu" aria-hidden="true">
   <nav>
     <a href="https://64dao.ru/about">О&nbsp;нас</a>
@@ -967,7 +963,7 @@ export default function HomePage() {
   <div className="mm-meta">64 ДАО &middot; стратегическая диагностика</div>
 </div>
 
-<!-- ========== HERO ========== -->
+{/* ========== HERO ========== */}
 <section className="hero">
   <div className="wrap hero-grid">
     <div className="hero-left">
@@ -1009,7 +1005,7 @@ export default function HomePage() {
   </div>
 </section>
 
-<!-- ========== METHOD: 6 параметров как гексаграмма ========== -->
+{/* ========== METHOD: 6 параметров как гексаграмма ========== */}
 <section className="section section--alt" id="method">
   <div className="wrap">
     <div className="section-head">
@@ -1054,7 +1050,7 @@ export default function HomePage() {
       <div className="hex-board">
         <div className="hex-tag external">Внешние факторы</div>
         <div className="hex-rows">
-          <!-- Lines are listed bottom-up; column-reverse flips them so visual top = top line -->
+          {/* Lines are listed bottom-up; column-reverse flips them so visual top = top line */}
           <div className="hex-row">
             <div className="hex-label left"><span>Цель</span><span className="num">01</span></div>
             <div className="hex-line solid"></div>
@@ -1070,7 +1066,7 @@ export default function HomePage() {
             <div className="hex-line solid"></div>
             <div className="hex-label"></div>
           </div>
-          <!-- divider between internal/external -->
+          {/* divider between internal/external */}
           <div className="hex-divider-row">
             <div></div>
             <div className="hex-divider"></div>
@@ -1098,7 +1094,7 @@ export default function HomePage() {
   </div>
 </section>
 
-<!-- ========== PROCESS ========== -->
+{/* ========== PROCESS ========== */}
 <section className="section" id="process">
   <div className="wrap">
     <div className="section-head">
@@ -1168,7 +1164,7 @@ export default function HomePage() {
   </div>
 </section>
 
-<!-- ========== AUDIENCE ========== -->
+{/* ========== AUDIENCE ========== */}
 <section className="section section--alt">
   <div className="wrap">
     <div className="section-head">
@@ -1249,7 +1245,7 @@ export default function HomePage() {
   </div>
 </section>
 
-<!-- ========== METHOD 2 ========== -->
+{/* ========== METHOD 2 ========== */}
 <section className="section" id="method2">
   <div className="wrap">
     <div className="m2-grid">
@@ -1327,7 +1323,7 @@ export default function HomePage() {
   </div>
 </section>
 
-<!-- ========== PRICING ========== -->
+{/* ========== PRICING ========== */}
 <section className="section section--alt" id="pricing">
   <div className="wrap">
     <div className="section-head">
@@ -1362,7 +1358,7 @@ export default function HomePage() {
   </div>
 </section>
 
-<!-- ========== CONTACT ========== -->
+{/* ========== CONTACT ========== */}
 <section className="contact-section" id="contacts">
   <div className="wrap">
     <div className="contact-grid">
@@ -1402,7 +1398,7 @@ export default function HomePage() {
   </div>
 </section>
 
-<!-- ========== FOOTER ========== -->
+{/* ========== FOOTER ========== */}
 <footer className="site-footer">
   <div className="wrap">
     <div className="footer-grid">
@@ -1462,7 +1458,7 @@ export default function HomePage() {
   </div>
 </footer>
 
-<!-- ========== COOKIE ========== -->
+{/* ========== COOKIE ========== */}
 <div className="cookie" id="cookie" ref={cookieRef}>
   <button className="cookie-close" aria-label="Закрыть" onClick={closeCookie}>
     <svg width="14" height="14" viewBox="0 0 14 14"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.4"/></svg>
