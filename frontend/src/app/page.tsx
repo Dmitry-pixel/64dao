@@ -8,6 +8,12 @@ export default function HomePage() {
   const cookieRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    // Fix autoplay: browsers ignore muted attr set via innerHTML
+    document.querySelectorAll('video').forEach(v => {
+      ;(v as HTMLVideoElement).muted = true
+      ;(v as HTMLVideoElement).play().catch(() => {})
+    })
+
     // Cookie notice
     const cookie = document.getElementById('cookie') as HTMLDivElement | null
     const t = setTimeout(() => {
