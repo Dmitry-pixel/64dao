@@ -40,6 +40,7 @@ export default function DashboardPage() {
   const [supportText, setSupportText] = useState('')
   const [supportSending, setSupportSending] = useState(false)
   const [supportDone, setSupportDone] = useState(false)
+  const [credits, setCredits] = useState<number | null>(null)
 
   const handleSupport = async () => {
     if (!supportText.trim()) return
@@ -70,6 +71,10 @@ export default function DashboardPage() {
         setUser(me)
         const data = await listAssessments()
         setAssessments(data)
+        fetch(`${API}/api/payments/credits`, { credentials: 'include' })
+          .then(r => r.ok ? r.json() : { credits: 0 })
+          .then(d => setCredits(d.credits ?? 0))
+          .catch(() => setCredits(0))
       } catch {
         router.push('/login')
       } finally {
@@ -206,6 +211,76 @@ export default function DashboardPage() {
         </div>
 
         <aside className="dash-side">
+
+          {/* ── Баннер доступных диагностик ── */}
+          {credits !== null && credits > 0 && (
+            <div style={{
+              background: 'linear-gradient(135deg, #1a4a3a 0%, #1e6347 100%)',
+              border: '1px solid rgba(52,199,89,0.35)',
+              borderRadius: 10,
+              padding: '20px 22px',
+              marginBottom: 16,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <span style={{ fontSize: 20, lineHeight: 1 }}>✦</span>
+                <span style={{
+                  fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 2,
+                  textTransform: 'uppercase', color: 'rgba(52,199,89,0.9)', fontWeight: 700,
+                }}>Доступно</span>
+              </div>
+              <div style={{
+                fontFamily: 'Georgia, serif', fontSize: 28, fontWeight: 400,
+                color: '#fff', lineHeight: 1.1, marginBottom: 6,
+              }}>
+                {credits} {credits === 1 ? 'диагностика' : credits < 5 ? 'диагностики' : 'диагностик'}
+              </div>
+              <div style={{
+                fontFamily: 'sans-serif', fontSize: 12,
+                color: 'rgba(255,255,255,0.65)', lineHeight: 1.5, marginBottom: 16,
+              }}>
+                {credits === 1
+                  ? 'Одна оплаченная диагностика ожидает запуска.'
+                  : `${credits} оплаченных диагностики ожидают запуска.`}
+              </div>
+              <Link
+                href="/assessment/start"
+                className="btn btn-primary btn-block"
+                style={{
+                  background: 'rgba(52,199,89,0.15)', border: '1px solid rgba(52,199,89,0.5)',
+                  color: '#7fff9a', fontWeight: 600, textAlign: 'center',
+                  display: 'block', textDecoration: 'none',
+                  padding: '10px 16px', borderRadius: 6, fontSize: 13,
+                }}
+              >
+                Начать диагностику →
+              </Link>
+            </div>
+          )}
+
+          {credits !== null && credits === 0 && (
+            <div style={{
+              background: 'rgba(26,37,64,0.04)',
+              border: '1px solid rgba(26,37,64,0.12)',
+              borderRadius: 10,
+              padding: '16px 18px',
+              marginBottom: 16,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{
+                  fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 2,
+                  textTransform: 'uppercase', color: 'rgba(26,37,64,0.4)', fontWeight: 700,
+                }}>Доступно диагностик</span>
+              </div>
+              <div style={{
+                fontFamily: 'Georgia, serif', fontSize: 24, color: 'rgba(26,37,64,0.35)',
+                marginBottom: 4,
+              }}>0</div>
+              <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.4)', lineHeight: 1.5 }}>
+                Оплатите новую диагностику, чтобы получить доступ.
+              </div>
+            </div>
+          )}
+
           <div className="card-flat">
             <span className="label-red" style={{ display: 'block', marginBottom: 10 }}>Поддержка</span>
             <p className="faint" style={{ lineHeight: 1.6, marginBottom: 12 }}>
@@ -223,10 +298,36 @@ export default function DashboardPage() {
               <span style={{ color: 'var(--text-mute)' }}>В работе</span>
               <strong>{drafts}</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'sans-serif', fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'sans-serif', fontSize: 13, marginBottom: 6 }}>
               <span style={{ color: 'var(--text-mute)' }}>Всего</span>
               <strong>{assessments.length}</strong>
             </div>
+            {credits !== null && (
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                fontFamily: 'sans-serif', fontSize: 13,
+                paddingTop: 8, marginTop: 4,
+                borderTop: '1px solid rgba(26,37,64,0.08)',
+              }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ color: '#1a6640', fontWeight: 700 }}>
+                    Доступно диагностик
+                  </span>
+                  <span
+                    title="Здесь отображается количество оплаченных, но не использованных диагностик"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      width: 14, height: 14, borderRadius: '50%',
+                      border: '1px solid rgba(26,37,64,0.25)',
+                      fontSize: 9, color: 'rgba(26,37,64,0.4)',
+                      cursor: 'help', flexShrink: 0, lineHeight: 1,
+                      fontStyle: 'normal', userSelect: 'none',
+                    }}
+                  >?</span>
+                </span>
+                <strong style={{ color: credits > 0 ? '#1a6640' : 'inherit' }}>{credits}</strong>
+              </div>
+            )}
           </div>
         </aside>
       </div>
