@@ -6,46 +6,46 @@ import { getMe, type AuthUser } from '@/lib/api'
 
 const QUESTIONS = [
   {
-    eyebrow: 'Вопрос 01 / 06 · ЦЕЛЬ',
-    question: 'За счёт чего формируется прибыль?',
+    eyebrow: 'Вопрос 01 / 06',
+    question: 'Где сейчас фокус усилий компании?',
     help: 'Подумайте, какой тип задач занимает больше времени у руководства последние 3–6 месяцев.',
-    a: 'Рост выручки и объёма продаж',
-    b: 'Повышение эффективности, сокращение расходов и потерь',
+    a: 'Стабилизация и удержание текущих позиций',
+    b: 'Поиск новых возможностей и направлений роста',
   },
   {
-    eyebrow: 'Вопрос 02 / 06 · СТРАТЕГИЯ',
-    question: 'Какую рыночную стратегию преимущественно использует компания?',
-    help: 'Вы копируете или создаёте?',
-    a: 'Первопроходец — создание новых решений и рынков, новых категорий, продуктов или подходов',
-    b: 'Быстрый последователь — адаптация уже подтверждённых решений, быстрое улучшение существующего',
+    eyebrow: 'Вопрос 02 / 06',
+    question: 'Как компания реагирует на изменения рынка?',
+    help: 'Оцените, насколько быстро и системно компания адаптируется к внешним переменам.',
+    a: 'Реагируем осторожно, сначала анализируем риски',
+    b: 'Действуем быстро, используем изменения как возможности',
   },
   {
-    eyebrow: 'Вопрос 03 / 06 · ОРГАНИЗАЦИЯ',
-    question: 'Как организовано управление? Как принимаются ключевые решения?',
-    help: 'Учитывайте именно практику, а не формальные регламенты.',
-    a: 'Преимущественно централизованно',
-    b: 'Преимущественно распределённо',
+    eyebrow: 'Вопрос 03 / 06',
+    question: 'Какова основная задача команды в ближайшие 6 месяцев?',
+    help: 'Какой приоритет стоит выше всего на повестке у ключевых сотрудников?',
+    a: 'Оптимизация, снижение издержек, повышение эффективности',
+    b: 'Рост, масштабирование, запуск новых направлений',
   },
   {
-    eyebrow: 'Вопрос 04 / 06 · ТИП ПОТРЕБИТЕЛЯ',
-    question: 'Кто является основным клиентом компании?',
-    help: 'Оцените, какой сегмент приносит основную часть выручки.',
-    a: 'Корпоративные клиенты (B2B)',
-    b: 'Частные потребители (B2C)',
+    eyebrow: 'Вопрос 04 / 06',
+    question: 'Как принимаются стратегические решения?',
+    help: 'Опишите, как обычно проходит процесс принятия важных решений в компании.',
+    a: 'Централизованно, через согласование с руководством',
+    b: 'Децентрализованно, команды принимают решения самостоятельно',
   },
   {
-    eyebrow: 'Вопрос 05 / 06 · СТАТУС РЫНКА',
-    question: 'Как можно описать рынок компании?',
-    help: 'Оцените зрелость и конкурентную среду вашего рынка.',
-    a: 'Зрелый рынок с высокой конкуренцией',
-    b: 'Развивающийся рынок с формирующимся спросом',
+    eyebrow: 'Вопрос 05 / 06',
+    question: 'Какой ресурс для компании наиболее ценен сейчас?',
+    help: 'Подумайте, что является главным конкурентным преимуществом компании в данный момент.',
+    a: 'Накопленная экспертиза, клиентская база, бренд',
+    b: 'Команда, технологии, скорость выхода на рынок',
   },
   {
-    eyebrow: 'Вопрос 06 / 06 · ТИП ЦЕННОСТИ',
-    question: 'На чём преимущественно основана ценность продукта или сервиса?',
-    help: 'Что является главным источником ценности для ваших клиентов?',
-    a: 'Технологические инновации',
-    b: 'Улучшение существующих решений',
+    eyebrow: 'Вопрос 06 / 06',
+    question: 'Как выглядит горизонт планирования?',
+    help: 'На какой период компания строит конкретные планы с ожидаемыми результатами?',
+    a: 'До 1 года — планируем тактически, шаг за шагом',
+    b: 'Более 1 года — строим долгосрочную стратегию',
   },
 ]
 
@@ -67,8 +67,8 @@ function AssessmentInner() {
   const methodParam = searchParams.get('method')
 
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [mode, setMode] = useState<'choose' | 'company1' | 'company2' | 'method1' | 'method2' | 'waiting'>(
-    methodParam === '1' ? 'company1' : methodParam === '2' ? 'company2' : 'choose'
+  const [mode, setMode] = useState<'choose' | 'method1' | 'method2' | 'waiting'>(
+    methodParam === '1' ? 'method1' : methodParam === '2' ? 'method2' : 'choose'
   )
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Record<number, 'A' | 'B'>>({})
@@ -76,8 +76,7 @@ function AssessmentInner() {
   const [bmcScores, setBmcScores] = useState<Record<number, number>>({})
   const [bmcTexts, setBmcTexts] = useState<Record<number, string>>({})
   const [activeBlock, setActiveBlock] = useState(0)
-  const [companyName, setCompanyName] = useState('')
-    const [submitting, setSubmitting] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     getMe().catch(() => router.push('/login'))
@@ -110,18 +109,23 @@ function AssessmentInner() {
     setSubmitting(true)
     const answersMap: Record<string, string> = {}
     const combo = Object.values(answers).map(v => v).join('')
-    for (let i = 0; i < 6; i++) answersMap[String(i + 1)] = answers[i] || 'A'
+    for (let i = 0; i < 6; i++) answersMap[`q${i + 1}`] = answers[i] || 'A'
     try {
-      const { createAssessment } = await import('@/lib/api')
-      const assessment = await createAssessment({
-        method1_answers: answersMap,
-        method1_combination: combo,
-        company_name: companyName.trim() || null,
-        status: 'completed',
+      const API = process.env.NEXT_PUBLIC_API_URL || ''
+      await fetch(`${API}/api/assessments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          method1_answers: answersMap,
+          method1_combination: combo,
+          status: 'completed',
+        }),
       })
-      router.push(`/assessment/waiting?id=${assessment.id}&combo=${combo}`)
+      setMode('waiting')
     } catch {
-      alert('Ошибка сохранения. Попробуйте ещё раз.')
+      setMode('waiting')
+    } finally {
       setSubmitting(false)
     }
   }
@@ -130,18 +134,25 @@ function AssessmentInner() {
     setSubmitting(true)
     const method2_data: Record<string, { score: number; text: string }> = {}
     BMC_BLOCKS.forEach((b, i) => {
-      method2_data[b.title] = { score: bmcScores[i] || 1, text: bmcTexts[i] || '' }
+      method2_data[b.title] = { score: bmcScores[i] || 3, text: bmcTexts[i] || '' }
     })
     try {
-      const { createAssessment } = await import('@/lib/api')
-      await createAssessment({
-        method2_data,
-        company_name: companyName.trim() || null,
-        status: 'completed',
+      const API = process.env.NEXT_PUBLIC_API_URL || ''
+      await fetch(`${API}/api/assessments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          method1_answers: { q1: 'A', q2: 'A', q3: 'A', q4: 'A', q5: 'A', q6: 'A' },
+          method1_combination: 'AAAAAA',
+          method2_data,
+          status: 'completed',
+        }),
       })
-      router.push('/dashboard')
+      setMode('waiting')
     } catch {
-      alert('Ошибка сохранения. Попробуйте ещё раз.')
+      setMode('waiting')
+    } finally {
       setSubmitting(false)
     }
   }
@@ -187,65 +198,7 @@ function AssessmentInner() {
     </div>
   )
 
-  
-  // ── Ввод названия компании (Метод 1) ──────────────────────────────────────
-    // ── Ввод компании (Метод 1) ──────────────────────────────────────────────
-  if (mode === 'company1') return (
-    <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
-      <NavBar />
-      <div style={S.companyPad}>
-        <span style={S.labelRed}>Метод 01 · Стратегия</span>
-        <h1 style={S.companyH1}>Название компании</h1>
-        <p style={S.companySub}>Укажите название компании для диагностики. Появится в отчёте и PDF.</p>
-        <div style={S.companyCard}>
-          <label style={S.companyLabel}>Название компании</label>
-          <input
-            style={S.companyInput}
-            type="text"
-            placeholder="Например: ООО Перспектива"
-            value={companyName}
-            onChange={e => setCompanyName(e.target.value)}
-            autoFocus
-          />
-          <p style={S.companyHint}>Можно оставить пустым — будет использовано имя из профиля.</p>
-        </div>
-        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-          <button style={S.btnGhost} onClick={() => setMode('choose')}>← Назад</button>
-          <button style={S.btnPrimary} onClick={() => setMode('method1')}>Продолжить →</button>
-        </div>
-      </div>
-    </div>
-  )
-
-  // ── Ввод компании (Метод 2) ──────────────────────────────────────────────
-  if (mode === 'company2') return (
-    <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
-      <NavBar />
-      <div style={S.companyPad}>
-        <span style={S.labelRed}>Метод 02 · Бизнес-модель</span>
-        <h1 style={S.companyH1}>Название компании</h1>
-        <p style={S.companySub}>Укажите название компании для диагностики. Появится в отчёте и PDF.</p>
-        <div style={S.companyCard}>
-          <label style={S.companyLabel}>Название компании</label>
-          <input
-            style={S.companyInput}
-            type="text"
-            placeholder="Например: ООО Перспектива"
-            value={companyName}
-            onChange={e => setCompanyName(e.target.value)}
-            autoFocus
-          />
-          <p style={S.companyHint}>Можно оставить пустым — будет использовано имя из профиля.</p>
-        </div>
-        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-          <button style={S.btnGhost} onClick={() => setMode('choose')}>← Назад</button>
-          <button style={S.btnPrimary} onClick={() => setMode('method2')}>Продолжить →</button>
-        </div>
-      </div>
-    </div>
-  )
-
-
+  // ── Выбор метода ──────────────────────────────────────────────────────────
   if (mode === 'choose') return (
     <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
       <NavBar />
@@ -254,9 +207,9 @@ function AssessmentInner() {
           <span style={S.labelRed}>Новая диагностика</span>
         </div>
         <h1 style={S.chooseH1}>Выберите, с чего начать</h1>
-        <p style={S.chooseSub}>Выберите метод диагностики.</p>
+        <p style={S.chooseSub}>Полная диагностика состоит из двух методов. Метод 1 определяет фазу компании и сценарий развития. Метод 2 уточняет картину по 9 блокам бизнес-модели. Можно пройти оба сразу или по отдельности.</p>
         <div style={S.chooseGrid}>
-          <div style={S.methodCard} onClick={() => { setCompanyName(''); setMode('company1') }}>
+          <div style={S.methodCard} onClick={() => setMode('method1')}>
             <div style={S.methodCardTop}>
               <span style={S.labelRed}>Метод 01 · Стратегия</span>
               <span style={S.hexFaint}>䷀</span>
@@ -268,7 +221,7 @@ function AssessmentInner() {
               <span style={S.methodGo}>Начать →</span>
             </div>
           </div>
-          <div style={S.methodCard} onClick={() => { setCompanyName(''); setMode('company2') }}>
+          <div style={S.methodCard} onClick={() => setMode('method2')}>
             <div style={S.methodCardTop}>
               <span style={S.labelRed}>Метод 02 · Бизнес-модель</span>
               <span style={S.hexFaint}>䷷</span>
@@ -281,7 +234,14 @@ function AssessmentInner() {
             </div>
           </div>
         </div>
-
+        <div style={S.fullCard}>
+          <span style={S.hexSm}>䷊</span>
+          <div>
+            <strong style={{ fontFamily: 'Georgia,serif', fontSize: 16, display: 'block', marginBottom: 4 }}>Полная диагностика</strong>
+            <span style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.6)' }}>Метод 1 + Метод 2 · PDF-отчёт · Онлайн-просмотр без ограничений · Срок готовности — до 30 минут</span>
+          </div>
+          <button style={{ ...S.btnPrimary, marginLeft: 'auto', flexShrink: 0 }} onClick={() => setMode('method1')}>Начать полную →</button>
+        </div>
       </div>
     </div>
   )
@@ -404,12 +364,7 @@ function AssessmentInner() {
             <h3 style={S.bmcEditH3}>{block.title}</h3>
             <p style={S.bmcEditHelp}>{block.help}</p>
             <div style={S.bmcScale}>
-              <div>
-                <span>Оценка</span>
-                <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.45)', marginTop: 3, lineHeight: 1.5 }}>
-                  Шкала 1–5: 1 — слабо проработан или отсутствует,<br/>5 — отлично проработан.<br/>Кликните по блоку, чтобы оценить и оставить комментарий.
-                </div>
-              </div>
+              <span>Оценка:</span>
               <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
                 {[1, 2, 3, 4, 5].map(n => (
                   <button key={n} style={{ ...S.scaleBtn, ...(score === n ? S.scaleBtnOn : {}) }} onClick={() => setBmcScores(p => ({ ...p, [activeBlock]: n }))}>
@@ -458,15 +413,6 @@ const S: Record<string, React.CSSProperties> = {
   navEmail: { fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.55)' },
   avatar: { width: 32, height: 32, borderRadius: '50%', background: '#1a2540', color: '#e8e4db', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Georgia,serif', fontSize: 14 },
   labelRed: { fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase' as const, color: '#c0392b', fontWeight: 600 },
-  // Company input
-  companyPad: { maxWidth: 640, margin: '0 auto', padding: '60px 60px 60px' },
-  companyH1: { fontFamily: 'Georgia,serif', fontSize: 32, fontWeight: 400, color: '#1a2540', margin: '10px 0 12px' },
-  companySub: { fontFamily: 'sans-serif', fontSize: 14, color: 'rgba(26,37,64,0.6)', lineHeight: 1.7, marginBottom: 28 },
-  companyCard: { background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(26,37,64,0.12)', borderRadius: 8, padding: '24px 28px' },
-  companyLabel: { display: 'block', fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)', marginBottom: 8 },
-  companyInput: { width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(26,37,64,0.15)', borderRadius: 6, fontSize: 15, color: '#1a2540', fontFamily: 'Georgia,serif', outline: 'none', boxSizing: 'border-box' as const },
-  companyHint: { fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.35)', marginTop: 8, lineHeight: 1.5 },
-
   // Choose
   choosePad: { maxWidth: 980, margin: '0 auto', padding: '48px 60px 60px' },
   chooseH1: { fontFamily: 'Georgia,serif', fontSize: 36, fontWeight: 400, color: '#1a2540', margin: '0 0 10px' },

@@ -1,643 +1,329 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { getAssessment, getMe, getAssessmentStrategy, assessmentPdfUrl } from '@/lib/api'
-import type { Strategy, Assessment, AuthUser } from '@/lib/api'
-import { AppNav } from '@/components/AppNav'
+import { getMe, getAssessment, reportDownloadUrl, type AuthUser, type Assessment } from '@/lib/api'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
-
-// ── Hexagram data ─────────────────────────────────────────────────────────────
-
-const HEX_INFO: Record<string, [number, string]> = {
-  'AAAAAA':[1,'Действие'],'BBBBBB':[2,'Реакция'],'ABBBAB':[3,'Появление'],
-  'BABBBA':[4,'Формализация'],'AAABAB':[5,'Бдительность'],'BABAAA':[6,'Раздор'],
-  'BABBBB':[7,'Управление'],'BBBBAB':[8,'Объединение'],'AAABAA':[9,'Развитие'],
-  'AABAAA':[10,'Последовательность'],'AAABBB':[11,'Достижение'],'BBBAAA':[12,'Препятствие'],
-  'ABAAAA':[13,'Осознанность'],'AAAABA':[14,'Процветание'],'BBABBB':[15,'Смирение'],
-  'BBBABB':[16,'Радость'],'ABBAAB':[17,'Соответствие'],'BAABBA':[18,'Диссонанс'],
-  'AABBBB':[19,'Подход'],'BBBBAA':[20,'Наблюдать'],'ABBABA':[21,'Устранять'],
-  'ABABBA':[22,'Изящество'],'BBBBBA':[23,'Разрушение'],'ABBBBB':[24,'Возрождение'],
-  'ABBAAA':[25,'Естественность'],'AAABBA':[26,'Изобилие'],'ABBBBA':[27,'Умеренность'],
-  'BAAAAB':[28,'Избыток'],'BABBAB':[29,'Решимость'],'ABAABA':[30,'Великолепие'],
-  'BBAAAB':[31,'Влияние'],'BAAABB':[32,'Выносливость'],'BBAAAA':[33,'Благоразумие'],
-  'AAAABB':[34,'Сила'],'BBBABA':[35,'Благоприятный'],'ABABBB':[36,'Неблагоприятный'],
-  'ABABAA':[37,'Гармония'],'AABABA':[38,'Полярность'],'BBABAB':[39,'Трудность'],
-  'BABABB':[40,'Избавление'],'AABBBA':[41,'Убыток'],'ABBBAA':[42,'Прибыль'],
-  'AAAAAB':[43,'Прорыв'],'BAAAAA':[44,'Встреча'],'BBBAAB':[45,'Объединение'],
-  'BAABBB':[46,'Самоотдача'],'BABAAB':[47,'Понимание'],'BAABAB':[48,'Глубина'],
-  'ABAAAB':[49,'Реформа'],'BAAABA':[50,'Ценности'],'ABBABB':[51,'Смелость'],
-  'BBABBA':[52,'Сосредоточенность'],'BBABAA':[53,'Готовность'],'AABABB':[54,'Амбиции'],
-  'ABAABB':[55,'Изобилие'],'BBAABA':[56,'Стимулирование'],'BABBAA':[57,'Интуиция'],
-  'AABAAB':[58,'Бодрость'],'BAABAA':[59,'Установление связей'],'AABBAB':[60,'Реализм'],
-  'AABBAA':[61,'Внутренняя правда'],'BBAABB':[62,'Точность'],'ABABAB':[63,'Завершение'],
-  'BABABA':[64,'Незавершённость'],
-}
-
-const TARGET_HEX: Record<number, number> = {
-  1:9,2:62,3:49,4:7,5:63,6:6,7:62,8:23,9:37,10:25,11:36,12:9,13:37,14:26,15:11,16:54,
-  17:63,18:64,19:34,20:33,21:64,22:18,23:56,24:19,25:37,26:22,27:4,28:44,29:3,30:22,
-  31:43,32:44,33:1,34:1,35:64,36:37,37:63,38:21,39:5,40:46,41:27,42:3,43:5,44:33,
-  45:58,46:57,47:44,48:47,49:63,50:18,51:25,52:18,53:39,54:11,55:36,56:14,57:44,
-  58:5,59:44,60:43,61:42,62:33,63:17,64:40,
-}
-
-const NUM_TO_COMBO: Record<number, string> = Object.fromEntries(
-  Object.entries(HEX_INFO).map(([combo, [n]]) => [n, combo])
-)
-
-function hexSymbol(combo: string): string {
-  const info = HEX_INFO[combo]
-  if (!info) return '䷀'
-  return String.fromCodePoint(0x4DC0 + info[0] - 1)
-}
-
-function getTargetHexInfo(combo: string): { num: number; name: string; symbol: string } | null {
-  const info = HEX_INFO[combo]
-  if (!info) return null
-  const [curNum] = info
-  const targetNum = TARGET_HEX[curNum]
-  if (!targetNum) return null
-  const targetCombo = NUM_TO_COMBO[targetNum]
-  const targetName = targetCombo ? HEX_INFO[targetCombo]?.[1] ?? '' : ''
-  return { num: targetNum, name: targetName, symbol: targetCombo ? hexSymbol(targetCombo) : '䷀' }
-}
-
-// ── Labels ────────────────────────────────────────────────────────────────────
-
-const LC_FIELDS: [keyof Strategy, string][] = [
-  ['lc_profit',    'Формирование прибыли'],
-  ['lc_strategy',  'Рыночная стратегия'],
-  ['lc_decisions', 'Принятие решений'],
-  ['lc_consumer',  'Тип потребителя'],
-  ['lc_market',    'Статус рынка'],
-  ['lc_value',     'Тип ценности'],
-]
-
-const SCENARIO_KEYS: [string, string][] = [
-  ['innovation_strategy',   'Стратегия изменений'],
-  ['innovation_type',       'Тип изменений'],
-  ['value_discipline',      'Ценностная дисциплина'],
-  ['leadership_principles', 'Принципы лидерства'],
-  ['growth_strategy',       'Стратегия роста'],
-  ['focus',                 'Фокус'],
-]
-
-const ASSM_FIELDS: [keyof Strategy, string][] = [
-  ['assm_planning',    'Планирование'],
-  ['assm_growth',      'Рост и производительность'],
-  ['assm_advertising', 'Реклама'],
-  ['assm_feedback',    'Обратная связь'],
-  ['assm_risk',        'Риск'],
-  ['assm_product',     'Выбор продукта'],
-  ['assm_service',     'Сервис'],
-  ['assm_startup',     'Стартап'],
-  ['assm_investment',  'Инвестиции и финансы'],
-  ['assm_contracts',   'Договора и соглашения'],
-  ['assm_sync',        'Синхронизация'],
-  ['assm_creative',    'Творческий вклад'],
-  ['assm_interaction', 'Взаимодействие'],
-  ['assm_resources',   'Достаточность ресурсов'],
-  ['assm_research',    'Исследование и разработка'],
-  ['assm_trade',       'Международная торговля'],
-  ['assm_failures',    'Источники неудач'],
-  ['assm_success',     'Источники удачи'],
-]
-
-// ── UI helpers ────────────────────────────────────────────────────────────────
-
-const S = {
-  eyebrow: {
-    fontFamily: 'sans-serif' as const,
-    fontSize: 10,
-    letterSpacing: 2.5,
-    textTransform: 'uppercase' as const,
-    color: '#c0392b',
-    fontWeight: 700,
-    marginBottom: 12,
-  },
-  card: {
-    background: 'rgba(255,255,255,0.72)',
-    border: '1px solid rgba(26,37,64,0.09)',
-    borderRadius: 10,
-    padding: '22px 28px',
-    marginBottom: 16,
-  },
-  empty: {
-    fontFamily: 'sans-serif' as const,
-    fontSize: 13,
-    color: 'rgba(26,37,64,0.28)',
-    fontStyle: 'italic' as const,
-    margin: 0,
-  },
-  body: {
-    fontFamily: 'sans-serif' as const,
-    fontSize: 14,
-    color: 'rgba(26,37,64,0.82)',
-    lineHeight: 1.75,
-    margin: 0,
-    whiteSpace: 'pre-wrap' as const,
-  },
-}
-
-function EyebrowLabel({ children }: { children: React.ReactNode }) {
-  return <div style={S.eyebrow}>{children}</div>
-}
-
-function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return <div style={{ ...S.card, ...style }}>{children}</div>
-}
-
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <Card>
-      <EyebrowLabel>{label}</EyebrowLabel>
-      {children}
-    </Card>
-  )
-}
-
-function Val({ text }: { text: string | null | undefined }) {
-  if (text) {
-    return <p style={S.body}>{text}</p>
-  }
-  return <p style={S.empty}>Не заполнено</p>
-}
-
-// ── Method 1 Report ───────────────────────────────────────────────────────────
-
-function Method1Report({
-  assessment, strategy, user, onBack, onDownload, generatingPdf,
-}: {
-  assessment: Assessment
-  strategy: Strategy | null
-  user: AuthUser
-  onBack: () => void
-  onDownload: () => void
-  generatingPdf: boolean
-}) {
-  const combo = assessment.method1_combination ?? 'AAAAAA'
-  const hexInfo = HEX_INFO[combo]
-  const [hexNum, hexName] = hexInfo ?? [0, '']
-  const sym = hexSymbol(combo)
-  const companyName = assessment.company_name || user.company_name || user.full_name || 'Компания'
-  const dateStr = new Date(assessment.created_at).toLocaleDateString('ru-RU', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  })
-
-  const targetHex = getTargetHexInfo(combo)
-
-  // LC blocks — always show all 6
-  const lcBlocks = LC_FIELDS.map(([field, label], i) => ({
-    label,
-    letter: combo[i] ?? 'A',
-    value: strategy?.[field] as string | null ?? null,
-  }))
-
-  // Scenario table rows — always show all
-  const scRows: [string, string | null][] = SCENARIO_KEYS.map(([k, lbl]) => [
-    lbl,
-    strategy?.scenario?.[k] ?? null,
-  ])
-
-  return (
-    <div style={{ maxWidth: 820, margin: '0 auto', padding: '48px 40px 80px' }}>
-
-      {/* Navigation */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 }}>
-        <button onClick={onBack} className="btn btn-ghost" style={{ fontSize: 13, padding: '8px 16px' }}>
-          ← Назад
-        </button>
-        <button
-          className="btn btn-primary"
-          onClick={onDownload}
-          disabled={generatingPdf}
-          style={{ opacity: generatingPdf ? 0.6 : 1 }}
-        >
-          {generatingPdf ? 'Формируем PDF…' : '↓ Скачать отчёт PDF'}
-        </button>
-      </div>
-
-      {/* ── 1. ОБЛОЖКА ── */}
-      <div style={{
-        background: '#1a2540', borderRadius: 14, padding: '48px 52px',
-        marginBottom: 32, position: 'relative', overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute', right: 40, top: '50%', transform: 'translateY(-50%)',
-          fontFamily: 'Georgia,serif', fontSize: 220, color: 'rgba(255,255,255,0.04)',
-          lineHeight: 1, userSelect: 'none', pointerEvents: 'none',
-        }}>{sym}</div>
-
-        <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', color: '#c0392b', fontWeight: 700, marginBottom: 20 }}>
-          СТРАТЕГИЧЕСКИЙ ОТЧЁТ · 64 ДАО
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 28, marginBottom: 28 }}>
-          <div style={{ fontFamily: 'Georgia,serif', fontSize: 110, color: 'rgba(255,255,255,0.9)', lineHeight: 1, flexShrink: 0 }}>
-            {sym}
-          </div>
-          <div style={{ paddingTop: 12 }}>
-            {strategy?.stratagema_title && (
-              <div style={{
-                display: 'inline-block', padding: '3px 10px', borderRadius: 4,
-                fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 1.5,
-                textTransform: 'uppercase', background: 'rgba(192,57,43,0.25)',
-                border: '1px solid rgba(192,57,43,0.4)', color: '#e8a090', marginBottom: 12,
-              }}>
-                {strategy.stratagema_title}
-              </div>
-            )}
-            <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 32, fontWeight: 400, color: '#fff', margin: '0 0 8px', lineHeight: 1.2 }}>
-              {strategy?.title || hexName}
-            </h1>
-            {hexNum > 0 && (
-              <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>
-                Гексаграмма {hexNum}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 18, display: 'flex', gap: 36 }}>
-          <div>
-            <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 1.5, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: 4 }}>Компания</div>
-            <div style={{ fontFamily: 'Georgia,serif', fontSize: 16, color: 'rgba(255,255,255,0.85)' }}>{companyName}</div>
-          </div>
-          <div>
-            <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 1.5, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: 4 }}>Дата</div>
-            <div style={{ fontFamily: 'Georgia,serif', fontSize: 16, color: 'rgba(255,255,255,0.85)' }}>{dateStr}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Strategy image */}
-      {strategy?.image_url && (
-        <div style={{ marginBottom: 24, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(26,37,64,0.08)' }}>
-          <img src={`${API}${strategy.image_url}`} alt={strategy.title ?? ''} style={{ width: '100%', display: 'block' }} />
-        </div>
-      )}
-
-      {/* ── 2. СТАДИЯ ЖИЗНЕННОГО ЦИКЛА ── */}
-      <Section label="Стадия жизненного цикла">
-        {strategy?.lifecycle_stage ? (
-          <div style={{
-            display: 'inline-block', padding: '5px 16px', borderRadius: 6,
-            fontFamily: 'sans-serif', fontSize: 14, letterSpacing: 0.5,
-            background: 'rgba(192,57,43,0.08)', border: '1px solid rgba(192,57,43,0.2)',
-            color: '#c0392b',
-          }}>
-            {strategy.lifecycle_stage}
-          </div>
-        ) : (
-          <p style={S.empty}>Стадия не указана</p>
-        )}
-      </Section>
-
-      {/* ── 3. ОПИСАНИЕ СТАДИИ (6 блоков ЖЦ) ── */}
-      <Section label="Описание стадии">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          {lcBlocks.map((b, i) => (
-            <div key={i} style={{
-              background: 'rgba(255,255,255,0.5)',
-              border: '1px solid rgba(26,37,64,0.1)',
-              borderRadius: 8, padding: '12px 14px',
-            }}>
-              <div style={{ marginBottom: 6 }}>
-                <span style={{
-                  fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 1.2,
-                  textTransform: 'uppercase', color: 'rgba(26,37,64,0.45)', fontWeight: 600,
-                }}>{b.label}</span>
-              </div>
-              {b.value
-                ? <p style={{ fontFamily: 'sans-serif', fontSize: 12.5, color: '#1a2540', lineHeight: 1.65, margin: 0 }}>{b.value}</p>
-                : <p style={S.empty}>Не заполнено</p>
-              }
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      {/* ── 4. ТАБЛИЦА СТРАТАГЕМЫ ── */}
-      <Section label="Таблица стратагемы">
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <tbody>
-            {scRows.map(([label, value], i) => (
-              <tr key={label} style={{ background: i % 2 === 0 ? 'rgba(26,37,64,0.03)' : 'transparent' }}>
-                <td style={{
-                  padding: '8px 14px', border: '1px solid rgba(26,37,64,0.09)',
-                  fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)',
-                  width: '40%', verticalAlign: 'top',
-                }}>{label}</td>
-                <td style={{
-                  padding: '8px 14px', border: '1px solid rgba(26,37,64,0.09)',
-                  fontFamily: 'sans-serif', fontSize: 13, color: value ? '#1a2540' : 'rgba(26,37,64,0.28)',
-                  fontWeight: value ? 500 : 400,
-                  fontStyle: value ? 'normal' : 'italic',
-                  verticalAlign: 'top',
-                }}>
-                  {value ?? 'Не заполнено'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Section>
-
-      {/* ── 5. СЦЕНАРИЙ РАЗВИТИЯ ── */}
-      <Section label="Сценарий развития">
-        <Val text={strategy?.scenario_text} />
-      </Section>
-
-      {/* ── 6. МАРКЕТИНГ ── */}
-      <Section label="Маркетинг">
-        <Val text={strategy?.marketing_text} />
-      </Section>
-
-      {/* ── 7. УПРАВЛЕНИЕ ── */}
-      <Section label="Управление">
-        <Val text={strategy?.management_text} />
-      </Section>
-
-      {/* ── 8. ПРЕДПОЛОЖЕНИЯ ── */}
-      <Section label="Предположения · связи с будущим">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 0 }}>
-          {ASSM_FIELDS.map(([field, label], i) => {
-            const val = strategy?.[field] as string | null ?? null
-            return (
-              <div key={String(field)} style={{
-                paddingBottom: 16, marginBottom: 16,
-                borderBottom: i < ASSM_FIELDS.length - 1 ? '1px solid rgba(26,37,64,0.07)' : 'none',
-              }}>
-                <div style={{
-                  fontFamily: 'sans-serif', fontSize: 10, fontWeight: 700,
-                  letterSpacing: 1.5, textTransform: 'uppercase',
-                  color: '#c0392b', marginBottom: 6,
-                }}>{label}</div>
-                {val
-                  ? <p style={S.body}>{val}</p>
-                  : <p style={S.empty}>Не заполнено</p>
-                }
-              </div>
-            )
-          })}
-        </div>
-      </Section>
-
-      {/* ── 9. ЦЕЛЕВОЕ СОСТОЯНИЕ (ПЕРЕХОД) ── */}
-      <Card style={{ border: '1px solid rgba(192,57,43,0.2)', background: 'rgba(192,57,43,0.04)' }}>
-        <EyebrowLabel>Переход</EyebrowLabel>
-        <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(26,37,64,0.4)', marginBottom: 16 }}>
-          Целевое состояние
-        </div>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, marginBottom: 16 }}>
-          {targetHex && (
-            <div style={{
-              background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(26,37,64,0.1)',
-              borderRadius: 10, padding: '16px 20px', textAlign: 'center', flexShrink: 0, minWidth: 100,
-            }}>
-              <div style={{ fontFamily: 'Georgia,serif', fontSize: 56, lineHeight: 1, color: '#1a2540', marginBottom: 8 }}>
-                {targetHex.symbol}
-              </div>
-              <div style={{ fontFamily: 'sans-serif', fontSize: 9, color: '#c0392b', letterSpacing: 1.2, fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>
-                Гексаграмма {targetHex.num}
-              </div>
-              <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)' }}>
-                {targetHex.name}
-              </div>
-            </div>
-          )}
-          <div style={{ flex: 1 }}>
-            {strategy?.transition_title ? (
-              <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 400, color: '#1a2540', margin: '0 0 8px' }}>
-                {strategy.transition_title}
-              </h3>
-            ) : (
-              <p style={S.empty}>Название перехода не заполнено</p>
-            )}
-            {strategy?.transition_lifecycle_stage && (
-              <div style={{
-                display: 'inline-block', padding: '2px 8px', borderRadius: 4, marginBottom: 10,
-                fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase',
-                background: 'rgba(192,57,43,0.08)', border: '1px solid rgba(192,57,43,0.2)', color: '#c0392b',
-              }}>
-                {strategy.transition_lifecycle_stage}
-              </div>
-            )}
-            {strategy?.transition_description
-              ? <p style={{ ...S.body, marginTop: 8 }}>{strategy.transition_description}</p>
-              : <p style={S.empty}>Описание перехода не заполнено</p>
-            }
-          </div>
-        </div>
-      </Card>
-
-    </div>
-  )
-}
-
-// ── Method 2 Report ───────────────────────────────────────────────────────────
-
-const BMC_LABELS: Record<string, string> = {
-  'Ключевые партнёры':      '01',
-  'Ключевые активности':    '02',
-  'Ключевые ресурсы':       '03',
-  'Ценностное предложение': '04',
-  'Отношения с клиентами':  '05',
-  'Каналы':                 '06',
-  'Сегменты клиентов':      '07',
-  'Структура издержек':     '08',
-  'Потоки доходов':         '09',
-}
-
-const BMC_ORDER = [
-  'Ключевые партнёры', 'Ключевые активности', 'Ключевые ресурсы',
-  'Ценностное предложение', 'Отношения с клиентами', 'Каналы',
-  'Сегменты клиентов', 'Структура издержек', 'Потоки доходов',
-]
-
-function ScoreDots({ score }: { score: number }) {
-  return (
-    <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-      {[1,2,3,4,5].map(n => (
-        <div key={n} style={{
-          width: 10, height: 10, borderRadius: '50%',
-          background: n <= score ? '#1e3a8a' : 'rgba(26,37,64,0.12)',
-        }} />
-      ))}
-      <span style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.5)', marginLeft: 6 }}>
-        {score} / 5
-      </span>
-    </div>
-  )
-}
-
-function Method2Report({
-  assessment, user, onBack, onDownload, generatingPdf,
-}: {
-  assessment: Assessment
-  user: AuthUser
-  onBack: () => void
-  onDownload: () => void
-  generatingPdf: boolean
-}) {
-  const method2 = assessment.method2_data as Record<string, { score: number; text: string }> | null
-  const companyName = assessment.company_name || user.company_name || user.full_name || 'Компания'
-  const dateStr = new Date(assessment.created_at).toLocaleDateString('ru-RU', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  })
-
-  const blocks = BMC_ORDER
-    .filter(key => method2?.[key])
-    .map(key => {
-      const b = method2![key]
-      return { title: key, num: BMC_LABELS[key] ?? '', score: Math.round(Number(b.score)) || 0, text: b.text ?? '' }
-    })
-
-  return (
-    <div style={{ maxWidth: 820, margin: '0 auto', padding: '48px 40px 80px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 }}>
-        <button onClick={onBack} className="btn btn-ghost" style={{ fontSize: 13, padding: '8px 16px' }}>← Назад</button>
-        <button className="btn btn-primary" onClick={onDownload} disabled={generatingPdf} style={{ opacity: generatingPdf ? 0.6 : 1 }}>
-          {generatingPdf ? 'Формируем PDF…' : '↓ Скачать отчёт PDF'}
-        </button>
-      </div>
-
-      <div style={{ background: '#1a2540', borderRadius: 14, padding: '48px 52px', marginBottom: 32 }}>
-        <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', color: '#c0392b', fontWeight: 700, marginBottom: 20 }}>
-          БИЗНЕС МОДЕЛЬ · 64 ДАО
-        </div>
-        <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 34, fontWeight: 400, color: '#fff', margin: '0 0 24px', lineHeight: 1.2 }}>
-          Анализ бизнес-модели
-        </h1>
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 18, display: 'flex', gap: 36 }}>
-          <div>
-            <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 1.5, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: 4 }}>Компания</div>
-            <div style={{ fontFamily: 'Georgia,serif', fontSize: 16, color: 'rgba(255,255,255,0.85)' }}>{companyName}</div>
-          </div>
-          <div>
-            <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 1.5, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginBottom: 4 }}>Дата</div>
-            <div style={{ fontFamily: 'Georgia,serif', fontSize: 16, color: 'rgba(255,255,255,0.85)' }}>{dateStr}</div>
-          </div>
-        </div>
-      </div>
-
-      {blocks.length > 0 ? (
-        <>
-          <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 2.5, textTransform: 'uppercase', color: '#c0392b', fontWeight: 600, marginBottom: 12 }}>
-            Оценка блоков
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 32 }}>
-            {blocks.map(block => (
-              <div key={block.title} style={{ background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(26,37,64,0.09)', borderRadius: 10, padding: '16px 18px' }}>
-                <div style={{ fontFamily: 'sans-serif', fontSize: 11, fontWeight: 600, color: '#1a2540', marginBottom: 10 }}>
-                  {block.num} · {block.title}
-                </div>
-                <ScoreDots score={block.score} />
-              </div>
-            ))}
-          </div>
-          <div style={{ fontFamily: 'sans-serif', fontSize: 10, letterSpacing: 2.5, textTransform: 'uppercase', color: '#c0392b', fontWeight: 600, marginBottom: 12 }}>
-            Комментарии
-          </div>
-          {blocks.map(block => (
-            <Section key={block.title} label={`${block.num} · ${block.title}`}>
-              <div style={{ marginBottom: block.text ? 14 : 0 }}><ScoreDots score={block.score} /></div>
-              {block.text
-                ? <p style={S.body}>{block.text}</p>
-                : <p style={S.empty}>Комментарий не добавлен</p>
-              }
-            </Section>
-          ))}
-        </>
-      ) : (
-        <Section label="Бизнес-модель">
-          <p style={{ fontFamily: 'sans-serif', fontSize: 14, color: 'rgba(26,37,64,0.5)', margin: 0 }}>
-            Данные бизнес-модели не заполнены.
-          </p>
-        </Section>
-      )}
-    </div>
-  )
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ReportPage() {
   const router = useRouter()
   const params = useParams()
-  const id = params.id as string
-
-  const [assessment, setAssessment] = useState<Assessment | null>(null)
-  const [strategy, setStrategy] = useState<Strategy | null>(null)
+  const assessmentId = params.id as string
   const [user, setUser] = useState<AuthUser | null>(null)
+  const [assessment, setAssessment] = useState<Assessment | null>(null)
+  const [strategy, setStrategy] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [generatingPdf, setGeneratingPdf] = useState(false)
+  const [activeSection, setActiveSection] = useState(0)
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        const [me, data] = await Promise.all([getMe(), getAssessment(id)])
-        setUser(me)
-        setAssessment(data)
-        setIsAdmin(me.role === 'admin')
-
-        if (data.method1_combination) {
-          try {
-            const s = await getAssessmentStrategy(id)
-            setStrategy(s)
-          } catch {
-            // strategy not in DB yet
-          }
+    Promise.all([getMe(), getAssessment(assessmentId)])
+      .then(([u, a]) => {
+        setUser(u)
+        setAssessment(a)
+        if (a.method1_combination) {
+          fetch(`${API}/api/strategies/${a.method1_combination}`, { credentials: 'include' })
+            .then(r => r.ok ? r.json() : null)
+            .then(s => setStrategy(s))
+            .catch(() => {})
         }
-      } catch {
-        router.push('/login')
-      } finally {
-        setLoading(false)
-      }
-    }
-    init()
-  }, [id])
-
-  const handleDownload = () => {
-    setGeneratingPdf(true)
-    window.open(assessmentPdfUrl(id), '_blank')
-    setTimeout(() => setGeneratingPdf(false), 2000)
-  }
+      })
+      .catch(() => router.push('/login'))
+      .finally(() => setLoading(false))
+  }, [router, assessmentId])
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', color: 'var(--text-mute)' }}>
-      Загрузка…
+    <div style={{ minHeight: '100vh', background: '#e8e4db', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ fontFamily: 'sans-serif', color: 'rgba(26,37,64,0.4)' }}>Загрузка...</p>
     </div>
   )
-  if (!assessment || !user) return null
 
-  // Method1 если есть комбинация, иначе Method2
-  const isMethod2 = !assessment.method1_combination
-  const backUrl = isAdmin ? '/admin/my-reports' : '/dashboard'
+  if (!assessment) return (
+    <div style={{ minHeight: '100vh', background: '#e8e4db', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ fontFamily: 'sans-serif', color: 'rgba(26,37,64,0.4)' }}>Отчёт не найден</p>
+    </div>
+  )
+
+  const combo = assessment.method1_combination || '??????'
+  const hasReport = assessment.reports.length > 0
+  const method2 = assessment.method2_data
+
+  const BMC_NAMES = [
+    'Ключевые партнёры', 'Ключевые активности', 'Ключевые ресурсы',
+    'Ценностное предложение', 'Отношения с клиентами', 'Каналы',
+    'Сегменты клиентов', 'Структура издержек', 'Потоки доходов',
+  ]
+
+  const sections = [
+    '01 — Текущее состояние',
+    '02 — Стадия жизненного цикла',
+    '03 — Сценарий развития',
+    '04 — Предположения',
+    ...(method2 ? ['05 — Бизнес-модель'] : []),
+    '06 — Целевой сценарий',
+  ]
 
   return (
-    <>
-      <AppNav current="dashboard" />
-      {isMethod2 ? (
-        <Method2Report
-          assessment={assessment}
-          user={user}
-          onBack={() => router.push(backUrl)}
-          onDownload={handleDownload}
-          generatingPdf={generatingPdf}
-        />
-      ) : (
-        <Method1Report
-          assessment={assessment}
-          strategy={strategy}
-          user={user}
-          onBack={() => router.push(backUrl)}
-          onDownload={handleDownload}
-          generatingPdf={generatingPdf}
-        />
-      )}
-    </>
+    <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
+      {/* Навигация */}
+      <nav style={S.nav}>
+        <div style={S.navInner}>
+          <div style={S.navLogo} onClick={() => router.push('/dashboard')}>
+            <span style={S.logo64}>64</span><span style={S.logoDao}> ДАО</span>
+          </div>
+          <div style={S.navLinks}>
+            <button style={{ ...S.navLink, ...S.navLinkOn }} onClick={() => router.push('/dashboard')}>Мои отчёты</button>
+            <button style={S.navLink} onClick={() => router.push('/assessment')}>Новая диагностика</button>
+            <button style={S.navLink} onClick={() => router.push('/profile')}>Профиль</button>
+          </div>
+          <div style={S.navUser}>
+            <span style={S.navEmail}>{user?.email}</span>
+            <div style={S.avatar}>{(user?.full_name || user?.email || 'U')[0].toUpperCase()}</div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Панель действий */}
+      <div style={S.actions}>
+        <button style={S.backBtn} onClick={() => router.push('/dashboard')}>← Все отчёты</button>
+        <div style={{ flex: 1 }} />
+        {hasReport && (
+          <a href={reportDownloadUrl(assessment.reports[0].id)} target="_blank" rel="noreferrer" style={S.btnPrimary}>
+            ↓ Скачать PDF
+          </a>
+        )}
+      </div>
+
+      {/* Основная сетка */}
+      <div style={S.reportShell}>
+        {/* Оглавление */}
+        <aside style={S.toc}>
+          <h4 style={S.tocTitle}>Содержание</h4>
+          {sections.map((s, i) => (
+            <a key={i} style={{ ...S.tocLink, ...(i === activeSection ? S.tocLinkOn : {}) }} onClick={() => setActiveSection(i)}>{s}</a>
+          ))}
+        </aside>
+
+        {/* Тело отчёта */}
+        <div style={S.reportBody}>
+          {/* Обложка */}
+          <div style={S.cover}>
+            <div>
+              <span style={S.labelRed}>Стратегический отчёт 64 ДАО</span>
+              <h1 style={S.coverH1}>{strategy?.title || `Стратегия ${combo}`}</h1>
+              <div style={S.coverMeta}>
+                {user?.company_name && <>{user.company_name} · </>}{user?.full_name}<br />
+                Подготовлен {new Date(assessment.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </div>
+            </div>
+            <div style={{ textAlign: 'center' as const }}>
+              <div style={S.hexXl}>䷖</div>
+              <div style={S.combBadge}>{combo}</div>
+            </div>
+          </div>
+
+          {/* Секция 01 — Текущее состояние */}
+          <div style={S.section} id="s0">
+            <h2 style={S.sectionH2}><span style={S.num}>01</span>Текущее состояние</h2>
+            <p style={S.muted}>Три параметра, которые система определила по вашим ответам.</p>
+            <div style={S.stateGrid}>
+              <div style={S.stateCell}>
+                <span style={S.labelRed}>Стратагема</span>
+                <div style={S.stateVal}>{strategy?.stratagema_title || '—'}</div>
+              </div>
+              <div style={S.stateCell}>
+                <span style={S.labelRed}>Стадия</span>
+                <div style={S.stateVal}>{strategy?.lifecycle_stage || '—'}</div>
+              </div>
+              <div style={S.stateCell}>
+                <span style={S.labelRed}>Комбинация</span>
+                <div style={{ ...S.stateVal, fontFamily: 'monospace', letterSpacing: 3 }}>{combo}</div>
+              </div>
+            </div>
+            {strategy?.scenario && (
+              <div style={S.scenarioTable}>
+                <div style={S.scenarioHead}>
+                  <span style={S.labelRed}>Сценарий стратагемы</span>
+                  <span style={S.faint}>Правая колонка зависит от вашей текущей гексаграммы ({combo})</span>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'sans-serif', fontSize: 14 }}>
+                  <thead>
+                    <tr>
+                      <th style={S.th}>Описание</th>
+                      <th style={S.th}>Действие</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(strategy.scenario).map(([key, val]: [string, any]) => (
+                      <tr key={key}>
+                        <td style={S.td}>{key}</td>
+                        <td style={S.td}>{val}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Секция 02 — Жизненный цикл */}
+          <div style={S.section} id="s1">
+            <h2 style={S.sectionH2}><span style={S.num}>02</span>Жизненный цикл</h2>
+            <div style={S.reportText}>
+              {strategy?.lifecycle_description
+                ? <p>{strategy.lifecycle_description}</p>
+                : <p style={S.muted}>Описание стадии жизненного цикла будет добавлено при публикации стратегии.</p>
+              }
+            </div>
+          </div>
+
+          {/* Секция 03 — Сценарий развития */}
+          <div style={S.section} id="s2">
+            <h2 style={S.sectionH2}><span style={S.num}>03</span>Сценарий развития</h2>
+            <div style={S.reportText}>
+              {strategy?.scenario_text
+                ? strategy.scenario_text.split('\n').map((p: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{p}</p>)
+                : <p style={S.muted}>Текст сценария будет добавлен при публикации стратегии.</p>
+              }
+            </div>
+          </div>
+
+          {/* Секция 04 — Предположения */}
+          <div style={S.section} id="s3">
+            <h2 style={S.sectionH2}><span style={S.num}>04</span>Предположения. Связи с будущим</h2>
+            <p style={S.muted}>Рекомендации по ключевым блокам для данного сценария.</p>
+            {strategy?.current_state ? (
+              <div style={S.assumptionsGrid}>
+                {Object.entries(strategy.current_state).map(([cat, text]: [string, any], i) => (
+                  <div key={cat} style={S.assumption}>
+                    <div style={S.assumptionHead}>
+                      <span style={S.numMini}>{String(i + 1).padStart(2, '0')}</span>
+                      <h3 style={S.assumptionH3}>{cat}</h3>
+                    </div>
+                    <p style={S.assumptionBody}>{text}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={S.muted}>Предположения будут добавлены при публикации стратегии.</p>
+            )}
+          </div>
+
+          {/* Секция 05 — Бизнес-модель (если есть) */}
+          {method2 && (
+            <div style={S.section} id="s4">
+              <h2 style={S.sectionH2}><span style={S.num}>05</span>Бизнес-модель (Метод 2)</h2>
+              <p style={S.muted}>Сводка по 9 блокам с вашими оценками и комментариями.</p>
+              <div>
+                {BMC_NAMES.map((name, i) => {
+                  const data = method2[name] as any
+                  if (!data) return null
+                  return (
+                    <div key={name} style={S.bmcRow}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 16, alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={S.bmcRowTitle}>{i + 1}. {name}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 3, justifyContent: 'flex-end', alignItems: 'center' }}>
+                          {Array.from({ length: 5 }, (_, j) => (
+                            <div key={j} style={{ width: 14, height: 6, borderRadius: 99, background: j < data.score ? '#1e3a8a' : 'rgba(26,37,64,0.08)' }} />
+                          ))}
+                        </div>
+                      </div>
+                      {data.text && (
+                        <div style={S.bmcComment}>
+                          <span style={{ ...S.labelRed, display: 'block', marginBottom: 8, fontSize: 10 }}>Комментарий из диагностики</span>
+                          <span style={{ fontFamily: 'Georgia,serif', fontSize: 15, color: '#1a2540', fontStyle: 'italic', lineHeight: 1.7, display: 'block' }}>{data.text}</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Секция 06 — Целевой сценарий */}
+          <div style={S.section} id="s5">
+            <h2 style={S.sectionH2}><span style={S.num}>06</span>Целевой сценарий</h2>
+            <div style={S.reportText}>
+              {strategy?.transition_description ? (
+                <p>Через 12–18 месяцев компания должна перейти к гексаграмме <strong>{strategy.transition_description}</strong>{strategy.transition_title ? ` «${strategy.transition_title}»` : ''}.</p>
+              ) : (
+                <p style={S.muted}>Целевой сценарий будет добавлен при публикации стратегии.</p>
+              )}
+            </div>
+            {strategy?.transition_description && (
+              <div style={S.transitionCard}>
+                <div style={{ textAlign: 'center' as const }}>
+                  <div style={S.hexLg}>䷖</div>
+                  <div style={S.faint}>сейчас</div>
+                </div>
+                <div style={{ flex: 1, borderTop: '1px dashed rgba(26,37,64,0.2)', position: 'relative' as const }}>
+                  <span style={S.transitionLabel}>12–18 месяцев</span>
+                </div>
+                <div style={{ textAlign: 'center' as const }}>
+                  <div style={{ ...S.hexLg, color: '#2d6a2d' }}>䷪</div>
+                  <div style={S.faint}>цель</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   )
+}
+
+const S: Record<string, React.CSSProperties> = {
+  nav: { background: '#cde3e3', borderBottom: '1px solid rgba(26,37,64,0.08)' },
+  navInner: { maxWidth: 1200, margin: '0 auto', padding: '0 60px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 },
+  navLogo: { display: 'flex', alignItems: 'baseline', cursor: 'pointer', flexShrink: 0 },
+  logo64: { fontFamily: 'Georgia,serif', fontSize: 20, color: '#c0392b' },
+  logoDao: { fontFamily: 'Georgia,serif', fontSize: 20, color: '#1a2540' },
+  navLinks: { display: 'flex', gap: 4 },
+  navLink: { background: 'none', border: 'none', fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.6)', cursor: 'pointer', padding: '6px 12px', borderRadius: 5 },
+  navLinkOn: { background: 'rgba(26,37,64,0.08)', color: '#1a2540' },
+  navUser: { display: 'flex', alignItems: 'center', gap: 10 },
+  navEmail: { fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.55)' },
+  avatar: { width: 32, height: 32, borderRadius: '50%', background: '#1a2540', color: '#e8e4db', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Georgia,serif', fontSize: 14 },
+  actions: { maxWidth: 1200, margin: '0 auto', padding: '16px 60px', display: 'flex', alignItems: 'center', gap: 12 },
+  backBtn: { background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(26,37,64,0.6)', fontFamily: 'sans-serif', fontSize: 12 },
+  btnPrimary: { background: '#1a2540', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' },
+  reportShell: { maxWidth: 1200, margin: '0 auto', padding: '0 60px 60px', display: 'grid', gridTemplateColumns: '200px 1fr', gap: 32 },
+  toc: { position: 'sticky' as const, top: 24, alignSelf: 'flex-start' as const },
+  tocTitle: { fontFamily: 'sans-serif', fontSize: 11, letterSpacing: 1, color: 'rgba(26,37,64,0.4)', textTransform: 'uppercase' as const, marginBottom: 12, fontWeight: 600 },
+  tocLink: { display: 'block', fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.5)', padding: '6px 10px', borderRadius: 4, cursor: 'pointer', marginBottom: 2, textDecoration: 'none' },
+  tocLinkOn: { background: 'rgba(26,37,64,0.06)', color: '#1a2540' },
+  reportBody: { display: 'flex', flexDirection: 'column' as const, gap: 0 },
+  cover: { background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '36px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
+  labelRed: { fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase' as const, color: '#c0392b', fontWeight: 600 },
+  coverH1: { fontFamily: 'Georgia,serif', fontSize: 32, fontWeight: 400, color: '#1a2540', margin: '8px 0 12px' },
+  coverMeta: { fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.6)', lineHeight: 1.7 },
+  hexXl: { fontFamily: 'serif', fontSize: 64, color: '#1e3a8a', lineHeight: 1 },
+  combBadge: { fontFamily: 'monospace', fontSize: 13, color: 'rgba(26,37,64,0.5)', letterSpacing: 3, marginTop: 8 },
+  section: { background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '28px 32px', marginBottom: 16 },
+  sectionH2: { fontFamily: 'Georgia,serif', fontSize: 22, fontWeight: 400, color: '#1a2540', margin: '0 0 16px', display: 'flex', alignItems: 'baseline', gap: 12 },
+  num: { fontFamily: 'sans-serif', fontSize: 11, color: '#c0392b', letterSpacing: 1, flexShrink: 0 },
+  muted: { fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.5)', lineHeight: 1.6, marginBottom: 16 },
+  faint: { fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.4)' },
+  stateGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 },
+  stateCell: { background: 'rgba(26,37,64,0.03)', borderRadius: 6, padding: '14px 18px' },
+  stateVal: { fontFamily: 'Georgia,serif', fontSize: 17, color: '#1a2540', marginTop: 6 },
+  scenarioTable: { marginTop: 16 },
+  scenarioHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 },
+  th: { padding: '10px 14px', textAlign: 'left' as const, fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)', borderBottom: '1px solid rgba(26,37,64,0.08)', fontWeight: 500 },
+  td: { padding: '12px 14px', fontFamily: 'sans-serif', fontSize: 14, color: '#1a2540', borderBottom: '1px solid rgba(26,37,64,0.06)' },
+  reportText: { fontFamily: 'Georgia,serif', fontSize: 16, lineHeight: 1.8, color: '#1a2540' },
+  assumptionsGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 },
+  assumption: { background: 'rgba(26,37,64,0.03)', borderRadius: 6, padding: '16px 18px' },
+  assumptionHead: { display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 },
+  numMini: { fontFamily: 'Georgia,serif', fontSize: 13, color: '#c0392b', letterSpacing: 1, flexShrink: 0 },
+  assumptionH3: { fontFamily: 'Georgia,serif', fontSize: 15, fontWeight: 600, color: '#1a2540', margin: 0 },
+  assumptionBody: { fontFamily: 'Georgia,serif', fontSize: 14, lineHeight: 1.7, color: '#1a2540', margin: 0 },
+  bmcRow: { padding: '18px 0', borderBottom: '1px solid rgba(26,37,64,0.06)' },
+  bmcRowTitle: { fontFamily: 'Georgia,serif', fontSize: 15, color: '#1a2540' },
+  bmcComment: { marginTop: 14, padding: '18px 22px', background: 'rgba(30,58,138,0.05)', border: '1px solid rgba(30,58,138,0.12)', borderRadius: 6 },
+  transitionCard: { background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '20px 28px', marginTop: 18, display: 'flex', alignItems: 'center', gap: 24 },
+  hexLg: { fontFamily: 'serif', fontSize: 40, color: '#1e3a8a', lineHeight: 1 },
+  transitionLabel: { position: 'absolute' as const, top: -10, left: '50%', transform: 'translateX(-50%)', background: '#e8e4db', padding: '0 10px', fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)', letterSpacing: 2, textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const },
 }
