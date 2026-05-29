@@ -2,6 +2,25 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Session Lifecycle
+
+**Starting**: Read MEMORY.md. Check handoffs/ for the latest handoff. Resume context.
+**Ending**: Write a handoff if work is in-progress. Save any corrections to memory.
+
+## How I Work
+
+- Direct, no fluff. Skip preambles.
+- NO em dashes. Use colons or split sentences.
+- Lead with recommendations, not option lists.
+- Code should be production-ready, not "here's a starting point."
+
+## Workflow Rules
+
+1. Plan first for anything non-trivial. Think before coding.
+2. One sub-agent per focused task. Keep the main chat clean.
+3. After ANY correction from me, save it to memory. Don't make the same mistake twice.
+4. Verify before calling it done. Run tests. Check the diff.
+
 ## Project
 
 Web application for business strategy diagnostics based on 64 hexagrams (I Ching). Users answer 6 A/B questions → get a combination like `ABABBA` → system maps it to one of 64 strategies → generates a PDF report.
@@ -9,6 +28,12 @@ Web application for business strategy diagnostics based on 64 hexagrams (I Ching
 **Stack:** FastAPI 0.115 · PostgreSQL 16 · SQLAlchemy 2 async · Next.js 14 App Router · Docker Compose · FastPanel nginx (host)
 
 ## Key Commands
+- npm run dev - start the dev server
+- npm test - run unit tests
+- npm run typecheck - type-check the project
+- npm run lint - lint the project
+- npx prisma migrate dev - run migrations locally
+
 
 ### Deploy to production (from local Windows, SSH to VPS)
 ```bash
@@ -44,6 +69,26 @@ docker compose up -d --build
 ```
 
 ## Architecture
+- Business logic lives in services or domain modules.
+- API routes stay thin and call into services.
+- Use the existing email template system; do not add a new one.
+- The BullMQ worker handles all scheduled jobs. Do not add cron.
+- Tenant isolation is enforced at the service layer, not the route.
+
+## Documentation
+For deeper context, consult these before guessing:
+- `docs/architecture.md` — service boundaries, request flow, tenant isolation model
+- `docs/billing.md` — Stripe webhook handling, invoice lifecycle, proration rules
+- `docs/email.md` — template system, Resend setup, list of available templates
+- `docs/jobs.md` — BullMQ queue names, job patterns, retry/backoff policy
+- `docs/db.md` — schema conventions, tenant isolation patterns, soft-delete rules
+- `docs/runbooks/` — production incident runbooks
+- `prisma/schema.prisma` — source of truth for the data model
+- ADRs in `docs/adr/` — past architecture decisions; read before contradicting one
+
+For Next.js, Prisma, Auth.js, BullMQ, or Resend specifics, check the official docs rather than guessing.
+
+
 
 ### Backend (`backend/`)
 - **Entry:** `app/main.py` — mounts all routers, CORS, rate limiter (slowapi), lifespan
@@ -95,3 +140,14 @@ Admin can view the app as any non-admin user:
 - Async SQLAlchemy: always `await db.flush()` after mutations, commit happens in `get_db` dependency.
 - CORS is strict: `allow_origins` must exactly match `settings.app_url` — no trailing slash.
 - Admin setup: `POST /api/admin/setup` works only once (before any admin exists) and requires `ADMIN_SETUP_KEY` from `.env`.
+
+## Testing
+- Every feature has success, validation failure, and not-found tests.
+- Use test data builders, not inline setup objects.
+- Do not mock the database unless existing tests do.
+
+## Don't do
+- Do not log raw payment payloads.
+- Do not return database errors directly to the client.
+- Do not edit migrations after they have been merged.
+

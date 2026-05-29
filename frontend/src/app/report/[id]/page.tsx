@@ -57,6 +57,36 @@ export default function ReportPage() {
     'Сегменты клиентов', 'Структура издержек', 'Потоки доходов',
   ]
 
+  const LC_LABELS: [string, string][] = [
+    ['lc_profit',    'Формирование прибыли'],
+    ['lc_strategy',  'Рыночная стратегия'],
+    ['lc_decisions', 'Принятие решений'],
+    ['lc_consumer',  'Тип потребителя'],
+    ['lc_market',    'Статус рынка'],
+    ['lc_value',     'Тип ценности'],
+  ]
+
+  const ASSM_LABELS: [string, string][] = [
+    ['assm_planning',     'Планирование'],
+    ['assm_growth',       'Рост'],
+    ['assm_advertising',  'Реклама'],
+    ['assm_feedback',     'Обратная связь'],
+    ['assm_risk',         'Риск'],
+    ['assm_product',      'Выбор продукта'],
+    ['assm_service',      'Сервис'],
+    ['assm_startup',      'Стартап'],
+    ['assm_investment',   'Инвестиции и финансы'],
+    ['assm_contracts',    'Договора и соглашения'],
+    ['assm_sync',         'Синхронизация'],
+    ['assm_creative',     'Творческий вклад'],
+    ['assm_interaction',  'Взаимодействие'],
+    ['assm_resources',    'Достаточность ресурсов'],
+    ['assm_research',     'Исследование и разработка'],
+    ['assm_trade',        'Международная торговля'],
+    ['assm_failures',     'Источники неудач'],
+    ['assm_success',      'Источники удачи'],
+  ]
+
   const sections = isMethod2Only
     ? ['01 — Бизнес-модель (9 блоков)']
     : [
@@ -205,11 +235,22 @@ export default function ReportPage() {
 
             {/* Секция 02 — Жизненный цикл */}
             <div style={S.section} id="s1">
-              <h2 style={S.sectionH2}><span style={S.num}>02</span>Жизненный цикл</h2>
+              <h2 style={S.sectionH2}><span style={S.num}>02</span>Стадия жизненного цикла</h2>
               <div style={S.reportText}>
                 {strategy?.lifecycle_description
                   ? <p>{strategy.lifecycle_description}</p>
                   : <p style={S.muted}>Описание будет добавлено при публикации стратегии.</p>}
+              </div>
+              {/* 6 блоков лайфцикла */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
+                {LC_LABELS.map(([field, label]) => (
+                  <div key={field} style={{ background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '12px 14px' }}>
+                    <div style={{ fontSize: 9, fontFamily: 'sans-serif', letterSpacing: 1, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.45)', fontWeight: 600, marginBottom: 6 }}>{label}</div>
+                    <p style={{ fontSize: 13, color: '#1a2540', lineHeight: 1.6, margin: 0, fontFamily: 'sans-serif' }}>
+                      {strategy?.[field] || <em style={{ opacity: 0.35 }}>Не заполнено</em>}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -221,27 +262,36 @@ export default function ReportPage() {
                   ? strategy.scenario_text.split('\n').map((p: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{p}</p>)
                   : <p style={S.muted}>Текст сценария будет добавлен при публикации стратегии.</p>}
               </div>
+              {/* Маркетинг */}
+              <div style={{ marginTop: 20 }}>
+                <div style={{ fontSize: 10, color: '#c0392b', letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'sans-serif', fontWeight: 700, marginBottom: 8 }}>Маркетинг</div>
+                <div style={{ border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '14px 16px', background: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.7)', lineHeight: 1.7 }}>
+                  {strategy?.marketing_text || <em style={{ opacity: 0.4 }}>Не заполнено</em>}
+                </div>
+              </div>
+              {/* Управление */}
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 10, color: '#c0392b', letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'sans-serif', fontWeight: 700, marginBottom: 8 }}>Управление</div>
+                <div style={{ border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '14px 16px', background: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.7)', lineHeight: 1.7 }}>
+                  {strategy?.management_text || <em style={{ opacity: 0.4 }}>Не заполнено</em>}
+                </div>
+              </div>
             </div>
 
-            {/* Секция 04 — Предположения */}
+            {/* Секция 04 — Предположения (assm_*) */}
             <div style={S.section} id="s3">
               <h2 style={S.sectionH2}><span style={S.num}>04</span>Предположения. Связи с будущим</h2>
-              <p style={S.muted}>Рекомендации по ключевым блокам для данного сценария.</p>
-              {strategy?.current_state ? (
-                <div style={S.assumptionsGrid}>
-                  {Object.entries(strategy.current_state).map(([cat, text]: [string, any], i) => (
-                    <div key={cat} style={S.assumption}>
-                      <div style={S.assumptionHead}>
-                        <span style={S.numMini}>{String(i + 1).padStart(2, '0')}</span>
-                        <h3 style={S.assumptionH3}>{cat}</h3>
-                      </div>
-                      <p style={S.assumptionBody}>{text}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p style={S.muted}>Предположения будут добавлены при публикации стратегии.</p>
-              )}
+              <p style={S.muted}>Предположения, лежащие в основе принятия решений.</p>
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12, marginTop: 12 }}>
+                {ASSM_LABELS.map(([field, label]) => (
+                  <div key={field} style={{ marginBottom: 4 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: '#c0392b', fontFamily: 'sans-serif', marginBottom: 4 }}>{label}</div>
+                    <p style={{ fontSize: 13, color: 'rgba(26,37,64,0.7)', lineHeight: 1.7, margin: 0, fontFamily: 'sans-serif' }}>
+                      {strategy?.[field] || <em style={{ opacity: 0.4 }}>Не заполнено</em>}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Секция 05 — Целевой сценарий */}

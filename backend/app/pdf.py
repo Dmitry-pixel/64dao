@@ -531,7 +531,7 @@ def build_report_html(
     transition_html = _transition_block(strategy, target_hex_info)
 
     # Определяем тип отчёта
-    is_method2 = not combination
+    is_method2 = bool(method2_data) and (not combination or combination == 'AAAAAA')
 
     # ── Обложка ──────────────────────────────────────────────────────────────
     if is_method2:

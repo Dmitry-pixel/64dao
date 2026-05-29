@@ -195,7 +195,7 @@ export default function DashboardPage() {
                   <div style={S.cardNum}>{String(i + 1).padStart(2, '0')}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={S.cardMeta}>
-                      {new Date(a.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </div>
                     <div style={S.cardTitle}>
                       {a.status === 'completed' || a.status === 'paid'
