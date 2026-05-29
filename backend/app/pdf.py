@@ -473,9 +473,23 @@ def build_report_html(
     date_str: str,
     combination: str,
     strategy: Any | None,
-    method2_data: dict[str, Any],
+    method2_data: dict[str, Any] | None,
 ) -> str:
-    """Собирает полный HTML отчёта (все данные уже экранированы через e())."""
+    """Собирает полный HTML отчёта (все данные уже экранированы через e()).
+
+    method2_data:
+      None  → Метод 1 (нет данных BMC)
+      {}    → Метод 2, данные пустые (legacy/пустая анкета)
+      {...} → Метод 2, данные заполнены
+    """
+
+    # Метод 2 определяется по наличию поля method2_data (даже пустого)
+    # И по заглушке-комбинации 'AAAAAA' (или пустой строке в тестах).
+    # Для настоящего Метода 1 с AAAAAA (все ответы A) method2_data = None.
+    is_method2 = method2_data is not None and (not combination or combination == 'AAAAAA')
+
+    # Нормализуем для рендеринга
+    method2_data = method2_data or {}
 
     hex_grid = "".join(
         f'<div style="display:flex;align-items:center;justify-content:center;'
@@ -529,9 +543,6 @@ def build_report_html(
     assumptions_html = _assumptions_block(strategy)
     # Блок "Целевое состояние" — строим до page2, чтобы вставить простой переменной
     transition_html = _transition_block(strategy, target_hex_info)
-
-    # Определяем тип отчёта
-    is_method2 = bool(method2_data) and (not combination or combination == 'AAAAAA')
 
     # ── Обложка ──────────────────────────────────────────────────────────────
     if is_method2:

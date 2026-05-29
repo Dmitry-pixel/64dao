@@ -168,7 +168,7 @@ class TestBuildReportHTML:
             date_str="24 мая 2026",
             combination=combo,
             strategy=strategy,
-            method2_data=m2 or {},
+            method2_data=m2,  # None = Метод 1, {} или {...} = Метод 2
         )
 
     def test_returns_nonempty_string(self):

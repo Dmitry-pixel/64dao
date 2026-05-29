@@ -171,7 +171,8 @@ async def generate_report_on_demand(
     combination = assessment.method1_combination
     company_name = assessment.company_name or user.company_name or "Компания"
     user_name = user.full_name or ""
-    method2_data = assessment.method2_data or {}
+    # Передаём None если поле не задано (None = Метод 1, {} или {...} = Метод 2)
+    method2_data = assessment.method2_data
 
     strategy = None
     if combination:
@@ -229,7 +230,8 @@ async def stream_pdf_on_demand(
     combination = assessment.method1_combination
     company_name = assessment.company_name or "Компания"
     user_name = user.full_name or ""
-    method2_data = assessment.method2_data or {}
+    # Передаём None если поле не задано (None = Метод 1, {} или {...} = Метод 2)
+    method2_data = assessment.method2_data
 
     strategy = None
     if combination:

@@ -5,6 +5,120 @@ import { getMe, getAssessment, reportDownloadUrl, type AuthUser, type Assessment
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
 
+// ── Таблица гексаграмм ────────────────────────────────────────────────────────
+const HEXAGRAM_MAP: Record<string, { n: number; name: string }> = {
+  'AAAAAA': { n:  1, name: 'Действие' },
+  'BBBBBB': { n:  2, name: 'Реакция' },
+  'ABBBAB': { n:  3, name: 'Появление' },
+  'BABBBA': { n:  4, name: 'Формализация' },
+  'AAABAB': { n:  5, name: 'Бдительность' },
+  'BABAAA': { n:  6, name: 'Раздор' },
+  'BABBBB': { n:  7, name: 'Управление' },
+  'BBBBAB': { n:  8, name: 'Объединение' },
+  'AAABAA': { n:  9, name: 'Развитие' },
+  'AABAAA': { n: 10, name: 'Последовательность' },
+  'AAABBB': { n: 11, name: 'Достижение' },
+  'BBBAAA': { n: 12, name: 'Препятствие' },
+  'ABAAAA': { n: 13, name: 'Осознанность' },
+  'AAAABA': { n: 14, name: 'Процветание' },
+  'BBABBB': { n: 15, name: 'Смирение' },
+  'BBBABB': { n: 16, name: 'Радость' },
+  'ABBAAB': { n: 17, name: 'Соответствие' },
+  'BAABBA': { n: 18, name: 'Диссонанс' },
+  'AABBBB': { n: 19, name: 'Подход' },
+  'BBBBAA': { n: 20, name: 'Наблюдать' },
+  'ABBABA': { n: 21, name: 'Устранять' },
+  'ABABBA': { n: 22, name: 'Изящество' },
+  'BBBBBA': { n: 23, name: 'Разрушение' },
+  'ABBBBB': { n: 24, name: 'Возрождение' },
+  'ABBAAA': { n: 25, name: 'Естественность' },
+  'AAABBA': { n: 26, name: 'Изобилие' },
+  'ABBBBA': { n: 27, name: 'Умеренность' },
+  'BAAAAB': { n: 28, name: 'Избыток' },
+  'BABBAB': { n: 29, name: 'Решимость' },
+  'ABAABA': { n: 30, name: 'Великолепие' },
+  'BBAAAB': { n: 31, name: 'Влияние' },
+  'BAAABB': { n: 32, name: 'Выносливость' },
+  'BBAAAA': { n: 33, name: 'Благоразумие' },
+  'AAAABB': { n: 34, name: 'Сила' },
+  'BBBABA': { n: 35, name: 'Благоприятный' },
+  'ABABBB': { n: 36, name: 'Неблагоприятный' },
+  'ABABAA': { n: 37, name: 'Гармония' },
+  'AABABA': { n: 38, name: 'Полярность' },
+  'BBABAB': { n: 39, name: 'Трудность' },
+  'BABABB': { n: 40, name: 'Избавление' },
+  'AABBBA': { n: 41, name: 'Убыток' },
+  'ABBBAA': { n: 42, name: 'Прибыль' },
+  'AAAAAB': { n: 43, name: 'Прорыв' },
+  'BAAAAA': { n: 44, name: 'Встреча' },
+  'BBBAAB': { n: 45, name: 'Объединение' },
+  'BAABBB': { n: 46, name: 'Самоотдача' },
+  'BABAAB': { n: 47, name: 'Понимание' },
+  'BAABAB': { n: 48, name: 'Глубина' },
+  'ABAAAB': { n: 49, name: 'Реформа' },
+  'BAAABA': { n: 50, name: 'Ценности' },
+  'ABBABB': { n: 51, name: 'Смелость' },
+  'BBABBA': { n: 52, name: 'Сосредоточенность' },
+  'BBABAA': { n: 53, name: 'Готовность' },
+  'AABABB': { n: 54, name: 'Амбиции' },
+  'ABAABB': { n: 55, name: 'Изобилие' },
+  'BBAABA': { n: 56, name: 'Стимулирование' },
+  'BABBAA': { n: 57, name: 'Интуиция' },
+  'AABAAB': { n: 58, name: 'Бодрость' },
+  'BAABAA': { n: 59, name: 'Установление связей' },
+  'AABBAB': { n: 60, name: 'Реализм' },
+  'AABBAA': { n: 61, name: 'Внутренняя правда' },
+  'BBAABB': { n: 62, name: 'Точность' },
+  'ABABAB': { n: 63, name: 'Завершение' },
+  'BABABA': { n: 64, name: 'Незавершённость' },
+}
+
+const TARGET_HEX: Record<number, number> = {
+   1:  9,  2: 62,  3: 49,  4:  7,  5: 63,  6:  6,  7: 62,  8: 23,
+   9: 37, 10: 25, 11: 36, 12:  9, 13: 37, 14: 26, 15: 11, 16: 54,
+  17: 63, 18: 64, 19: 34, 20: 33, 21: 64, 22: 18, 23: 56, 24: 19,
+  25: 37, 26: 22, 27:  4, 28: 44, 29:  3, 30: 22, 31: 43, 32: 44,
+  33:  1, 34:  1, 35: 64, 36: 37, 37: 63, 38: 21, 39:  5, 40: 46,
+  41: 27, 42:  3, 43:  5, 44: 33, 45: 58, 46: 57, 47: 44, 48: 47,
+  49: 63, 50: 18, 51: 25, 52: 18, 53: 39, 54: 11, 55: 36, 56: 14,
+  57: 44, 58:  5, 59: 44, 60: 43, 61: 42, 62: 33, 63: 17, 64: 40,
+}
+
+// combo → unicode hexagram character (U+4DC0 + n - 1)
+function comboToChar(combo: string): string {
+  const entry = HEXAGRAM_MAP[combo]
+  if (!entry) return ''
+  return String.fromCodePoint(0x4DC0 + entry.n - 1)
+}
+
+// Returns target hexagram info or null
+function getTargetHex(combo: string): { char: string; n: number; name: string } | null {
+  const entry = HEXAGRAM_MAP[combo]
+  if (!entry) return null
+  const targetN = TARGET_HEX[entry.n]
+  if (!targetN) return null
+  // find target by number
+  const found = Object.entries(HEXAGRAM_MAP).find(([, v]) => v.n === targetN)
+  if (!found) return null
+  return {
+    char: String.fromCodePoint(0x4DC0 + targetN - 1),
+    n: targetN,
+    name: found[1].name,
+  }
+}
+
+// Русские метки для сценария стратагемы
+const SCENARIO_LABELS: [string, string][] = [
+  ['innovation_strategy',   'Стратегия изменений'],
+  ['innovation_type',       'Тип изменений'],
+  ['value_discipline',      'Ценностная дисциплина'],
+  ['leadership_principles', 'Принципы лидерства'],
+  ['growth_strategy',       'Стратегия роста'],
+  ['focus',                 'Фокус'],
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function ReportPage() {
   const router = useRouter()
   const params = useParams()
@@ -20,7 +134,6 @@ export default function ReportPage() {
       .then(([u, a]) => {
         setUser(u)
         setAssessment(a)
-        // Загружаем стратегию только для Method 1 (реальная комбинация, не AAAAAA-заглушка)
         const isMethod2Only = a.method2_data && Object.keys(a.method2_data).length > 0 && a.method1_combination === 'AAAAAA'
         if (a.method1_combination && !isMethod2Only) {
           fetch(`${API}/api/strategies/${a.method1_combination}`, { credentials: 'include' })
@@ -51,6 +164,10 @@ export default function ReportPage() {
   const isMethod2Only = !!(method2 && Object.keys(method2).length > 0 && combo === 'AAAAAA')
   const companyName = assessment.company_name || user?.company_name || 'Компания'
 
+  const hexChar = comboToChar(combo)
+  const hexInfo = HEXAGRAM_MAP[combo]
+  const targetHex = getTargetHex(combo)
+
   const BMC_NAMES = [
     'Ключевые партнёры', 'Ключевые активности', 'Ключевые ресурсы',
     'Ценностное предложение', 'Отношения с клиентами', 'Каналы',
@@ -68,7 +185,7 @@ export default function ReportPage() {
 
   const ASSM_LABELS: [string, string][] = [
     ['assm_planning',     'Планирование'],
-    ['assm_growth',       'Рост'],
+    ['assm_growth',       'Рост и производительность'],
     ['assm_advertising',  'Реклама'],
     ['assm_feedback',     'Обратная связь'],
     ['assm_risk',         'Риск'],
@@ -96,6 +213,11 @@ export default function ReportPage() {
         '04 — Предположения',
         '05 — Целевой сценарий',
       ]
+
+  // Дата с временем
+  const createdAt = new Date(assessment.created_at).toLocaleString('ru-RU', {
+    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
 
   return (
     <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
@@ -145,15 +267,23 @@ export default function ReportPage() {
             <div>
               <span style={S.labelRed}>{isMethod2Only ? 'Бизнес-модель 64 ДАО' : 'Стратегический отчёт 64 ДАО'}</span>
               <h1 style={S.coverH1}>
-                {isMethod2Only ? `Бизнес-модель · ${companyName}` : (strategy?.title || `Стратегическая диагностика · ${companyName}`)}
+                {isMethod2Only
+                  ? `Бизнес-модель · ${companyName}`
+                  : (strategy?.title || `Стратегическая диагностика · ${companyName}`)}
               </h1>
               <div style={S.coverMeta}>
                 {companyName}<br />
-                Подготовлен {new Date(assessment.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                Подготовлен {createdAt}
               </div>
+              {!isMethod2Only && hexInfo && (
+                <div style={{ marginTop: 8 }}>
+                  <span style={{ ...S.labelRed, marginRight: 8 }}>Гексаграмма {hexInfo.n}</span>
+                  <span style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.6)' }}>{hexInfo.name}</span>
+                </div>
+              )}
             </div>
             <div style={{ textAlign: 'center' as const }}>
-              <div style={S.hexXl}>{isMethod2Only ? '䷿' : '䷖'}</div>
+              <div style={S.hexXl}>{isMethod2Only ? '䷿' : (hexChar || '?')}</div>
               {!isMethod2Only && <div style={S.combBadge}>{combo}</div>}
             </div>
           </div>
@@ -192,6 +322,7 @@ export default function ReportPage() {
 
           {/* ── МЕТОД 1: стратегия ── */}
           {!isMethod2Only && (<>
+
             {/* Секция 01 — Текущее состояние */}
             <div style={S.section} id="s0">
               <h2 style={S.sectionH2}><span style={S.num}>01</span>Текущее состояние</h2>
@@ -199,38 +330,44 @@ export default function ReportPage() {
               <div style={S.stateGrid}>
                 <div style={S.stateCell}>
                   <span style={S.labelRed}>Стратагема</span>
-                  <div style={S.stateVal}>{strategy?.stratagema_title || '—'}</div>
+                  <div style={S.stateVal}>{strategy?.stratagema_title || <em style={{ opacity: 0.4, fontSize: 14 }}>Не заполнено</em>}</div>
                 </div>
                 <div style={S.stateCell}>
-                  <span style={S.labelRed}>Стадия</span>
-                  <div style={S.stateVal}>{strategy?.lifecycle_stage || '—'}</div>
+                  <span style={S.labelRed}>Стадия жизненного цикла</span>
+                  <div style={S.stateVal}>{strategy?.lifecycle_stage || <em style={{ opacity: 0.4, fontSize: 14 }}>Не заполнено</em>}</div>
                 </div>
                 <div style={S.stateCell}>
                   <span style={S.labelRed}>Комбинация</span>
                   <div style={{ ...S.stateVal, fontFamily: 'monospace', letterSpacing: 3 }}>{combo}</div>
                 </div>
               </div>
-              {strategy?.scenario && (
-                <div style={S.scenarioTable}>
-                  <div style={S.scenarioHead}>
-                    <span style={S.labelRed}>Сценарий стратагемы</span>
-                    <span style={S.faint}>Гексаграмма {combo}</span>
-                  </div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'sans-serif', fontSize: 14 }}>
-                    <thead>
-                      <tr>
-                        <th style={S.th}>Описание</th>
-                        <th style={S.th}>Действие</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(strategy.scenario).map(([key, val]: [string, any]) => (
-                        <tr key={key}><td style={S.td}>{key}</td><td style={S.td}>{val}</td></tr>
-                      ))}
-                    </tbody>
-                  </table>
+
+              {/* Таблица стратагемы — всегда отображаем все 6 строк */}
+              <div style={S.scenarioTable}>
+                <div style={S.scenarioHead}>
+                  <span style={S.labelRed}>Таблица стратагемы</span>
+                  <span style={S.faint}>Гексаграмма {combo}</span>
                 </div>
-              )}
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'sans-serif', fontSize: 14 }}>
+                  <thead>
+                    <tr>
+                      <th style={S.th}>Параметр</th>
+                      <th style={S.th}>Значение</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {SCENARIO_LABELS.map(([key, label]) => {
+                      const val = strategy?.scenario?.[key]
+                      return (
+                        <tr key={key}>
+                          <td style={S.td}>{label}</td>
+                          <td style={S.td}>{val || <em style={{ opacity: 0.4 }}>Не заполнено</em>}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Секция 02 — Жизненный цикл */}
@@ -238,10 +375,10 @@ export default function ReportPage() {
               <h2 style={S.sectionH2}><span style={S.num}>02</span>Стадия жизненного цикла</h2>
               <div style={S.reportText}>
                 {strategy?.lifecycle_description
-                  ? <p>{strategy.lifecycle_description}</p>
-                  : <p style={S.muted}>Описание будет добавлено при публикации стратегии.</p>}
+                  ? strategy.lifecycle_description.split('\n').map((p: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{p}</p>)
+                  : <p style={S.muted}>Описание стадии будет добавлено при публикации стратегии.</p>}
               </div>
-              {/* 6 блоков лайфцикла */}
+              {/* 6 блоков жизненного цикла */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
                 {LC_LABELS.map(([field, label]) => (
                   <div key={field} style={{ background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '12px 14px' }}>
@@ -297,28 +434,64 @@ export default function ReportPage() {
             {/* Секция 05 — Целевой сценарий */}
             <div style={S.section} id="s4">
               <h2 style={S.sectionH2}><span style={S.num}>05</span>Целевой сценарий</h2>
-              <div style={S.reportText}>
-                {strategy?.transition_description ? (
-                  <p>Через 12–18 месяцев компания должна перейти к гексаграмме <strong>{strategy.transition_description}</strong>{strategy.transition_title ? ` «${strategy.transition_title}»` : ''}.</p>
-                ) : (
-                  <p style={S.muted}>Целевой сценарий будет добавлен при публикации стратегии.</p>
-                )}
-              </div>
-              {strategy?.transition_description && (
-                <div style={S.transitionCard}>
-                  <div style={{ textAlign: 'center' as const }}>
-                    <div style={S.hexLg}>䷖</div>
-                    <div style={S.faint}>сейчас</div>
-                  </div>
-                  <div style={{ flex: 1, borderTop: '1px dashed rgba(26,37,64,0.2)', position: 'relative' as const }}>
-                    <span style={S.transitionLabel}>12–18 месяцев</span>
-                  </div>
-                  <div style={{ textAlign: 'center' as const }}>
-                    <div style={{ ...S.hexLg, color: '#2d6a2d' }}>䷪</div>
-                    <div style={S.faint}>цель</div>
-                  </div>
+
+              {/* Название перехода */}
+              <div style={{ marginBottom: 12 }}>
+                <span style={S.labelRed}>Название перехода</span>
+                <div style={{ ...S.stateVal, marginTop: 4 }}>
+                  {strategy?.transition_title || <em style={{ opacity: 0.4, fontSize: 14 }}>Не заполнено</em>}
                 </div>
-              )}
+              </div>
+
+              {/* Стадия целевого состояния */}
+              <div style={{ marginBottom: 12 }}>
+                <span style={S.labelRed}>Стадия целевого состояния</span>
+                <div style={{ ...S.stateVal, marginTop: 4 }}>
+                  {strategy?.transition_lifecycle_stage || <em style={{ opacity: 0.4, fontSize: 14 }}>Не заполнено</em>}
+                </div>
+              </div>
+
+              {/* Описание перехода */}
+              <div style={{ marginBottom: 20 }}>
+                <span style={S.labelRed}>Описание перехода</span>
+                <div style={{ ...S.reportText, marginTop: 8 }}>
+                  {strategy?.transition_description
+                    ? strategy.transition_description.split('\n').map((p: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{p}</p>)
+                    : <p style={S.muted}>Описание перехода будет добавлено при публикации стратегии.</p>}
+                </div>
+              </div>
+
+              {/* Визуализация перехода: текущая → целевая гексаграмма */}
+              <div style={S.transitionCard}>
+                <div style={{ textAlign: 'center' as const }}>
+                  <div style={S.hexLg}>{hexChar || '?'}</div>
+                  <div style={S.faint}>сейчас</div>
+                  {hexInfo && (
+                    <div style={{ fontFamily: 'sans-serif', fontSize: 10, color: 'rgba(26,37,64,0.4)', marginTop: 2 }}>
+                      №{hexInfo.n} · {hexInfo.name}
+                    </div>
+                  )}
+                </div>
+                <div style={{ flex: 1, borderTop: '1px dashed rgba(26,37,64,0.2)', position: 'relative' as const }}>
+                  <span style={S.transitionLabel}>12–18 месяцев</span>
+                </div>
+                <div style={{ textAlign: 'center' as const }}>
+                  {targetHex ? (
+                    <>
+                      <div style={{ ...S.hexLg, color: '#2d6a2d' }}>{targetHex.char}</div>
+                      <div style={S.faint}>цель</div>
+                      <div style={{ fontFamily: 'sans-serif', fontSize: 10, color: 'rgba(26,37,64,0.4)', marginTop: 2 }}>
+                        №{targetHex.n} · {targetHex.name}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ ...S.hexLg, color: '#2d6a2d' }}>?</div>
+                      <div style={S.faint}>цель</div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </>)}
         </div>
@@ -367,12 +540,6 @@ const S: Record<string, React.CSSProperties> = {
   th: { padding: '10px 14px', textAlign: 'left' as const, fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)', borderBottom: '1px solid rgba(26,37,64,0.08)', fontWeight: 500 },
   td: { padding: '12px 14px', fontFamily: 'sans-serif', fontSize: 14, color: '#1a2540', borderBottom: '1px solid rgba(26,37,64,0.06)' },
   reportText: { fontFamily: 'Georgia,serif', fontSize: 16, lineHeight: 1.8, color: '#1a2540' },
-  assumptionsGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 },
-  assumption: { background: 'rgba(26,37,64,0.03)', borderRadius: 6, padding: '16px 18px' },
-  assumptionHead: { display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8 },
-  numMini: { fontFamily: 'Georgia,serif', fontSize: 13, color: '#c0392b', letterSpacing: 1, flexShrink: 0 },
-  assumptionH3: { fontFamily: 'Georgia,serif', fontSize: 15, fontWeight: 600, color: '#1a2540', margin: 0 },
-  assumptionBody: { fontFamily: 'Georgia,serif', fontSize: 14, lineHeight: 1.7, color: '#1a2540', margin: 0 },
   bmcRow: { padding: '18px 0', borderBottom: '1px solid rgba(26,37,64,0.06)' },
   bmcRowTitle: { fontFamily: 'Georgia,serif', fontSize: 15, color: '#1a2540' },
   bmcComment: { marginTop: 14, padding: '18px 22px', background: 'rgba(30,58,138,0.05)', border: '1px solid rgba(30,58,138,0.12)', borderRadius: 6 },
