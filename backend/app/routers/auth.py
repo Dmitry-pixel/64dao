@@ -13,8 +13,11 @@ from app.auth import (
     create_reset_token, verify_reset_token,
     get_current_user,
 )
+from app.config import get_settings
 from app.db import get_db
 from app.email import send_otp_email, send_welcome_email, send_forgot_password_email, send_support_email
+
+settings = get_settings()
 from app.limiter import limiter
 from app.models import User
 from app.schemas import (
@@ -241,5 +244,38 @@ async def support(
         )
     except Exception as exc:
         logger.error("send_support_email failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Не удалось отправить сообщение")
+    return SuccessResponse(message="Сообщение отправлено")
+
+
+# ── Public contact form ────────────────────────────────────────────────────────
+
+class ContactRequest(_BaseModel):
+    name: str
+    email: str
+    message: str
+
+@router.post("/contact", response_model=SuccessResponse)
+async def contact(body: ContactRequest):
+    """Публичная форма обратной связи — не требует авторизации."""
+    if not body.message.strip():
+        raise HTTPException(status_code=400, detail="Сообщение не может быть пустым")
+    to = settings.support_email_address
+    if not to:
+        logger.warning("contact: support_email_address не настроен — письмо не отправлено")
+        return SuccessResponse(message="Сообщение получено")
+    try:
+        from app.email import _send_message, _wrap_html
+        name_safe = body.name.strip() or body.email
+        subject = f"Обратная связь 64DAO — {name_safe}"
+        body_html = (
+            f"<p><b>Имя:</b> {name_safe}</p>"
+            f"<p><b>Email:</b> {body.email}</p>"
+            f"<p><b>Сообщение:</b></p>"
+            f"<p style='white-space:pre-wrap;'>{body.message.strip()}</p>"
+        )
+        await _send_message(to, subject, _wrap_html(body_html))
+    except Exception as exc:
+        logger.error("contact form send failed: %s", exc)
         raise HTTPException(status_code=500, detail="Не удалось отправить сообщение")
     return SuccessResponse(message="Сообщение отправлено")

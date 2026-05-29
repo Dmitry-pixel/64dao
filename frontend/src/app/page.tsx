@@ -55,19 +55,38 @@ export default function HomePage() {
       btn.addEventListener('click', closeCookie)
     })
 
-    // Contact form
+    // Contact form — отправка на /api/auth/contact → письмо на support@64dao.ru
     const form = document.getElementById('contact-form') as HTMLFormElement | null
-    const formHandler = (e: Event) => {
+    const formHandler = async (e: Event) => {
       e.preventDefault()
-      const btn = (e.target as HTMLFormElement).querySelector('button[type="submit"]') as HTMLButtonElement
+      const f = e.target as HTMLFormElement
+      const btn = f.querySelector('button[type="submit"]') as HTMLButtonElement
       if (!btn) return
+      const name    = (f.elements.namedItem('name')    as HTMLInputElement)?.value  ?? ''
+      const email   = (f.elements.namedItem('email')   as HTMLInputElement)?.value  ?? ''
+      const message = (f.elements.namedItem('message') as HTMLTextAreaElement)?.value ?? ''
       btn.disabled = true
-      btn.textContent = 'Спасибо, ответим в течение суток'
-      setTimeout(() => {
+      btn.textContent = 'Отправляем…'
+      try {
+        const res = await fetch('/api/auth/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, message }),
+        })
+        if (res.ok) {
+          btn.textContent = 'Спасибо, ответим в течение суток'
+          f.reset()
+          setTimeout(() => { btn.disabled = false; btn.textContent = 'Отправить' }, 4000)
+        } else {
+          btn.disabled = false
+          btn.textContent = 'Ошибка — попробуйте ещё раз'
+          setTimeout(() => { btn.textContent = 'Отправить' }, 3000)
+        }
+      } catch {
         btn.disabled = false
-        btn.textContent = 'Отправить'
-        ;(e.target as HTMLFormElement).reset()
-      }, 3500)
+        btn.textContent = 'Ошибка — попробуйте ещё раз'
+        setTimeout(() => { btn.textContent = 'Отправить' }, 3000)
+      }
     }
     form?.addEventListener('submit', formHandler)
 

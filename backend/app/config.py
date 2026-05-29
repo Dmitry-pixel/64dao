@@ -46,11 +46,17 @@ class Settings(BaseSettings):
     smtp_pass: str = ""
     smtp_from: str = ""          # если пусто — используется smtp_user
     smtp_use_tls: bool = True    # True для порта 465, False для 587
+    support_email: str = ""      # куда слать сообщения с формы обратной связи
 
     @property
     def smtp_from_address(self) -> str:
         """Адрес отправителя: smtp_from если задан, иначе smtp_user."""
         return self.smtp_from or self.smtp_user
+
+    @property
+    def support_email_address(self) -> str:
+        """Адрес получателя обратной связи: support_email, иначе smtp_from_address."""
+        return self.support_email or self.smtp_from_address
 
     # ── OTP ───────────────────────────────────────────────────────────────────
     otp_expire_minutes: int = 10
