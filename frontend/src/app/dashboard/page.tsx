@@ -193,10 +193,9 @@ export default function DashboardPage() {
                 <div key={a.id} style={{ ...S.card, cursor: (a.status === 'completed' || a.status === 'paid') ? 'pointer' : 'default' }}
                   onClick={() => (a.status === 'completed' || a.status === 'paid') && router.push(`/report/${a.id}`)}>
                   <div style={S.cardNum}>{String(i + 1).padStart(2, '0')}</div>
-                  <div style={S.cardHex}>{a.method1_combination || '——'}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={S.cardMeta}>
-                      {a.method1_combination} · {new Date(a.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {new Date(a.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </div>
                     <div style={S.cardTitle}>
                       {a.status === 'completed' || a.status === 'paid'

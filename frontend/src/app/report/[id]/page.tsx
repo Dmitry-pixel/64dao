@@ -20,7 +20,9 @@ export default function ReportPage() {
       .then(([u, a]) => {
         setUser(u)
         setAssessment(a)
-        if (a.method1_combination) {
+        // Загружаем стратегию только для Method 1 (реальная комбинация, не AAAAAA-заглушка)
+        const isMethod2Only = a.method2_data && Object.keys(a.method2_data).length > 0 && a.method1_combination === 'AAAAAA'
+        if (a.method1_combination && !isMethod2Only) {
           fetch(`${API}/api/strategies/${a.method1_combination}`, { credentials: 'include' })
             .then(r => r.ok ? r.json() : null)
             .then(s => setStrategy(s))
@@ -46,6 +48,8 @@ export default function ReportPage() {
   const combo = assessment.method1_combination || '??????'
   const hasReport = assessment.reports.length > 0
   const method2 = assessment.method2_data
+  const isMethod2Only = !!(method2 && Object.keys(method2).length > 0 && combo === 'AAAAAA')
+  const companyName = assessment.company_name || user?.company_name || 'Компания'
 
   const BMC_NAMES = [
     'Ключевые партнёры', 'Ключевые активности', 'Ключевые ресурсы',
@@ -53,14 +57,15 @@ export default function ReportPage() {
     'Сегменты клиентов', 'Структура издержек', 'Потоки доходов',
   ]
 
-  const sections = [
-    '01 — Текущее состояние',
-    '02 — Стадия жизненного цикла',
-    '03 — Сценарий развития',
-    '04 — Предположения',
-    ...(method2 ? ['05 — Бизнес-модель'] : []),
-    '06 — Целевой сценарий',
-  ]
+  const sections = isMethod2Only
+    ? ['01 — Бизнес-модель (9 блоков)']
+    : [
+        '01 — Текущее состояние',
+        '02 — Стадия жизненного цикла',
+        '03 — Сценарий развития',
+        '04 — Предположения',
+        '05 — Целевой сценарий',
+      ]
 
   return (
     <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
@@ -108,110 +113,25 @@ export default function ReportPage() {
           {/* Обложка */}
           <div style={S.cover}>
             <div>
-              <span style={S.labelRed}>Стратегический отчёт 64 ДАО</span>
-              <h1 style={S.coverH1}>{strategy?.title || `Стратегия ${combo}`}</h1>
+              <span style={S.labelRed}>{isMethod2Only ? 'Бизнес-модель 64 ДАО' : 'Стратегический отчёт 64 ДАО'}</span>
+              <h1 style={S.coverH1}>
+                {isMethod2Only ? `Бизнес-модель · ${companyName}` : (strategy?.title || `Стратегическая диагностика · ${companyName}`)}
+              </h1>
               <div style={S.coverMeta}>
-                {user?.company_name && <>{user.company_name} · </>}{user?.full_name}<br />
+                {companyName}<br />
                 Подготовлен {new Date(assessment.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
               </div>
             </div>
             <div style={{ textAlign: 'center' as const }}>
-              <div style={S.hexXl}>䷖</div>
-              <div style={S.combBadge}>{combo}</div>
+              <div style={S.hexXl}>{isMethod2Only ? '䷿' : '䷖'}</div>
+              {!isMethod2Only && <div style={S.combBadge}>{combo}</div>}
             </div>
           </div>
 
-          {/* Секция 01 — Текущее состояние */}
-          <div style={S.section} id="s0">
-            <h2 style={S.sectionH2}><span style={S.num}>01</span>Текущее состояние</h2>
-            <p style={S.muted}>Три параметра, которые система определила по вашим ответам.</p>
-            <div style={S.stateGrid}>
-              <div style={S.stateCell}>
-                <span style={S.labelRed}>Стратагема</span>
-                <div style={S.stateVal}>{strategy?.stratagema_title || '—'}</div>
-              </div>
-              <div style={S.stateCell}>
-                <span style={S.labelRed}>Стадия</span>
-                <div style={S.stateVal}>{strategy?.lifecycle_stage || '—'}</div>
-              </div>
-              <div style={S.stateCell}>
-                <span style={S.labelRed}>Комбинация</span>
-                <div style={{ ...S.stateVal, fontFamily: 'monospace', letterSpacing: 3 }}>{combo}</div>
-              </div>
-            </div>
-            {strategy?.scenario && (
-              <div style={S.scenarioTable}>
-                <div style={S.scenarioHead}>
-                  <span style={S.labelRed}>Сценарий стратагемы</span>
-                  <span style={S.faint}>Правая колонка зависит от вашей текущей гексаграммы ({combo})</span>
-                </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'sans-serif', fontSize: 14 }}>
-                  <thead>
-                    <tr>
-                      <th style={S.th}>Описание</th>
-                      <th style={S.th}>Действие</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(strategy.scenario).map(([key, val]: [string, any]) => (
-                      <tr key={key}>
-                        <td style={S.td}>{key}</td>
-                        <td style={S.td}>{val}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* Секция 02 — Жизненный цикл */}
-          <div style={S.section} id="s1">
-            <h2 style={S.sectionH2}><span style={S.num}>02</span>Жизненный цикл</h2>
-            <div style={S.reportText}>
-              {strategy?.lifecycle_description
-                ? <p>{strategy.lifecycle_description}</p>
-                : <p style={S.muted}>Описание стадии жизненного цикла будет добавлено при публикации стратегии.</p>
-              }
-            </div>
-          </div>
-
-          {/* Секция 03 — Сценарий развития */}
-          <div style={S.section} id="s2">
-            <h2 style={S.sectionH2}><span style={S.num}>03</span>Сценарий развития</h2>
-            <div style={S.reportText}>
-              {strategy?.scenario_text
-                ? strategy.scenario_text.split('\n').map((p: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{p}</p>)
-                : <p style={S.muted}>Текст сценария будет добавлен при публикации стратегии.</p>
-              }
-            </div>
-          </div>
-
-          {/* Секция 04 — Предположения */}
-          <div style={S.section} id="s3">
-            <h2 style={S.sectionH2}><span style={S.num}>04</span>Предположения. Связи с будущим</h2>
-            <p style={S.muted}>Рекомендации по ключевым блокам для данного сценария.</p>
-            {strategy?.current_state ? (
-              <div style={S.assumptionsGrid}>
-                {Object.entries(strategy.current_state).map(([cat, text]: [string, any], i) => (
-                  <div key={cat} style={S.assumption}>
-                    <div style={S.assumptionHead}>
-                      <span style={S.numMini}>{String(i + 1).padStart(2, '0')}</span>
-                      <h3 style={S.assumptionH3}>{cat}</h3>
-                    </div>
-                    <p style={S.assumptionBody}>{text}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={S.muted}>Предположения будут добавлены при публикации стратегии.</p>
-            )}
-          </div>
-
-          {/* Секция 05 — Бизнес-модель (если есть) */}
-          {method2 && (
-            <div style={S.section} id="s4">
-              <h2 style={S.sectionH2}><span style={S.num}>05</span>Бизнес-модель (Метод 2)</h2>
+          {/* ── МЕТОД 2: только бизнес-модель ── */}
+          {isMethod2Only && method2 && (
+            <div style={S.section} id="s0">
+              <h2 style={S.sectionH2}><span style={S.num}>01</span>Бизнес-модель (9 блоков)</h2>
               <p style={S.muted}>Сводка по 9 блокам с вашими оценками и комментариями.</p>
               <div>
                 {BMC_NAMES.map((name, i) => {
@@ -220,9 +140,7 @@ export default function ReportPage() {
                   return (
                     <div key={name} style={S.bmcRow}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 16, alignItems: 'flex-start' }}>
-                        <div>
-                          <div style={S.bmcRowTitle}>{i + 1}. {name}</div>
-                        </div>
+                        <div style={S.bmcRowTitle}>{i + 1}. {name}</div>
                         <div style={{ display: 'flex', gap: 3, justifyContent: 'flex-end', alignItems: 'center' }}>
                           {Array.from({ length: 5 }, (_, j) => (
                             <div key={j} style={{ width: 14, height: 6, borderRadius: 99, background: j < data.score ? '#1e3a8a' : 'rgba(26,37,64,0.08)' }} />
@@ -231,7 +149,7 @@ export default function ReportPage() {
                       </div>
                       {data.text && (
                         <div style={S.bmcComment}>
-                          <span style={{ ...S.labelRed, display: 'block', marginBottom: 8, fontSize: 10 }}>Комментарий из диагностики</span>
+                          <span style={{ ...S.labelRed, display: 'block', marginBottom: 8, fontSize: 10 }}>Комментарий</span>
                           <span style={{ fontFamily: 'Georgia,serif', fontSize: 15, color: '#1a2540', fontStyle: 'italic', lineHeight: 1.7, display: 'block' }}>{data.text}</span>
                         </div>
                       )}
@@ -242,32 +160,117 @@ export default function ReportPage() {
             </div>
           )}
 
-          {/* Секция 06 — Целевой сценарий */}
-          <div style={S.section} id="s5">
-            <h2 style={S.sectionH2}><span style={S.num}>06</span>Целевой сценарий</h2>
-            <div style={S.reportText}>
-              {strategy?.transition_description ? (
-                <p>Через 12–18 месяцев компания должна перейти к гексаграмме <strong>{strategy.transition_description}</strong>{strategy.transition_title ? ` «${strategy.transition_title}»` : ''}.</p>
-              ) : (
-                <p style={S.muted}>Целевой сценарий будет добавлен при публикации стратегии.</p>
-              )}
-            </div>
-            {strategy?.transition_description && (
-              <div style={S.transitionCard}>
-                <div style={{ textAlign: 'center' as const }}>
-                  <div style={S.hexLg}>䷖</div>
-                  <div style={S.faint}>сейчас</div>
+          {/* ── МЕТОД 1: стратегия ── */}
+          {!isMethod2Only && (<>
+            {/* Секция 01 — Текущее состояние */}
+            <div style={S.section} id="s0">
+              <h2 style={S.sectionH2}><span style={S.num}>01</span>Текущее состояние</h2>
+              <p style={S.muted}>Параметры, которые система определила по вашим ответам.</p>
+              <div style={S.stateGrid}>
+                <div style={S.stateCell}>
+                  <span style={S.labelRed}>Стратагема</span>
+                  <div style={S.stateVal}>{strategy?.stratagema_title || '—'}</div>
                 </div>
-                <div style={{ flex: 1, borderTop: '1px dashed rgba(26,37,64,0.2)', position: 'relative' as const }}>
-                  <span style={S.transitionLabel}>12–18 месяцев</span>
+                <div style={S.stateCell}>
+                  <span style={S.labelRed}>Стадия</span>
+                  <div style={S.stateVal}>{strategy?.lifecycle_stage || '—'}</div>
                 </div>
-                <div style={{ textAlign: 'center' as const }}>
-                  <div style={{ ...S.hexLg, color: '#2d6a2d' }}>䷪</div>
-                  <div style={S.faint}>цель</div>
+                <div style={S.stateCell}>
+                  <span style={S.labelRed}>Комбинация</span>
+                  <div style={{ ...S.stateVal, fontFamily: 'monospace', letterSpacing: 3 }}>{combo}</div>
                 </div>
               </div>
-            )}
-          </div>
+              {strategy?.scenario && (
+                <div style={S.scenarioTable}>
+                  <div style={S.scenarioHead}>
+                    <span style={S.labelRed}>Сценарий стратагемы</span>
+                    <span style={S.faint}>Гексаграмма {combo}</span>
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'sans-serif', fontSize: 14 }}>
+                    <thead>
+                      <tr>
+                        <th style={S.th}>Описание</th>
+                        <th style={S.th}>Действие</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(strategy.scenario).map(([key, val]: [string, any]) => (
+                        <tr key={key}><td style={S.td}>{key}</td><td style={S.td}>{val}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Секция 02 — Жизненный цикл */}
+            <div style={S.section} id="s1">
+              <h2 style={S.sectionH2}><span style={S.num}>02</span>Жизненный цикл</h2>
+              <div style={S.reportText}>
+                {strategy?.lifecycle_description
+                  ? <p>{strategy.lifecycle_description}</p>
+                  : <p style={S.muted}>Описание будет добавлено при публикации стратегии.</p>}
+              </div>
+            </div>
+
+            {/* Секция 03 — Сценарий развития */}
+            <div style={S.section} id="s2">
+              <h2 style={S.sectionH2}><span style={S.num}>03</span>Сценарий развития</h2>
+              <div style={S.reportText}>
+                {strategy?.scenario_text
+                  ? strategy.scenario_text.split('\n').map((p: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{p}</p>)
+                  : <p style={S.muted}>Текст сценария будет добавлен при публикации стратегии.</p>}
+              </div>
+            </div>
+
+            {/* Секция 04 — Предположения */}
+            <div style={S.section} id="s3">
+              <h2 style={S.sectionH2}><span style={S.num}>04</span>Предположения. Связи с будущим</h2>
+              <p style={S.muted}>Рекомендации по ключевым блокам для данного сценария.</p>
+              {strategy?.current_state ? (
+                <div style={S.assumptionsGrid}>
+                  {Object.entries(strategy.current_state).map(([cat, text]: [string, any], i) => (
+                    <div key={cat} style={S.assumption}>
+                      <div style={S.assumptionHead}>
+                        <span style={S.numMini}>{String(i + 1).padStart(2, '0')}</span>
+                        <h3 style={S.assumptionH3}>{cat}</h3>
+                      </div>
+                      <p style={S.assumptionBody}>{text}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={S.muted}>Предположения будут добавлены при публикации стратегии.</p>
+              )}
+            </div>
+
+            {/* Секция 05 — Целевой сценарий */}
+            <div style={S.section} id="s4">
+              <h2 style={S.sectionH2}><span style={S.num}>05</span>Целевой сценарий</h2>
+              <div style={S.reportText}>
+                {strategy?.transition_description ? (
+                  <p>Через 12–18 месяцев компания должна перейти к гексаграмме <strong>{strategy.transition_description}</strong>{strategy.transition_title ? ` «${strategy.transition_title}»` : ''}.</p>
+                ) : (
+                  <p style={S.muted}>Целевой сценарий будет добавлен при публикации стратегии.</p>
+                )}
+              </div>
+              {strategy?.transition_description && (
+                <div style={S.transitionCard}>
+                  <div style={{ textAlign: 'center' as const }}>
+                    <div style={S.hexLg}>䷖</div>
+                    <div style={S.faint}>сейчас</div>
+                  </div>
+                  <div style={{ flex: 1, borderTop: '1px dashed rgba(26,37,64,0.2)', position: 'relative' as const }}>
+                    <span style={S.transitionLabel}>12–18 месяцев</span>
+                  </div>
+                  <div style={{ textAlign: 'center' as const }}>
+                    <div style={{ ...S.hexLg, color: '#2d6a2d' }}>䷪</div>
+                    <div style={S.faint}>цель</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>)}
         </div>
       </div>
     </div>
