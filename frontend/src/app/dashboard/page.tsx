@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getMe, listAssessments, logout, type AuthUser, type Assessment } from '@/lib/api'
+import { getMe, listAssessments, deleteAssessment, logout, type AuthUser, type Assessment } from '@/lib/api'
 import React from 'react'
 
 function SupportForm() {
@@ -66,6 +66,8 @@ export default function DashboardPage() {
   const [assessments, setAssessments] = useState<Assessment[]>([])
   const [loading, setLoading] = useState(true)
   const [credits, setCredits] = useState<number>(0)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([getMe(), listAssessments()])
@@ -77,6 +79,19 @@ export default function DashboardPage() {
       .then(d => setCredits(d.credits ?? 0))
       .catch(() => setCredits(0))
   }, [router])
+
+  async function handleDelete(id: string) {
+    setDeletingId(id)
+    try {
+      await deleteAssessment(id)
+      setAssessments(prev => prev.filter(a => a.id !== id))
+    } catch {
+      alert('Не удалось удалить. Попробуйте ещё раз.')
+    } finally {
+      setDeletingId(null)
+      setConfirmId(null)
+    }
+  }
 
   async function handleLogout() {
     await logout()
@@ -204,6 +219,10 @@ export default function DashboardPage() {
                     ) : (
                       <span style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)' }}>Генерация...</span>
                     )}
+                    <button
+                      style={{ ...S.btnGhost, color: '#c0392b', borderColor: 'rgba(192,57,43,0.25)' }}
+                      onClick={e => { e.stopPropagation(); setConfirmId(a.id) }}
+                    >Удалить</button>
                   </div>
                 </div>
               ))}
@@ -273,6 +292,28 @@ export default function DashboardPage() {
           )}
         </aside>
       </div>
+      {/* Диалог подтверждения удаления */}
+      {confirmId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setConfirmId(null)}>
+          <div style={{ background: '#fff', borderRadius: 10, padding: '32px 36px', maxWidth: 400, width: '90%', boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 400, color: '#1a2540', margin: '0 0 12px' }}>Удалить отчёт?</h3>
+            <p style={{ fontFamily: 'sans-serif', fontSize: 14, color: 'rgba(26,37,64,0.65)', lineHeight: 1.6, margin: '0 0 24px' }}>
+              Диагностика и PDF-файл будут удалены безвозвратно.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button style={{ background: 'none', border: '1px solid rgba(26,37,64,0.2)', borderRadius: 6, padding: '9px 18px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', color: '#1a2540' }}
+                onClick={() => setConfirmId(null)}>Отмена</button>
+              <button style={{ background: '#c0392b', border: 'none', borderRadius: 6, padding: '9px 18px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', color: '#fff', fontWeight: 500, opacity: deletingId === confirmId ? 0.6 : 1 }}
+                disabled={deletingId === confirmId}
+                onClick={() => handleDelete(confirmId)}>
+                {deletingId === confirmId ? 'Удаляем…' : 'Да, удалить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

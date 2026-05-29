@@ -112,7 +112,7 @@ function AssessmentInner() {
     for (let i = 0; i < 6; i++) answersMap[`q${i + 1}`] = answers[i] || 'A'
     try {
       const API = process.env.NEXT_PUBLIC_API_URL || ''
-      await fetch(`${API}/api/assessments`, {
+      const res = await fetch(`${API}/api/assessments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -122,6 +122,14 @@ function AssessmentInner() {
           status: 'completed',
         }),
       })
+      if (res.ok) {
+        const assessment = await res.json()
+        // Запускаем генерацию PDF (не ждём — займёт до 30 сек)
+        fetch(`${API}/api/assessments/${assessment.id}/generate-report`, {
+          method: 'POST',
+          credentials: 'include',
+        }).catch(() => {})
+      }
       setMode('waiting')
     } catch {
       setMode('waiting')
@@ -138,7 +146,7 @@ function AssessmentInner() {
     })
     try {
       const API = process.env.NEXT_PUBLIC_API_URL || ''
-      await fetch(`${API}/api/assessments`, {
+      const res = await fetch(`${API}/api/assessments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -149,6 +157,13 @@ function AssessmentInner() {
           status: 'completed',
         }),
       })
+      if (res.ok) {
+        const assessment = await res.json()
+        fetch(`${API}/api/assessments/${assessment.id}/generate-report`, {
+          method: 'POST',
+          credentials: 'include',
+        }).catch(() => {})
+      }
       setMode('waiting')
     } catch {
       setMode('waiting')
@@ -207,7 +222,6 @@ function AssessmentInner() {
           <span style={S.labelRed}>Новая диагностика</span>
         </div>
         <h1 style={S.chooseH1}>Выберите, с чего начать</h1>
-        <p style={S.chooseSub}>Полная диагностика состоит из двух методов. Метод 1 определяет фазу компании и сценарий развития. Метод 2 уточняет картину по 9 блокам бизнес-модели. Можно пройти оба сразу или по отдельности.</p>
         <div style={S.chooseGrid}>
           <div style={S.methodCard} onClick={() => setMode('method1')}>
             <div style={S.methodCardTop}>
@@ -233,14 +247,6 @@ function AssessmentInner() {
               <span style={S.methodGo}>Начать →</span>
             </div>
           </div>
-        </div>
-        <div style={S.fullCard}>
-          <span style={S.hexSm}>䷊</span>
-          <div>
-            <strong style={{ fontFamily: 'Georgia,serif', fontSize: 16, display: 'block', marginBottom: 4 }}>Полная диагностика</strong>
-            <span style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.6)' }}>Метод 1 + Метод 2 · PDF-отчёт · Онлайн-просмотр без ограничений · Срок готовности — до 30 минут</span>
-          </div>
-          <button style={{ ...S.btnPrimary, marginLeft: 'auto', flexShrink: 0 }} onClick={() => setMode('method1')}>Начать полную →</button>
         </div>
       </div>
     </div>
