@@ -199,7 +199,11 @@ export default function DashboardPage() {
                       {a.method1_combination} · {new Date(a.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </div>
                     <div style={S.cardTitle}>
-                      {a.status === 'completed' || a.status === 'paid' ? `Стратегия «${a.method1_combination}»` : 'Незавершённая диагностика'}
+                      {a.status === 'completed' || a.status === 'paid'
+                        ? (a.method2_data && Object.keys(a.method2_data).length > 0 && a.method1_combination === 'AAAAAA'
+                            ? `Бизнес-модель · ${a.company_name || user?.company_name || '—'}`
+                            : `Стратегическая диагностика · ${a.company_name || user?.company_name || '—'}`)
+                        : 'Незавершённая диагностика'}
                     </div>
                     <div style={S.cardDetail}>
                       {a.reports.length > 0 ? `${a.reports.length} отчёт сформирован` : 'Отчёт формируется'}

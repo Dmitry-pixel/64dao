@@ -67,9 +67,13 @@ function AssessmentInner() {
   const methodParam = searchParams.get('method')
 
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [mode, setMode] = useState<'choose' | 'method1' | 'method2' | 'waiting'>(
-    methodParam === '1' ? 'method1' : methodParam === '2' ? 'method2' : 'choose'
+  const [mode, setMode] = useState<'choose' | 'company' | 'method1' | 'method2' | 'waiting'>(
+    methodParam === '1' ? 'company' : methodParam === '2' ? 'company' : 'choose'
   )
+  const [pendingMethod, setPendingMethod] = useState<'method1' | 'method2'>(
+    methodParam === '2' ? 'method2' : 'method1'
+  )
+  const [companyName, setCompanyName] = useState('')
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Record<number, 'A' | 'B'>>({})
   const [selected, setSelected] = useState<'A' | 'B' | null>(null)
@@ -119,6 +123,7 @@ function AssessmentInner() {
         body: JSON.stringify({
           method1_answers: answersMap,
           method1_combination: combo,
+          company_name: companyName.trim() || undefined,
           status: 'completed',
         }),
       })
@@ -154,6 +159,7 @@ function AssessmentInner() {
           method1_answers: { q1: 'A', q2: 'A', q3: 'A', q4: 'A', q5: 'A', q6: 'A' },
           method1_combination: 'AAAAAA',
           method2_data,
+          company_name: companyName.trim() || undefined,
           status: 'completed',
         }),
       })
@@ -223,7 +229,7 @@ function AssessmentInner() {
         </div>
         <h1 style={S.chooseH1}>Выберите, с чего начать</h1>
         <div style={S.chooseGrid}>
-          <div style={S.methodCard} onClick={() => setMode('method1')}>
+          <div style={S.methodCard} onClick={() => { setPendingMethod('method1'); setMode('company') }}>
             <div style={S.methodCardTop}>
               <span style={S.labelRed}>Метод 01 · Стратегия</span>
               <span style={S.hexFaint}>䷀</span>
@@ -235,7 +241,7 @@ function AssessmentInner() {
               <span style={S.methodGo}>Начать →</span>
             </div>
           </div>
-          <div style={S.methodCard} onClick={() => setMode('method2')}>
+          <div style={S.methodCard} onClick={() => { setPendingMethod('method2'); setMode('company') }}>
             <div style={S.methodCardTop}>
               <span style={S.labelRed}>Метод 02 · Бизнес-модель</span>
               <span style={S.hexFaint}>䷷</span>
@@ -247,6 +253,49 @@ function AssessmentInner() {
               <span style={S.methodGo}>Начать →</span>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  )
+
+  // ── Ввод названия компании ───────────────────────────────────────────────
+  if (mode === 'company') return (
+    <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
+      <NavBar />
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '80px 40px' }}>
+        <span style={S.labelRed}>
+          {pendingMethod === 'method1' ? 'Метод 01 · Стратегия' : 'Метод 02 · Бизнес-модель'}
+        </span>
+        <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 32, fontWeight: 400, color: '#1a2540', margin: '10px 0 8px' }}>
+          Название компании
+        </h1>
+        <p style={{ fontFamily: 'sans-serif', fontSize: 14, color: 'rgba(26,37,64,0.6)', marginBottom: 32, lineHeight: 1.6 }}>
+          Введите название вашей компании — оно будет отображаться в отчёте.
+        </p>
+        <input
+          autoFocus
+          type="text"
+          placeholder="Например: ООО Ромашка"
+          value={companyName}
+          onChange={e => setCompanyName(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && companyName.trim()) setMode(pendingMethod) }}
+          style={{
+            width: '100%', boxSizing: 'border-box' as const,
+            padding: '14px 18px', fontFamily: 'sans-serif', fontSize: 15,
+            border: '1px solid rgba(26,37,64,0.2)', borderRadius: 8,
+            outline: 'none', color: '#1a2540', background: '#fff',
+            marginBottom: 20,
+          }}
+        />
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button style={S.btnGhost} onClick={() => setMode('choose')}>← Назад</button>
+          <button
+            style={{ ...S.btnPrimary, opacity: companyName.trim() ? 1 : 0.45 }}
+            disabled={!companyName.trim()}
+            onClick={() => setMode(pendingMethod)}
+          >
+            Продолжить →
+          </button>
         </div>
       </div>
     </div>

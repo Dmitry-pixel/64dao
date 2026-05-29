@@ -30,12 +30,11 @@ async def get_strategy_by_combination(
     if len(combination) != 6 or not all(c in "AB" for c in combination.upper()):
         raise HTTPException(status_code=400, detail="Комбинация должна быть 6 символов A/B")
 
-    # Админ видит и неопубликованные
-    q = select(Strategy).where(Strategy.combination == combination.upper())
-    if user.role not in ("admin", "editor"):
-        q = q.where(Strategy.is_published == True)
-
-    strategy = await db.scalar(q)
+    # Все аутентифицированные пользователи видят стратегию для своих отчётов.
+    # is_published фильтруем только для публичного списка, но не для владельца отчёта.
+    strategy = await db.scalar(
+        select(Strategy).where(Strategy.combination == combination.upper())
+    )
     if not strategy:
         raise HTTPException(status_code=404, detail="Стратегия не найдена")
     return strategy
