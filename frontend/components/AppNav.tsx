@@ -49,8 +49,8 @@ export function AppNav({ current, role = 'user' }: AppNavProps) {
     <nav className="appnav">
       <Logo />
       <div className="appnav-links">
-        <Link href="/dashboard" className={isActive('/dashboard') ? 'on' : ''}>Мои отчёты</Link>
-        <Link href="/assessment/start" className={isActive('/assessment') ? 'on' : ''}>Новая диагностика</Link>
+        <Link href={role === 'admin' ? '/admin/my-reports' : '/dashboard'} className={isActive('/dashboard') || isActive('/admin/my-reports') ? 'on' : ''}>Мои отчёты</Link>
+        <Link href="/assessment" className={isActive('/assessment') ? 'on' : ''}>Новая диагностика</Link>
         <Link href="/purchases" className={isActive('/purchases') ? 'on' : ''}>Мои покупки</Link>
         <Link href="/profile" className={isActive('/profile') ? 'on' : ''}>Профиль</Link>
       </div>

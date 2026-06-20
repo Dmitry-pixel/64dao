@@ -76,7 +76,7 @@ export default function AdminMyReportsPage() {
                   : `${completed} готовых · ${drafts} черновик${drafts === 1 ? '' : 'а'} · всего ${assessments.length}`}
               </p>
             </div>
-            <Link href="/assessment/start" className="btn btn-primary btn-lg">+ Новая диагностика</Link>
+            <Link href="/assessment" className="btn btn-primary btn-lg">+ Новая диагностика</Link>
           </div>
 
           {assessments.length === 0 ? (
@@ -84,7 +84,7 @@ export default function AdminMyReportsPage() {
               <span style={{ fontSize: 52, fontFamily: 'Georgia,serif', color: 'var(--blue)', display: 'block', marginBottom: 18 }}>䷀</span>
               <h3>Пока нет диагностик</h3>
               <p>Запустите диагностику — отчёт появится здесь без необходимости оплаты.</p>
-              <Link href="/assessment/start" className="btn btn-primary btn-lg" style={{ marginTop: 16, display: 'inline-block' }}>
+              <Link href="/assessment" className="btn btn-primary btn-lg" style={{ marginTop: 16, display: 'inline-block' }}>
                 Начать диагностику →
               </Link>
             </div>
@@ -148,7 +148,7 @@ export default function AdminMyReportsPage() {
                       <button
                         className="btn btn-ghost"
                         style={{ padding: '7px 14px', fontSize: 12 }}
-                        onClick={e => { e.stopPropagation(); router.push('/assessment/start') }}
+                        onClick={e => { e.stopPropagation(); router.push('/assessment') }}
                       >
                         Новая диагностика
                       </button>

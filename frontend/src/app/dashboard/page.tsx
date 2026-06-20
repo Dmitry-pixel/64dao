@@ -116,7 +116,7 @@ export default function DashboardPage() {
             <span style={S.logo64}>64</span><span style={S.logoDao}> ДАО</span>
           </div>
           <div style={S.navLinks}>
-            <button style={{ ...S.navLink, ...S.navLinkOn }}>Личный кабинет</button>
+            <button style={{ ...S.navLink, ...S.navLinkOn }} onClick={() => router.push('/admin')}>Личный кабинет</button>
             {user?.role === 'admin' && (
               <button style={S.navLink} onClick={() => router.push('/admin/my-reports')}>Мои отчёты</button>
             )}
@@ -257,7 +257,7 @@ export default function DashboardPage() {
               </div>
               <button
                 style={{ background: 'rgba(52,199,89,0.15)', border: '1px solid rgba(52,199,89,0.5)', color: '#7fff9a', fontWeight: 600, width: '100%', padding: '10px 16px', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'sans-serif' }}
-                onClick={() => router.push('/assessment/start')}
+                onClick={() => router.push('/assessment')}
               >
                 Начать диагностику →
               </button>
