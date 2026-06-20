@@ -75,7 +75,7 @@ export default function PurchasesPage() {
           </div>
           <div style={S.navLinks}>
             <button style={S.navLink} onClick={() => router.push('/dashboard')}>Личный кабинет</button>
-            <button style={S.navLink} onClick={() => router.push('/reports')}>Мои отчёты</button>
+            <button style={S.navLink} onClick={() => router.push(user?.role === 'admin' ? '/admin/my-reports' : '/dashboard')}>Мои отчёты</button>
             <button style={{ ...S.navLink, ...S.navLinkOn }}>Мои покупки</button>
             <button style={S.navLink} onClick={() => router.push('/profile')}>Профиль</button>
           </div>

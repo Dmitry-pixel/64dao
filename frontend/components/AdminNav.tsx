@@ -130,7 +130,7 @@ interface AdminSideProps {
 }
 
 export function AdminSide({ current }: AdminSideProps) {
-  const [stats, setStats] = useState<{ users: number; strategies: number } | null>(null)
+  const [stats, setStats] = useState<{ users: number; strategies: number; total_orders: number } | null>(null)
   const [myReportsCount, setMyReportsCount] = useState<number | null>(null)
 
   useEffect(() => {
@@ -138,6 +138,7 @@ export function AdminSide({ current }: AdminSideProps) {
       .then((data: any) => setStats({
         users: data.total_users,
         strategies: data.published_strategies,
+        total_orders: data.total_orders,
       }))
       .catch(() => {})
 
@@ -176,6 +177,9 @@ export function AdminSide({ current }: AdminSideProps) {
       <Link href="/admin/documents/personal-data-consent" className={current === 'doc-personal-data-consent' ? 'on' : ''}>Согласие на обработку ПД</Link>
 
       <h4>Система</h4>
+      <Link href="/admin" className="">
+        Количество заказов <span className="num">{stats?.total_orders ?? '—'}</span>
+      </Link>
       <Link href="/admin/pricing" className={current === 'pricing' ? 'on' : ''}>Тариф & цена</Link>
       <Link href="/admin/email-templates" className={current === 'email-templates' ? 'on' : ''}>Email-шаблоны</Link>
       <Link href="/admin/logs" className={current === 'logs' ? 'on' : ''}>Логи</Link>

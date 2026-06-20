@@ -117,7 +117,9 @@ export default function DashboardPage() {
           </div>
           <div style={S.navLinks}>
             <button style={{ ...S.navLink, ...S.navLinkOn }}>Личный кабинет</button>
-            <button style={S.navLink} onClick={() => router.push('/reports')}>Мои отчёты</button>
+            {user?.role === 'admin' && (
+              <button style={S.navLink} onClick={() => router.push('/admin/my-reports')}>Мои отчёты</button>
+            )}
             <button style={S.navLink} onClick={() => router.push('/purchases')}>Мои покупки</button>
             <button style={S.navLink} onClick={() => router.push('/profile')}>Профиль</button>
           </div>

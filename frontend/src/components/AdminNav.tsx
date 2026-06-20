@@ -76,7 +76,7 @@ export function AdminSide({ current }: { current: string }) {
         <Item href="/admin/users" label="Все пользователи" badge={stats ? String(stats.total_users) : undefined} active={isActive('users')} />
         <Group label="ДИАГНОСТИКИ" />
         <Item href="/admin/my-reports" label="Отчёты" badge={stats ? String(stats.total_reports) : undefined} active={isActive('my-reports')} />
-        <Item href="/admin/documents" label="Заказы" badge={stats ? String(stats.total_orders) : undefined} active={isActive('documents')} />
+        <Item href="/admin" label="Количество заказов" badge={stats ? String(stats.total_orders) : undefined} active={false} />
         <Group label="СИСТЕМА" />
         <Item href="/admin/pricing" label="Тариф & цена" active={isActive('pricing')} />
         <Item href="/admin/email-templates" label="Email-шаблоны" active={isActive('email-templates')} />

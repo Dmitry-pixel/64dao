@@ -169,10 +169,22 @@ export default function ReportPage() {
   const targetHex = getTargetHex(combo)
 
   const BMC_NAMES = [
-    'Ключевые партнёры', 'Ключевые активности', 'Ключевые ресурсы',
-    'Ценностное предложение', 'Отношения с клиентами', 'Каналы',
-    'Сегменты клиентов', 'Структура издержек', 'Потоки доходов',
+    'Ценностное предложение', 'Отношения с клиентами', 'Ключевые ресурсы',
+    'Потоки доходов', 'Ключевые партнёры', 'Сегменты клиентов',
+    'Ключевые активности', 'Каналы', 'Структура издержек',
   ]
+
+  const BMC_HELP: Record<string, string> = {
+    'Ценностное предложение': 'Какую конкретную пользу клиент получает? Чем вы отличаетесь от альтернатив?',
+    'Отношения с клиентами': 'Какие связи компания выстраивает: персональные, самообслуживание, сообщество?',
+    'Ключевые ресурсы': 'Какие активы, люди, технологии и капитал необходимы для работы?',
+    'Потоки доходов': 'Как компания зарабатывает: продажи, подписка, лицензии, комиссии?',
+    'Ключевые партнёры': 'Кто помогает компании создавать и доставлять ценность? Какие альянсы и поставщики критичны?',
+    'Сегменты клиентов': 'Кто ваш клиент? Существует ли несколько сегментов с разными потребностями?',
+    'Ключевые активности': 'Что компания делает каждый день, чтобы создавать ценность для клиента?',
+    'Каналы': 'Через какие каналы клиенты узнают о продукте и получают его?',
+    'Структура издержек': 'Какие затраты ключевые? Постоянные или переменные? На чём фокус?',
+  }
 
   const LC_LABELS: [string, string][] = [
     ['lc_profit',    'Формирование прибыли'],
@@ -224,11 +236,15 @@ export default function ReportPage() {
       {/* Навигация */}
       <nav style={S.nav}>
         <div style={S.navInner}>
-          <div style={S.navLogo} onClick={() => router.push('/dashboard')}>
+          <div style={S.navLogo} onClick={() => router.push(user?.role === 'admin' ? '/admin' : '/dashboard')}>
             <span style={S.logo64}>64</span><span style={S.logoDao}> ДАО</span>
           </div>
           <div style={S.navLinks}>
-            <button style={{ ...S.navLink, ...S.navLinkOn }} onClick={() => router.push('/dashboard')}>Мои отчёты</button>
+            {user?.role === 'admin' ? (
+              <button style={{ ...S.navLink, ...S.navLinkOn }} onClick={() => router.push('/admin')}>Админ-панель</button>
+            ) : (
+              <button style={{ ...S.navLink, ...S.navLinkOn }} onClick={() => router.push('/dashboard')}>Мои отчёты</button>
+            )}
             <button style={S.navLink} onClick={() => router.push('/assessment')}>Новая диагностика</button>
             <button style={S.navLink} onClick={() => router.push('/profile')}>Профиль</button>
           </div>
@@ -241,7 +257,7 @@ export default function ReportPage() {
 
       {/* Панель действий */}
       <div style={S.actions}>
-        <button style={S.backBtn} onClick={() => router.push('/dashboard')}>← Все отчёты</button>
+        <button style={S.backBtn} onClick={() => router.push(user?.role === 'admin' ? '/admin/my-reports' : '/dashboard')}>← Все отчёты</button>
         <div style={{ flex: 1 }} />
         {hasReport && (
           <a href={reportDownloadUrl(assessment.reports[0].id)} target="_blank" rel="noreferrer" style={S.btnPrimary}>
@@ -307,6 +323,11 @@ export default function ReportPage() {
                           ))}
                         </div>
                       </div>
+                      {BMC_HELP[name] && (
+                        <div style={{ fontFamily: 'sans-serif', fontSize: 12.5, color: 'rgba(26,37,64,0.55)', lineHeight: 1.5, marginTop: 6 }}>
+                          {BMC_HELP[name]}
+                        </div>
+                      )}
                       {data.text && (
                         <div style={S.bmcComment}>
                           <span style={{ ...S.labelRed, display: 'block', marginBottom: 8, fontSize: 10 }}>Комментарий</span>
