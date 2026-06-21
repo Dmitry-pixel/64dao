@@ -220,10 +220,9 @@ export default function ReportPage() {
     ? ['01 — Бизнес-модель (9 блоков)']
     : [
         '01 — Текущее состояние',
-        '02 — Стадия жизненного цикла',
-        '03 — Сценарий развития',
-        '04 — Предположения',
-        '05 — Целевой сценарий',
+        '02 — Сценарий развития',
+        '03 — Предположения',
+        '04 — Целевой сценарий',
       ]
 
   // Дата с временем
@@ -363,6 +362,19 @@ export default function ReportPage() {
                 </div>
               </div>
 
+
+              {/* 6 блоков жизненного цикла */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
+                {LC_LABELS.map(([field, label]) => (
+                  <div key={field} style={{ background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '12px 14px' }}>
+                    <div style={{ fontSize: 9, fontFamily: 'sans-serif', letterSpacing: 1, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.45)', fontWeight: 600, marginBottom: 6 }}>{label}</div>
+                    <p style={{ fontSize: 13, color: '#1a2540', lineHeight: 1.6, margin: 0, fontFamily: 'sans-serif' }}>
+                      {strategy?.[field] || <em style={{ opacity: 0.35 }}>Не заполнено</em>}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
               {/* Таблица стратагемы — всегда отображаем все 6 строк */}
               <div style={S.scenarioTable}>
                 <div style={S.scenarioHead}>
@@ -391,30 +403,9 @@ export default function ReportPage() {
               </div>
             </div>
 
-            {/* Секция 02 — Жизненный цикл */}
-            <div style={S.section} id="s1">
-              <h2 style={S.sectionH2}><span style={S.num}>02</span>Стадия жизненного цикла</h2>
-              <div style={S.reportText}>
-                {strategy?.lifecycle_description
-                  ? strategy.lifecycle_description.split('\n').map((p: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{p}</p>)
-                  : <p style={S.muted}>Описание стадии будет добавлено при публикации стратегии.</p>}
-              </div>
-              {/* 6 блоков жизненного цикла */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
-                {LC_LABELS.map(([field, label]) => (
-                  <div key={field} style={{ background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '12px 14px' }}>
-                    <div style={{ fontSize: 9, fontFamily: 'sans-serif', letterSpacing: 1, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.45)', fontWeight: 600, marginBottom: 6 }}>{label}</div>
-                    <p style={{ fontSize: 13, color: '#1a2540', lineHeight: 1.6, margin: 0, fontFamily: 'sans-serif' }}>
-                      {strategy?.[field] || <em style={{ opacity: 0.35 }}>Не заполнено</em>}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Секция 03 — Сценарий развития */}
+            {/* Секция 02 — Сценарий развития */}
             <div style={S.section} id="s2">
-              <h2 style={S.sectionH2}><span style={S.num}>03</span>Сценарий развития</h2>
+              <h2 style={S.sectionH2}><span style={S.num}>02</span>Сценарий развития</h2>
               <div style={S.reportText}>
                 {strategy?.scenario_text
                   ? strategy.scenario_text.split('\n').map((p: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{p}</p>)
@@ -436,9 +427,9 @@ export default function ReportPage() {
               </div>
             </div>
 
-            {/* Секция 04 — Предположения (assm_*) */}
+            {/* Секция 03 — Предположения (assm_*) */}
             <div style={S.section} id="s3">
-              <h2 style={S.sectionH2}><span style={S.num}>04</span>Предположения. Связи с будущим</h2>
+              <h2 style={S.sectionH2}><span style={S.num}>03</span>Предположения. Связи с будущим</h2>
               <p style={S.muted}>Предположения, лежащие в основе принятия решений.</p>
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12, marginTop: 12 }}>
                 {ASSM_LABELS.map(([field, label]) => (
@@ -452,9 +443,9 @@ export default function ReportPage() {
               </div>
             </div>
 
-            {/* Секция 05 — Целевой сценарий */}
+            {/* Секция 04 — Целевой сценарий */}
             <div style={S.section} id="s4">
-              <h2 style={S.sectionH2}><span style={S.num}>05</span>Целевой сценарий</h2>
+              <h2 style={S.sectionH2}><span style={S.num}>04</span>Целевой сценарий</h2>
 
               {/* Название перехода */}
               <div style={{ marginBottom: 12 }}>

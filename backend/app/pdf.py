@@ -176,15 +176,6 @@ def _table_rows(rows: list[tuple[str, str | None]]) -> str:
     return f'<table style="width:100%;border-collapse:collapse;margin-bottom:16px;"><tbody>{html}</tbody></table>'
 
 
-CURRENT_STATE_LABELS = {
-    "value_type":     "Тип ценности",
-    "market_status":  "Статус рынка",
-    "consumer_type":  "Тип потребителя",
-    "organization":   "Организация управления",
-    "strategy":       "Бизнес-стратегия",
-    "goal":           "Бизнес-цель",
-}
-
 SCENARIO_LABELS = {
     "innovation_strategy":   "Стратегия изменений",
     "innovation_type":       "Тип изменений",
@@ -377,6 +368,7 @@ def _assumptions_block(strategy: Any) -> str:
         )
     return (
         '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:24px 0 12px;">'
+        '<span style="font-size:11px;color:#c0392b;margin-right:8px;">03</span>'
         'Предположения, лежащие в основе принятия решения. Связи с будущим'
         '</h2>'
         '<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:24px;'
@@ -387,7 +379,7 @@ def _assumptions_block(strategy: Any) -> str:
 
 
 def _transition_block(strategy: Any, target_hex_info: tuple | None) -> str:
-    """HTML-блок 'Целевое состояние' с символом и названием целевой гексаграммы."""
+    """HTML-блок 'Целевой сценарий' с символом и названием целевой гексаграммы."""
     if not strategy:
         return ""
 
@@ -406,14 +398,17 @@ def _transition_block(strategy: Any, target_hex_info: tuple | None) -> str:
             'margin-top:3px;">'
             + e(t_name) +
             '</div>'
-            '</div>'
-        )
+        '</div>'
+    )
     else:
         hex_col = ""
 
     title_html = (e(strategy.transition_title)
                   if strategy.transition_title
                   else '<em style="opacity:0.4;">Название перехода не заполнено</em>')
+    stage_html = (e(strategy.transition_lifecycle_stage)
+                  if getattr(strategy, "transition_lifecycle_stage", None)
+                  else '<em style="opacity:0.4;">Стадия целевого состояния не заполнена</em>')
     desc_html  = (e(strategy.transition_description)
                   if strategy.transition_description
                   else '<em style="opacity:0.4;">Описание перехода не заполнено</em>')
@@ -424,7 +419,7 @@ def _transition_block(strategy: Any, target_hex_info: tuple | None) -> str:
         'background:rgba(192,57,43,0.04);">'
         '<div style="font-size:10px;color:#c0392b;letter-spacing:2px;'
         'text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:12px;">'
-        'Целевое состояние'
+        '<span style="margin-right:8px;">04</span>Целевой сценарий'
         '</div>'
         '<div style="display:flex;align-items:flex-start;gap:20px;">'
         + hex_col +
@@ -432,6 +427,12 @@ def _transition_block(strategy: Any, target_hex_info: tuple | None) -> str:
         '<h3 style="font-size:16px;font-weight:500;color:#1a2540;margin-bottom:6px;">'
         + title_html +
         '</h3>'
+        '<div style="font-size:10px;color:rgba(26,37,64,0.45);text-transform:uppercase;'
+        'letter-spacing:1px;font-family:Arial,sans-serif;margin-bottom:4px;">Стадия целевого состояния</div>'
+        '<p style="font-size:12px;color:rgba(26,37,64,0.65);'
+        'font-family:Arial,sans-serif;line-height:1.5;margin:0 0 10px;">'
+        + stage_html +
+        '</p>'
         '<p style="font-size:12px;color:rgba(26,37,64,0.65);'
         'font-family:Arial,sans-serif;line-height:1.7;margin:0;">'
         + desc_html +
@@ -512,10 +513,6 @@ def build_report_html(
     # Целевая гексаграмма — вычисляем заранее, чтобы не усложнять f-строки
     target_hex_info = get_target_hexagram_info(combination) if combination else None
 
-    # Текущее состояние — всегда все строки, пустые с заглушкой
-    cs = (strategy.current_state or {}) if strategy else {}
-    cs_rows = [(lbl, cs.get(k) or None) for k, lbl in CURRENT_STATE_LABELS.items()]
-
     # Сценарий — всегда все строки, пустые с заглушкой
     sc = (strategy.scenario or {}) if strategy else {}
     sc_rows = [(lbl, sc.get(k) or None) for k, lbl in SCENARIO_LABELS.items()]
@@ -555,7 +552,7 @@ def build_report_html(
 
     # Блок "Предположения" — строим до page2, чтобы вставить простой переменной
     assumptions_html = _assumptions_block(strategy)
-    # Блок "Целевое состояние" — строим до page2, чтобы вставить простой переменной
+    # Блок "Целевой сценарий" — строим до page2, чтобы вставить простой переменной
     transition_html = _transition_block(strategy, target_hex_info)
 
     # ── Обложка ──────────────────────────────────────────────────────────────
@@ -594,6 +591,22 @@ def build_report_html(
             f'{e(strategy.lifecycle_stage or "")}</div>'
         ) if strategy and strategy.lifecycle_stage else ""
 
+        current_state_html = f"""
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+  <div style="background:rgba(26,37,64,0.03);border-radius:6px;padding:14px 18px;">
+    <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#c0392b;font-weight:600;font-family:Arial,sans-serif;">Стратагема</div>
+    <div style="font-size:17px;color:#1a2540;margin-top:6px;font-family:Georgia,serif;">{e(strategy.stratagema_title) if strategy and strategy.stratagema_title else '<em style="opacity:0.4;font-size:14px;">Не заполнено</em>'}</div>
+  </div>
+  <div style="background:rgba(26,37,64,0.03);border-radius:6px;padding:14px 18px;">
+    <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#c0392b;font-weight:600;font-family:Arial,sans-serif;">Стадия жизненного цикла</div>
+    <div style="font-size:17px;color:#1a2540;margin-top:6px;font-family:Georgia,serif;">{e(strategy.lifecycle_stage) if strategy and strategy.lifecycle_stage else '<em style="opacity:0.4;font-size:14px;">Не заполнено</em>'}</div>
+  </div>
+  <div style="background:rgba(26,37,64,0.03);border-radius:6px;padding:14px 18px;">
+    <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#c0392b;font-weight:600;font-family:Arial,sans-serif;">Комбинация</div>
+    <div style="font-size:17px;color:#1a2540;margin-top:6px;font-family:monospace;letter-spacing:3px;">{e(combination)}</div>
+  </div>
+</div>"""
+
         page1 = f"""
 <div style="padding:40px 50px;page-break-after:always;background:#e8e4db;min-height:297mm;">
   <div style="display:flex;justify-content:space-between;align-items:center;
@@ -603,9 +616,9 @@ def build_report_html(
       {e(company_name)} · стр. 1
     </span>
   </div>
-  <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 10px;">Стадия жизненного цикла</h2>
+  <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 10px;"><span style="font-size:11px;color:#c0392b;margin-right:8px;">01</span>Текущее состояние</h2>
+  {current_state_html}
   {lifecycle_badge_html}
-  <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 12px;">Описание стадии</h2>
   {_lifecycle_blocks(strategy, combination) if strategy else ""}
   <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:24px 0 12px;">Таблица стратагемы</h2>
   {_table_rows(sc_rows)}
@@ -637,7 +650,7 @@ def build_report_html(
               {e(company_name)} · стр. 2
             </span>
           </div>
-          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 12px;">Сценарий развития</h2>
+          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 12px;"><span style="font-size:11px;color:#c0392b;margin-right:8px;">02</span>Сценарий развития</h2>
           {_text_block(strategy.scenario_text)}
           <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 12px;">Маркетинг</h2>
           {_text_block(strategy.marketing_text)}
