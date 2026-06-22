@@ -42,7 +42,7 @@ async def create_assessment(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if body.status == "completed" and user.role != "admin":
+    if settings.enforce_credits and body.status == "completed" and user.role != "admin":
         credits = await calculate_credits(user.id, db)
         if credits <= 0:
             raise HTTPException(
@@ -176,7 +176,7 @@ async def generate_report_on_demand(
 
     if assessment.reports:
         return assessment.reports[0]
-    if assessment.status == "completed" and user.role != "admin":
+    if settings.enforce_credits and assessment.status == "completed" and user.role != "admin":
         credits = await calculate_credits(user.id, db)
         if credits <= 0:
             raise HTTPException(

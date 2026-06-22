@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     # ── Storage ───────────────────────────────────────────────────────────────
     uploads_dir: str = "/var/www/64dao/uploads/reports"
 
+    # ── Payments (feature flags) ─────────────────────────────────────────────
+    # До подключения реальной платёжной системы credits-проверка отключена
+    # по умолчанию (создание completed-assessment не блокируется). Когда
+    # платёжный шлюз будет готов, переключить ENFORCE_CREDITS=true в .env.
+    enforce_credits: bool = False
+
     # ── Debug ─────────────────────────────────────────────────────────────────
     debug: bool = False
 
