@@ -8,33 +8,50 @@ from app.models import Assessment, Order, User
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
+REPORTS_PER_ORDER = 2
+
+
+# TODO: Refund handling (when payment system is connected)
+#   When Order.status changes to 'refunded', the linked Assessment should be:
+#   1. Moved back to 'draft' status (so it doesn't count as used_assessments)
+#   2. OR deleted entirely if user requests full cancellation
+#   This way, calculate_credits() will automatically restore the balance.
+#   Currently, refunds are not supported (stub payment system).
+
+
+async def calculate_credits(user_id, db: AsyncSession) -> int:
+    """
+    Возвращает количество оплаченных, но ещё не использованных диагностик.
+
+    Логика (stub до подключения реальной оплаты):
+      credits = (paid orders * REPORTS_PER_ORDER) - completed/paid assessments
+    Минимум 0 — не уходим в минус.
+
+    Общая функция: используется эндпоинтом /credits и проверкой доступа
+    при создании assessment / генерации отчёта (см. routers/assessments.py).
+    """
+    paid_orders = await db.scalar(
+        select(func.count(Order.id))
+        .where(Order.user_id == user_id, Order.status == "paid")
+    ) or 0
+
+    used_assessments = await db.scalar(
+        select(func.count(Assessment.id))
+        .where(
+            Assessment.user_id == user_id,
+            Assessment.status.in_(["completed", "paid"]),
+        )
+    ) or 0
+
+    return max(0, paid_orders * REPORTS_PER_ORDER - used_assessments)
+
 
 @router.get("/credits")
 async def get_credits(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Возвращает количество оплаченных, но ещё не использованных диагностик.
-
-    Логика (stub до подключения реальной оплаты):
-      credits = (paid orders * 2) - completed/paid assessments
-    Минимум 0 — не уходим в минус.
-    """
-    paid_orders = await db.scalar(
-        select(func.count(Order.id))
-        .where(Order.user_id == user.id, Order.status == "paid")
-    ) or 0
-
-    used_assessments = await db.scalar(
-        select(func.count(Assessment.id))
-        .where(
-            Assessment.user_id == user.id,
-            Assessment.status.in_(["completed", "paid"]),
-        )
-    ) or 0
-
-    credits = max(0, paid_orders * 2 - used_assessments)
+    credits = await calculate_credits(user.id, db)
     return {"credits": credits}
 
 

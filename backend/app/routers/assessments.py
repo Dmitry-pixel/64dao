@@ -15,6 +15,7 @@ from app.config import get_settings
 from app.db import get_db
 from app.models import Assessment, Report, Strategy, User
 from app.pdf import generate_pdf, build_report_html
+from app.routers.payments import calculate_credits
 from app.schemas import AssessmentCreate, AssessmentOut, ReportOut, StrategyOut
 
 settings = get_settings()
@@ -41,6 +42,14 @@ async def create_assessment(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if body.status == "completed" and user.role != "admin":
+        credits = await calculate_credits(user.id, db)
+        if credits <= 0:
+            raise HTTPException(
+                status_code=403,
+                detail="Нет доступных диагностик. Оплатите новую диагностику, чтобы получить доступ.",
+            )
+
     assessment = Assessment(
         user_id=user.id,
         method1_answers=body.method1_answers,
@@ -167,6 +176,13 @@ async def generate_report_on_demand(
 
     if assessment.reports:
         return assessment.reports[0]
+    if assessment.status == "completed" and user.role != "admin":
+        credits = await calculate_credits(user.id, db)
+        if credits <= 0:
+            raise HTTPException(
+                status_code=403,
+                detail="Нет доступных диагностик. Оплатите новую диагностику, чтобы получить доступ.",
+            )
 
     combination = assessment.method1_combination
     company_name = assessment.company_name or user.company_name or "Компания"
