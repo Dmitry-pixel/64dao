@@ -14,6 +14,8 @@ import urllib.error
 import pytest
 
 BASE = "https://64dao.ru"
+pytestmark = pytest.mark.live
+
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

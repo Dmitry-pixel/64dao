@@ -212,6 +212,7 @@ class TestBuildReportHTML:
 
 # ── 5. Live smoke (VPS) ──────────────────────────────────────────────────────
 
+@pytest.mark.live
 class TestLiveAPI:
 
     @pytest.fixture(autouse=True)

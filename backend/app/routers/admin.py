@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, func, cast, Date
@@ -20,8 +20,6 @@ from app.schemas import (
 settings = get_settings()
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
-MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
 
 
 # ── Setup (создание первого администратора) ───────────────────────────────────
@@ -245,39 +243,6 @@ async def delete_strategy(
     await db.delete(strategy)
     return SuccessResponse(message="Удалено")
 
-
-@router.post("/strategies/{strategy_id}/image", response_model=SuccessResponse)
-async def upload_strategy_image(
-    strategy_id: str,
-    file: UploadFile = File(...),
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    if file.content_type not in ALLOWED_IMAGE_TYPES:
-        raise HTTPException(status_code=400, detail="Разрешены только JPG, PNG, WebP")
-
-    contents = await file.read()
-    if len(contents) > MAX_IMAGE_SIZE:
-        raise HTTPException(status_code=400, detail="Файл слишком большой (макс. 5 МБ)")
-
-    strategy = await db.scalar(select(Strategy).where(Strategy.id == strategy_id))
-    if not strategy:
-        raise HTTPException(status_code=404, detail="Стратегия не найдена")
-
-    ext = file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "jpg"
-    filename = f"{strategy_id}.{ext}"
-    images_dir = Path(settings.uploads_dir).parent / "images"
-    images_dir.mkdir(parents=True, exist_ok=True)
-
-    img_path = images_dir / filename
-    with open(img_path, "wb") as f:
-        f.write(contents)
-
-    # URL относительно /uploads/images/
-    strategy.image_url = f"/uploads/images/{filename}"
-    await db.flush()
-
-    return SuccessResponse(message="Изображение загружено")
 
 
 # ── User role management ──────────────────────────────────────────────────────
