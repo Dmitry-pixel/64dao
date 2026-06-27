@@ -175,6 +175,7 @@ export function AdminSide({ current }: AdminSideProps) {
       <Link href="/admin/documents/user-agreement" className={current === 'doc-user-agreement' ? 'on' : ''}>Пользовательское соглашение</Link>
       <Link href="/admin/documents/privacy-policy" className={current === 'doc-privacy-policy' ? 'on' : ''}>Политика обработки ПД</Link>
       <Link href="/admin/documents/personal-data-consent" className={current === 'doc-personal-data-consent' ? 'on' : ''}>Согласие на обработку ПД</Link>
+      <Link href="/admin/sample-report" className={current === 'sample-report' ? 'on' : ''}>Пример отчёта</Link>
 
       <h4>Система</h4>
       <Link href="/admin" className="">
@@ -182,6 +183,7 @@ export function AdminSide({ current }: AdminSideProps) {
       </Link>
       <Link href="/admin/pricing" className={current === 'pricing' ? 'on' : ''}>Тариф & цена</Link>
       <Link href="/admin/email-templates" className={current === 'email-templates' ? 'on' : ''}>Email-шаблоны</Link>
+      <Link href="/admin/social-links" className={current === 'social-links' ? 'on' : ''}>Соц. сети</Link>
       <Link href="/admin/logs" className={current === 'logs' ? 'on' : ''}>Логи</Link>
       <Link href="/404" className={current === '404' ? 'on' : ''}>Страница 404</Link>
     </aside>

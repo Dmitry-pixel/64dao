@@ -183,6 +183,23 @@ export const adminApi = {
 
   deleteUser: (userId: string) =>
     request(`/api/admin/users/${userId}`, { method: 'DELETE' }),
+  socialLinks:     () => request<{ telegram: string; vk: string; max: string }>('/api/admin/social-links'),
+  saveSocialLinks: (d: { telegram: string; vk: string; max: string }) =>
+    request('/api/admin/social-links', { method: 'PUT', body: JSON.stringify(d) }),
+  sampleReportStatus: () => request<{ uploaded: boolean; size_bytes: number | null }>('/api/admin/sample-report/status'),
+  uploadSampleReport: async (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch(`${API}/api/admin/sample-report`, {
+      method: 'POST', credentials: 'include', body: form,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new ApiError(res.status, err.detail ?? 'Upload failed')
+    }
+    return res.json()
+  },
+  deleteSampleReport: () => request('/api/admin/sample-report', { method: 'DELETE' }),
 }
 
 // ── Strategies (public/user) ──────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File
 from pydantic import BaseModel, field_validator
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, func, cast, Date
@@ -621,3 +621,73 @@ async def impersonation_status(
         target_user=target,
         admin_id=admin_id,
     )
+
+
+# ── Социальные сети ───────────────────────────────────────────────────────────
+
+SOCIAL_LINKS_FILE = Path("/var/www/64dao/uploads/social_links.json")
+
+DEFAULT_SOCIAL_LINKS = {
+    "telegram": "",
+    "vk": "",
+    "max": "",
+}
+
+
+def _read_social_links() -> dict:
+    try:
+        return json.loads(SOCIAL_LINKS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return DEFAULT_SOCIAL_LINKS.copy()
+
+
+def _write_social_links(data: dict) -> None:
+    SOCIAL_LINKS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SOCIAL_LINKS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+@router.get("/social-links")
+async def get_social_links(_: User = Depends(require_admin)):
+    return _read_social_links()
+
+
+@router.put("/social-links")
+async def update_social_links(body: dict, _: User = Depends(require_admin)):
+    _write_social_links(body)
+    return {"ok": True}
+
+
+# ── Пример отчёта (PDF) ───────────────────────────────────────────────────────
+
+SAMPLE_REPORT_FILE = Path("/var/www/64dao/uploads/sample_report.pdf")
+
+
+@router.get("/sample-report/status")
+async def get_sample_report_status(_: User = Depends(require_admin)):
+    exists = SAMPLE_REPORT_FILE.exists()
+    return {
+        "uploaded": exists,
+        "size_bytes": SAMPLE_REPORT_FILE.stat().st_size if exists else None,
+    }
+
+
+@router.post("/sample-report")
+async def upload_sample_report(
+    file: UploadFile = File(...),
+    _: User = Depends(require_admin),
+):
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Допускаются только PDF-файлы")
+
+    contents = await file.read()
+    SAMPLE_REPORT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SAMPLE_REPORT_FILE.write_bytes(contents)
+    return {"ok": True, "size_bytes": len(contents)}
+
+
+@router.delete("/sample-report")
+async def delete_sample_report(_: User = Depends(require_admin)):
+    if not SAMPLE_REPORT_FILE.exists():
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    SAMPLE_REPORT_FILE.unlink()
+    return {"ok": True}
