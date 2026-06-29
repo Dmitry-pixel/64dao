@@ -54,7 +54,7 @@ export default function AdminUserPage() {
         {/* Информация о пользователе */}
         <div style={S.card}>
           <h2 style={S.h2}>Информация</h2>
-          <div style={S.infoGrid}>
+          <div className="admin-info-grid" style={S.infoGrid}>
             <div><span style={S.infoLabel}>Email</span><span style={S.infoValue}>{userData.email}</span></div>
             <div><span style={S.infoLabel}>Имя</span><span style={S.infoValue}>{userData.full_name || '—'}</span></div>
             <div><span style={S.infoLabel}>Компания</span><span style={S.infoValue}>{userData.company_name || '—'}</span></div>

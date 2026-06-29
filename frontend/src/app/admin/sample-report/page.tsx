@@ -78,7 +78,7 @@ export default function AdminSampleReportPage() {
       <AdminNav current="sample-report" />
       <div className="admin-shell">
         <AdminSide current="sample-report" />
-        <div className="admin-main" style={{ padding: '32px 40px' }}>
+        <div className="admin-main admin-main-pad" style={{ padding: '32px 40px' }}>
 
           <div style={{ marginBottom: 28 }}>
             <span className="label-red">Документы</span>

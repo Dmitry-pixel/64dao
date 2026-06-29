@@ -116,9 +116,9 @@ export default function AdminPricingPage() {
       <AdminNav current="pricing" />
       <div className="admin-shell">
         <AdminSide current="pricing" />
-        <div className="admin-main" style={{ padding: '32px 40px' }}>
+        <div className="admin-main admin-main-pad" style={{ padding: '32px 40px' }}>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
             <div>
               <span className="label-red">Система</span>
               <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 28, fontWeight: 400, color: 'var(--text)', margin: '6px 0 0' }}>Тариф &amp; Цена</h1>
@@ -151,7 +151,7 @@ export default function AdminPricingPage() {
             <div className="card" style={{ padding: '20px 24px' }}>
               <h3 style={S.sectionTitle}>Характеристики</h3>
               {cfg.features.map((f, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 32px', gap: 10, marginBottom: 10, alignItems: 'center' }}>
+                <div key={i} className="admin-pricing-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 32px', gap: 10, marginBottom: 10, alignItems: 'center' }}>
                   <input style={S.input} placeholder="Название" value={f.label} onChange={e => setFeature(i, 'label', e.target.value)} />
                   <input style={S.input} placeholder="Значение" value={f.value} onChange={e => setFeature(i, 'value', e.target.value)} />
                   <button onClick={() => removeFeature(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c0392b', fontSize: 18, lineHeight: 1 }}>x</button>

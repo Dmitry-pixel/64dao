@@ -105,6 +105,10 @@ export function AdminNav({ current }: AdminNavProps) {
     router.push('/login')
   }
 
+  const toggleSidebar = () => {
+    document.body.classList.toggle('admin-sidebar-open')
+  }
+
   return (
     <nav className="appnav">
       <Logo />
@@ -114,6 +118,17 @@ export function AdminNav({ current }: AdminNavProps) {
         <Link href="/admin/strategies" className={current === 'strategies' ? 'on' : ''}>Стратегии</Link>
         <Link href="/admin/my-reports" className={current === 'my-reports' ? 'on' : ''}>Мои отчёты</Link>
       </div>
+      <button
+        type="button"
+        className="appnav-burger"
+        aria-label="Открыть меню разделов"
+        onClick={toggleSidebar}
+        style={{ display: 'none', flexDirection: 'column', justifyContent: 'center', gap: 5, width: 32, height: 32, padding: 0, background: 'transparent', border: 'none', cursor: 'pointer' }}
+      >
+        <span style={{ display: 'block', width: '100%', height: 2, borderRadius: 1, background: 'var(--dark)' }} />
+        <span style={{ display: 'block', width: '100%', height: 2, borderRadius: 1, background: 'var(--dark)' }} />
+        <span style={{ display: 'block', width: '100%', height: 2, borderRadius: 1, background: 'var(--dark)' }} />
+      </button>
       <div className="appnav-user">
         <span className="pill pill-pending" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>admin</span>
         <div className="avatar" style={{ background: 'rgba(192,57,43,0.15)', color: 'var(--red)' }}>A</div>
@@ -149,9 +164,22 @@ export function AdminSide({ current }: AdminSideProps) {
     )
   }, [])
 
+  const closeSidebar = () => {
+    document.body.classList.remove('admin-sidebar-open')
+  }
+
   return (
     <aside className="admin-side">
-      <Link href="/admin" style={{ display: 'block', marginBottom: 16, fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)', textDecoration: 'none' }}>← Вернуться в кабинет</Link>
+      <button
+        type="button"
+        className="admin-side-close"
+        onClick={closeSidebar}
+        aria-label="Закрыть меню"
+        style={{ display: 'none', marginBottom: 12, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'sans-serif', fontSize: 13, color: 'var(--text-mute)' }}
+      >
+        ✕ Закрыть
+      </button>
+      <Link href="/admin" onClick={closeSidebar} style={{ display: 'block', marginBottom: 16, fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)', textDecoration: 'none' }}>← Вернуться в кабинет</Link>
       <h4>Обзор</h4>
       <Link href="/admin" className={current === 'stats' ? 'on' : ''}>Сводка</Link>
 

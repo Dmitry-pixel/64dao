@@ -44,6 +44,7 @@ export default function ContactSection() {
       }}
     >
       <div
+        className="contact-grid"
         style={{
           maxWidth: 1280,
           margin: '0 auto',
@@ -264,6 +265,21 @@ export default function ContactSection() {
           )}
         </div>
       </div>
+
+      <style jsx>{`
+        @media (max-width: 880px) {
+          .contact-grid {
+            grid-template-columns: 1fr !important;
+            gap: 40px !important;
+            padding: 56px 24px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .contact-grid {
+            padding: 40px 16px !important;
+          }
+        }
+      `}</style>
     </section>
   )
 }

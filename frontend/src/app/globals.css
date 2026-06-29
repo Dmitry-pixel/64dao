@@ -171,7 +171,7 @@ a { color: inherit; text-decoration: none; }
 .admin-side a.on { background: rgba(192,57,43,0.08); color: var(--dark); font-weight: 500; }
 .admin-side .num { font-family: sans-serif; font-size: 11px; color: var(--text-faint); }
 .admin-main { background: var(--bg); overflow-y: auto; }
-.admin-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 28px 32px 20px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,0.4); }
+.admin-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 28px 32px 20px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,0.4); }
 .admin-header h1 { font-family: Georgia, serif; font-size: 26px; font-weight: 400; margin-top: 6px; }
 .admin-content { padding: 28px 32px; }
 
@@ -315,5 +315,242 @@ a { color: inherit; text-decoration: none; }
   100% {
     opacity: 0;
     transform: translateX(calc(-50% + var(--exit))) scale(0.9);
+  }
+}
+
+/* ── Адаптив главной страницы (page.tsx): grid-секции и паддинги ── */
+.landing-scope .g-2col,
+.landing-scope .g-2col-about,
+.landing-scope .g-crosslink,
+.landing-scope .g-2col-report,
+.landing-scope .g-symptoms {
+  display: grid;
+}
+@media (max-width: 880px) {
+  .landing-scope .g-2col,
+  .landing-scope .g-2col-about,
+  .landing-scope .g-crosslink,
+  .landing-scope .g-2col-report,
+  .landing-scope .g-symptoms {
+    grid-template-columns: 1fr !important;
+  }
+  .landing-scope .g-pad96,
+  .landing-scope .g-pad100,
+  .landing-scope .g-pad112 {
+    padding: 56px 24px !important;
+  }
+  .landing-scope .g-pad64 {
+    padding: 40px 20px !important;
+  }
+}
+@media (max-width: 480px) {
+  .landing-scope .g-pad96,
+  .landing-scope .g-pad100,
+  .landing-scope .g-pad112 {
+    padding: 40px 16px !important;
+  }
+  .landing-scope .g-pad64 {
+    padding: 32px 16px !important;
+  }
+}
+
+/* ── Адаптив страниц авторизации (login/register/verify) ── */
+@media (max-width: 880px) {
+  .auth-split {
+    grid-template-columns: 1fr !important;
+    min-height: auto !important;
+  }
+  .auth-side {
+    padding: 32px 24px !important;
+    min-height: 220px !important;
+  }
+  .auth-tagline {
+    font-size: 24px !important;
+    max-width: 100% !important;
+  }
+  .auth-quote {
+    display: none !important;
+  }
+  .auth-form-wrap {
+    padding: 32px 24px !important;
+  }
+  .auth-form {
+    max-width: 100% !important;
+  }
+}
+@media (max-width: 480px) {
+  .auth-side {
+    padding: 24px 16px !important;
+  }
+  .auth-form-wrap {
+    padding: 24px 16px !important;
+  }
+}
+
+/* ── Адаптив кнопок соцсетей под формой входа ── */
+@media (max-width: 480px) {
+  .social-row {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+}
+
+/* ── Адаптив выбора метода диагностики (assessment) ── */
+@media (max-width: 700px) {
+  .choose-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Адаптив карточек методов на dashboard (пустой список) ── */
+@media (max-width: 700px) {
+  .dash-method-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Адаптив блоков ЖЦ в отчёте (report/[id]) ── */
+@media (max-width: 600px) {
+  .report-lc-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Адаптив форм в админке (редактирование стратегий) ── */
+@media (max-width: 700px) {
+  .admin-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Адаптив карточки информации о пользователе (admin/user) ── */
+@media (max-width: 600px) {
+  .admin-info-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Адаптив админ-панели: бургер для бокового меню ── */
+@media (max-width: 880px) {
+  .admin-shell {
+    grid-template-columns: 1fr !important;
+  }
+  .admin-side {
+    display: none !important;
+  }
+  body.admin-sidebar-open .admin-side {
+    display: flex !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 280px !important;
+    max-width: 85vw !important;
+    z-index: 100 !important;
+    overflow-y: auto !important;
+    background: var(--bg, #e8e4db) !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.25) !important;
+  }
+  .admin-side-close {
+    display: block !important;
+  }
+  .appnav {
+    padding: 12px 16px !important;
+  }
+  .appnav-links {
+    display: none !important;
+  }
+  .appnav-burger {
+    display: flex !important;
+  }
+  .admin-main {
+    padding: 20px 16px !important;
+  }
+}
+
+/* ── Адаптив карточек статистики и паддингов на страницах админки ── */
+@media (max-width: 880px) {
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .admin-main-pad {
+    padding: 20px 16px !important;
+  }
+}
+@media (max-width: 480px) {
+  .admin-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Горизонтальный скролл для широких таблиц внутри admin-main на мобильном ── */
+@media (max-width: 880px) {
+  .admin-main table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+}
+
+/* ── Адаптив email-шаблонов и строк прайсинга в админке ── */
+@media (max-width: 700px) {
+  .admin-email-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .admin-pricing-row {
+    grid-template-columns: 1fr 1fr 32px !important;
+  }
+}
+
+/* ── Адаптив карточек отчётов (.dash-card) на узких экранах ── */
+@media (max-width: 640px) {
+  .dash-card {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    text-align: left;
+  }
+  .dash-card .hex-block {
+    text-align: left !important;
+  }
+  .dash-card .dash-num {
+    text-align: left !important;
+  }
+  .dash-card .dash-actions {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    width: 100%;
+  }
+}
+
+/* ── Адаптив карточек отчётов на пользовательском dashboard ── */
+@media (max-width: 640px) {
+  .dash-card-mobile {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    text-align: left !important;
+  }
+  .dash-card-mobile > div:first-child {
+    text-align: left !important;
+  }
+  .dash-card-actions-mobile {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    width: 100%;
+  }
+}
+
+/* ── Адаптив главного layout dashboard (контент + сайдбар) ── */
+@media (max-width: 880px) {
+  .dashboard-main-grid {
+    grid-template-columns: 1fr !important;
+    padding: 0 24px 40px !important;
+  }
+}
+@media (max-width: 480px) {
+  .dashboard-main-grid {
+    padding: 0 16px 32px !important;
   }
 }

@@ -96,10 +96,10 @@ export default function AdminEmailTemplatesPage() {
       <AdminNav current="email-templates" />
       <div className="admin-shell">
         <AdminSide current="email-templates" />
-        <div className="admin-main" style={{ padding: '32px 40px' }}>
+        <div className="admin-main admin-main-pad" style={{ padding: '32px 40px' }}>
 
           {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
             <div>
               <span className="label-red">Система</span>
               <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 28, fontWeight: 400, color: 'var(--text)', margin: '6px 0 4px' }}>
@@ -119,7 +119,7 @@ export default function AdminEmailTemplatesPage() {
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 24, alignItems: 'start' }}>
+          <div className="admin-email-grid" style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 24, alignItems: 'start' }}>
 
             {/* Sidebar — template list */}
             <div style={{ border: '1px solid rgba(26,37,64,0.09)', borderRadius: 10, overflow: 'hidden', background: 'rgba(255,255,255,0.55)' }}>

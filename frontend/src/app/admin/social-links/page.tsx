@@ -65,9 +65,9 @@ export default function AdminSocialLinksPage() {
       <AdminNav current="social-links" />
       <div className="admin-shell">
         <AdminSide current="social-links" />
-        <div className="admin-main" style={{ padding: '32px 40px' }}>
+        <div className="admin-main admin-main-pad" style={{ padding: '32px 40px' }}>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
             <div>
               <span className="label-red">Система</span>
               <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 28, fontWeight: 400, color: 'var(--text)', margin: '6px 0 4px' }}>

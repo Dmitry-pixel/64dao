@@ -422,7 +422,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
         <Sec label="Основное" title="Заголовок и стратагема" help="Отображается в шапке отчёта пользователя.">
           <FI label="Заголовок стратегии" fk="title" dv={f.title} ph={hex.name} onChange={handleChange} />
           <FI label="Стратагема (название)" fk="stratagema_title" dv={f.stratagema_title} ph="Краткая формулировка стратагемы" onChange={handleChange} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={S_LBL}>Стадия жизненного цикла</label>
               <select value={lcStage || hex.stage} onChange={e => setLcStage(e.target.value)} style={S_INP}>
@@ -433,7 +433,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
         </Sec>
 
         <Sec label="Жизненный цикл" title="Описание стадии" help="6 параметров диагностики. Авто-заполнены из комбинации, можно отредактировать.">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             {LC_BLOCKS.map((b, i) => (
               <div key={b.key} style={{ background: 'rgba(26,37,64,0.02)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '14px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -496,7 +496,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
               </div>
             </div>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FI label="Название перехода" fk="transition_title" dv={f.transition_title} ph="Название целевой стратегии" onChange={handleChange} />
             <div>
               <label style={S_LBL}>Стадия целевого состояния</label>
@@ -509,7 +509,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
         </Sec>
 
         <Sec label="Сценарий стратагемы" title="Таблица стратагемы" help="Конкретные характеристики — отображаются в блоке «Сценарий стратагемы» отчёта.">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FI label="Стратегия изменений" fk="scenario_innovation_strategy" dv={f.scenario_innovation_strategy} onChange={handleChange} />
             <FI label="Тип изменений" fk="scenario_innovation_type" dv={f.scenario_innovation_type} onChange={handleChange} />
             <FI label="Ценностная дисциплина" fk="scenario_value_discipline" dv={f.scenario_value_discipline} onChange={handleChange} />

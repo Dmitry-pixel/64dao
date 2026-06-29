@@ -189,7 +189,7 @@ export default async function HomePage() {
 
         {/* ── PROBLEM ── */}
         <section style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'color-mix(in oklab, var(--muted) 40%, var(--background))' }}>
-          <div style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 40px' }}>
+          <div className="g-pad96" style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 40px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
               <span style={{ display: 'inline-block', width: 32, height: 2, background: 'var(--accent)' }} />
               <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#888888' }}>Знакомо?</span>
@@ -202,7 +202,7 @@ export default async function HomePage() {
             </p>
             <div style={{ width: 60, height: 2, background: 'var(--accent)', marginTop: 40 }} />
             <div style={{ fontSize: 14, fontStyle: 'italic', color: '#888888', marginTop: 40, marginBottom: 20 }}>4 типичных симптома</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
+            <div className="g-symptoms" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
               {[
                 { title: 'Сессии без выводов',            desc: 'Собрались, поспорили о прошлом квартале, разошлись. Решения — на следующий раз.' },
                 { title: 'Слитые бюджеты',                desc: 'Запустили рекламу, вышли на рынок, масштабировались — а момент был не тот.' },
@@ -276,7 +276,7 @@ export default async function HomePage() {
 
         {/* ── HOW ── */}
         <section id="how" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'color-mix(in oklab, var(--muted) 40%, var(--background))' }}>
-          <div style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 40px' }}>
+          <div className="g-pad96" style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 40px' }}>
             <div style={{ marginBottom: 16, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--muted-foreground)' }}>
               Как это работает
             </div>
@@ -313,7 +313,7 @@ export default async function HomePage() {
 
         {/* ── REPORT ── */}
         <section id="report" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 40px' }}>
+          <div className="g-pad96" style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 40px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, marginBottom: 20, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--muted-foreground)' }}>
               <span style={{ height: 1, width: 32, background: 'rgba(0,0,0,0.3)' }} />Что внутри отчёта
             </div>
@@ -330,7 +330,7 @@ export default async function HomePage() {
                   <span style={{ fontSize: 14, color: 'var(--muted-foreground)' }}>· 11 / 64</span>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 1, background: 'var(--border)' }}>
+              <div className="g-2col-report" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 1, background: 'var(--border)' }}>
                 <div style={{ background: 'var(--card)', padding: 32 }}>
                   <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.24em', color: 'var(--muted-foreground)' }}>Где вы на кривой цикла</div>
                   <div style={{ marginTop: 32 }}><CycleCurve /></div>
@@ -369,7 +369,7 @@ export default async function HomePage() {
 
         {/* ── EXAMPLE ── */}
         <section style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'var(--brand-navy)', color: 'var(--background)' }}>
-          <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '0.85fr 1.15fr', gap: 48, padding: '96px 40px' }}>
+          <div className="g-2col g-pad96" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '0.85fr 1.15fr', gap: 48, padding: '96px 40px' }}>
             <div>
               <div style={{ marginBottom: 16, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.6)' }}>Пример отчёта</div>
               <h2 style={{ margin: 0, fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(32px,4.6vw,48px)', lineHeight: 1.1, color: '#ffffff' }}>
@@ -406,7 +406,7 @@ export default async function HomePage() {
 
         {/* ── FOR WHOM ── */}
         <section style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 40px' }}>
+          <div className="g-pad96" style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 40px' }}>
             <div style={{ marginBottom: 16, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--muted-foreground)' }}>Квалификация</div>
             <h2 style={{ margin: 0, fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(32px,4.6vw,48px)', lineHeight: 1.1, color: 'var(--foreground)' }}>Для кого это</h2>
             <div style={{ marginTop: 48, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px,1fr))', gap: 32 }}>
@@ -450,7 +450,7 @@ export default async function HomePage() {
 
         {/* ── PRICE ── */}
         <section id="price" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '0.85fr 1.15fr', gap: 80, padding: '96px 40px' }}>
+          <div className="g-2col g-pad96" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '0.85fr 1.15fr', gap: 80, padding: '96px 40px' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{ display: 'inline-block', width: 32, height: 2, background: 'var(--accent)' }} />
@@ -510,7 +510,7 @@ export default async function HomePage() {
 
         {/* ── WHY FIRST ── */}
         <section style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'color-mix(in oklab, var(--muted) 40%, var(--background))' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '100px 40px' }}>
+          <div className="g-pad100" style={{ maxWidth: 1100, margin: '0 auto', padding: '100px 40px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ display: 'inline-block', width: 32, height: 2, background: 'var(--accent)' }} />
               <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#888888' }}>Почему диагностика идёт первой</span>
@@ -530,7 +530,7 @@ export default async function HomePage() {
 
         {/* ── CONSULTANTS ── */}
         <section id="consultants" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '0.85fr 1.15fr', gap: 48, padding: '96px 40px' }}>
+          <div className="g-2col g-pad96" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '0.85fr 1.15fr', gap: 48, padding: '96px 40px' }}>
             <div>
               <div style={{ marginBottom: 16, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--muted-foreground)' }}>Для консультантов и фасилитаторов</div>
               <h2 style={{ margin: 0, fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(32px,4.6vw,48px)', lineHeight: 1.1, color: 'var(--foreground)' }}>
@@ -560,7 +560,7 @@ export default async function HomePage() {
 
         {/* ── ABOUT TEASER ── */}
         <section id="about" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '0.5fr 1fr', gap: 48, padding: '96px 40px' }}>
+          <div className="g-2col-about g-pad96" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '0.5fr 1fr', gap: 48, padding: '96px 40px' }}>
             <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--muted-foreground)' }}>О нас</div>
             <div>
               <h2 style={{ margin: 0, fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(32px,4.6vw,48px)', lineHeight: 1.1, color: 'var(--foreground)' }}>Команда 64 ДАО</h2>
@@ -576,8 +576,8 @@ export default async function HomePage() {
 
         {/* ── CROSS LINK ── */}
         <section style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'color-mix(in oklab, var(--muted) 40%, var(--background))' }}>
-          <div style={{ maxWidth: 1280, margin: '0 auto', padding: '64px 40px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: 24, borderRadius: 2, border: '1px solid var(--border)', background: 'var(--card)', padding: 32 }}>
+          <div className="g-pad64" style={{ maxWidth: 1280, margin: '0 auto', padding: '64px 40px' }}>
+            <div className="g-crosslink" style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: 24, borderRadius: 2, border: '1px solid var(--border)', background: 'var(--card)', padding: 32 }}>
               <div>
                 <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--accent)' }}>Партнёрский проект</div>
                 <h3 style={{ margin: '8px 0 0', fontFamily: "'Golos Text',sans-serif", fontSize: 24, fontWeight: 600, color: 'var(--foreground)' }}>
@@ -599,7 +599,7 @@ export default async function HomePage() {
 
         {/* ── FINAL CTA ── */}
         <section id="cta" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: 1280, margin: '0 auto', padding: '112px 40px', textAlign: 'center' }}>
+          <div className="g-pad112" style={{ maxWidth: 1280, margin: '0 auto', padding: '112px 40px', textAlign: 'center' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--muted-foreground)' }}>
               <span style={{ height: 1, width: 32, background: 'var(--accent)' }} />Точка сверки<span style={{ height: 1, width: 32, background: 'var(--accent)' }} />
             </div>

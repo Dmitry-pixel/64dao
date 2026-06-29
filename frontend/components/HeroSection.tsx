@@ -160,10 +160,12 @@ export default function HeroSection() {
   return (
     <section
       id="top"
+      className="hero-section"
       style={{ position: 'relative', overflow: 'hidden', borderBottom: '1px solid rgba(0,0,0,0.06)' }}
     >
       <div
         ref={yinRef}
+        className="hero-section__yinyang"
         style={{
           pointerEvents: 'none',
           position: 'absolute',
@@ -181,6 +183,7 @@ export default function HeroSection() {
       </div>
 
       <div
+        className="hero-section__grid"
         style={{
           position: 'relative',
           zIndex: 10,
@@ -258,7 +261,7 @@ export default function HeroSection() {
           </div>
         </div>
 
-        <div style={{ minWidth: 0 }}>
+        <div className="hero-section__matrix-col" style={{ minWidth: 0 }}>
           <div style={{ position: 'relative' }}>
             <div
               style={{
@@ -311,6 +314,29 @@ export default function HeroSection() {
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @media (max-width: 880px) {
+          .hero-section__grid {
+            grid-template-columns: 1fr !important;
+            padding: 64px 24px !important;
+            gap: 40px !important;
+          }
+          .hero-section__yinyang {
+            height: 420px !important;
+            width: 420px !important;
+            left: -90px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .hero-section__grid {
+            padding: 48px 16px !important;
+          }
+          .hero-section__matrix-col {
+            order: 2;
+          }
+        }
+      `}</style>
     </section>
   )
 }

@@ -30,7 +30,7 @@ export default function AdminPage() {
       <AdminNav current="stats" />
       <div className="admin-shell">
         <AdminSide current="stats" />
-        <div className="admin-main" style={{ padding: '32px 40px' }}>
+        <div className="admin-main admin-main-pad" style={{ padding: '32px 40px' }}>
 
           <span className="label-red">Обзор</span>
           <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 28, fontWeight: 400, color: '#1a2540', margin: '6px 0 28px' }}>
@@ -38,7 +38,7 @@ export default function AdminPage() {
           </h1>
 
           {stats && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 32 }}>
+            <div className="admin-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 32 }}>
               {[
                 ['Пользователей', stats.total_users],
                 ['Диагностик', stats.total_assessments],

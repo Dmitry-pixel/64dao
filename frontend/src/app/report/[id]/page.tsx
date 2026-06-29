@@ -364,7 +364,7 @@ export default function ReportPage() {
 
 
               {/* 6 блоков жизненного цикла */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
+              <div className="report-lc-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
                 {LC_LABELS.map(([field, label]) => (
                   <div key={field} style={{ background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '12px 14px' }}>
                     <div style={{ fontSize: 9, fontFamily: 'sans-serif', letterSpacing: 1, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.45)', fontWeight: 600, marginBottom: 6 }}>{label}</div>

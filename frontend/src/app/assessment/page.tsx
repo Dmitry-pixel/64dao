@@ -228,7 +228,7 @@ function AssessmentInner() {
           <span style={S.labelRed}>Новая диагностика</span>
         </div>
         <h1 style={S.chooseH1}>Выберите, с чего начать</h1>
-        <div style={S.chooseGrid}>
+        <div className="choose-grid" style={S.chooseGrid}>
           <div style={S.methodCard} onClick={() => { setPendingMethod('method1'); setMode('company') }}>
             <div style={S.methodCardTop}>
               <span style={S.labelRed}>Метод 01 · Стратегия</span>

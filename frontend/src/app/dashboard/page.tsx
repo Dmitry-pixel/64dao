@@ -150,7 +150,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Сетка */}
-      <div style={S.grid}>
+      <div className="dashboard-main-grid" style={S.grid}>
         <div>
           <div style={S.listHeader}>
             <span style={S.labelRed}>Мои отчёты</span>
@@ -162,7 +162,7 @@ export default function DashboardPage() {
               <div style={S.emptyHex}>䷿</div>
               <h3 style={S.emptyH3}>Пока нет диагностик</h3>
               <p style={S.emptyText}>Метод 1 — 6 вопросов о состоянии компании. Метод 2 — оценка 9 блоков бизнес-модели. Результат: PDF-отчёт со стратегией.</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 8, textAlign: 'left' as const }}>
+              <div className="dash-method-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 8, textAlign: 'left' as const }}>
                 <div style={S.methodCard} onClick={() => router.push('/assessment?method=1')}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
                     <span style={S.labelRed}>Метод 01 · Стратегия</span>
@@ -192,7 +192,7 @@ export default function DashboardPage() {
           ) : (
             <div style={S.list}>
               {assessments.map((a, i) => (
-                <div key={a.id} style={{ ...S.card, cursor: (a.status === 'completed' || a.status === 'paid') ? 'pointer' : 'default' }}
+                <div key={a.id} className="dash-card-mobile" style={{ ...S.card, cursor: (a.status === 'completed' || a.status === 'paid') ? 'pointer' : 'default' }}
                   onClick={() => (a.status === 'completed' || a.status === 'paid') && router.push(`/report/${a.id}`)}>
                   <div style={S.cardNum}>{String(i + 1).padStart(2, '0')}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -210,7 +210,7 @@ export default function DashboardPage() {
                       {a.reports.length > 0 ? `${a.reports.length} отчёт сформирован` : 'Отчёт формируется'}
                     </div>
                   </div>
-                  <div style={S.cardActions}>
+                  <div className="dash-card-actions-mobile" style={S.cardActions}>
                     <span style={a.status === 'completed' || a.status === 'paid' ? S.pillDone : S.pillDraft}>
                       {a.status === 'completed' || a.status === 'paid' ? 'Готов' : 'Черновик'}
                     </span>
