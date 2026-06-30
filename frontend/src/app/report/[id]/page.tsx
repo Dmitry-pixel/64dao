@@ -317,9 +317,13 @@ export default function ReportPage() {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 16, alignItems: 'flex-start' }}>
                         <div style={S.bmcRowTitle}>{i + 1}. {name}</div>
                         <div style={{ display: 'flex', gap: 3, justifyContent: 'flex-end', alignItems: 'center' }}>
-                          {Array.from({ length: 5 }, (_, j) => (
-                            <div key={j} style={{ width: 14, height: 6, borderRadius: 99, background: j < data.score ? '#1e3a8a' : 'rgba(26,37,64,0.08)' }} />
-                          ))}
+                          {data.score ? (
+                            Array.from({ length: 5 }, (_, j) => (
+                              <div key={j} style={{ width: 14, height: 6, borderRadius: 99, background: j < data.score ? '#1e3a8a' : 'rgba(26,37,64,0.08)' }} />
+                            ))
+                          ) : (
+                            <span style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)', fontStyle: 'italic' as const }}>Не оценено</span>
+                          )}
                         </div>
                       </div>
                       {BMC_HELP[name] && (

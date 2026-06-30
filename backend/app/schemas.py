@@ -43,7 +43,7 @@ class UserOut(BaseModel):
 # ── Assessments ───────────────────────────────────────────────────────────────
 
 class Method2Block(BaseModel):
-    score: int = Field(ge=1, le=5)
+    score: int = Field(ge=0, le=5)
     text:  str = Field(default="", max_length=5000)
 
 

@@ -146,6 +146,12 @@ async def generate_pdf(html_content: str, output_path: str) -> str:
 
 # ── Report data helpers ───────────────────────────────────────────────────────
 def _score_bar(score: int) -> str:
+    if not score:
+        return (
+            f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
+            f'<span style="font-size:11px;color:rgba(26,37,64,0.4);font-style:italic;font-family:Arial,sans-serif;">Не оценено</span>'
+            f'</div>'
+        )
     bars = "".join(
         f'<span style="display:inline-block;width:22px;height:5px;border-radius:3px;'
         f'margin-right:3px;background:{"#1e3a8a" if n <= score else "#e5e7eb"};"></span>'

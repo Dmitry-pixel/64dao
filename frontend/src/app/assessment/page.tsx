@@ -129,15 +129,17 @@ function AssessmentInner() {
       })
       if (res.ok) {
         const assessment = await res.json()
-        // Запускаем генерацию PDF (не ждём — займёт до 30 сек)
         fetch(`${API}/api/assessments/${assessment.id}/generate-report`, {
           method: 'POST',
           credentials: 'include',
         }).catch(() => {})
+        setMode('waiting')
+      } else {
+        const errText = await res.text().catch(() => '')
+        alert(`Save failed (${res.status}). ${errText}`)
       }
-      setMode('waiting')
     } catch {
-      setMode('waiting')
+      alert('Save failed. Check connection and try again.')
     } finally {
       setSubmitting(false)
     }
@@ -147,7 +149,7 @@ function AssessmentInner() {
     setSubmitting(true)
     const method2_data: Record<string, { score: number; text: string }> = {}
     BMC_BLOCKS.forEach((b, i) => {
-      method2_data[b.title] = { score: bmcScores[i] || 3, text: bmcTexts[i] || '' }
+      method2_data[b.title] = { score: bmcScores[i] || 0, text: bmcTexts[i] || '' }
     })
     try {
       const API = process.env.NEXT_PUBLIC_API_URL || ''
@@ -169,10 +171,13 @@ function AssessmentInner() {
           method: 'POST',
           credentials: 'include',
         }).catch(() => {})
+        setMode('waiting')
+      } else {
+        const errText = await res.text().catch(() => '')
+        alert(`Не удалось сохранить диагностику (${res.status}). ${errText}`)
       }
-      setMode('waiting')
     } catch {
-      setMode('waiting')
+      alert('Не удалось сохранить диагностику. Проверьте соединение и попробуйте снова.')
     } finally {
       setSubmitting(false)
     }

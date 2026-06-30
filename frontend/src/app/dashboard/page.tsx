@@ -15,15 +15,23 @@ function SupportForm() {
     if (!message.trim()) return
     setSending(true)
     try {
-      await fetch('/api/support', {
+      const res = await fetch('/api/support/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ name, message }),
+        body: JSON.stringify({
+          subject: name.trim() ? `Сообщение от ${name.trim()}` : 'Сообщение из личного кабинета',
+          message,
+        }),
       })
-      setSent(true)
+      if (res.ok) {
+        setSent(true)
+      } else {
+        const errText = await res.text().catch(() => '')
+        alert(`Не удалось отправить сообщение (${res.status}). ${errText}`)
+      }
     } catch {
-      setSent(true)
+      alert('Не удалось отправить сообщение. Проверьте соединение и попробуйте снова.')
     } finally {
       setSending(false)
     }

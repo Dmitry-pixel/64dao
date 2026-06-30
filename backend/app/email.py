@@ -138,7 +138,7 @@ async def send_welcome_email(to: str, name: str) -> None:
 
 async def send_support_email(from_email: str, from_name: str | None, message: str) -> None:
     """Отправляет сообщение пользователя на адрес поддержки (smtp_from_address)."""
-    admin_email = settings.smtp_from_address
+    admin_email = settings.support_email_address
     if not admin_email:
         logger.warning("send_support_email: smtp_from_address не настроен")
         return
