@@ -181,6 +181,9 @@ export const adminApi = {
   setUserRole: (userId: string, role: 'user' | 'admin') =>
     request(`/api/admin/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
 
+  setUserStatus: (userId: string, isActive: boolean) =>
+    request(`/api/admin/users/${userId}/status`, { method: 'PATCH', body: JSON.stringify({ is_active: isActive }) }),
+
   deleteUser: (userId: string) =>
     request(`/api/admin/users/${userId}`, { method: 'DELETE' }),
   socialLinks:     () => request<{ telegram: string; vk: string; max: string }>('/api/admin/social-links'),

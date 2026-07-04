@@ -37,6 +37,7 @@ class UserOut(BaseModel):
     full_name:    str | None
     company_name: str | None
     role:         str
+    is_active:    bool = True
     created_at:   datetime
 
 

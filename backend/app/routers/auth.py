@@ -77,6 +77,10 @@ async def login(
     """
     user = await db.scalar(select(User).where(User.email == body.email))
 
+    if user and not user.is_active:
+        logger.info("OTP request for deactivated account: %s", body.email)
+        user = None  # ответ неотличим от несуществующего email
+
     if user:
         code = await create_otp_code(str(user.id), db)
         try:
@@ -137,6 +141,10 @@ async def resend_otp(
     db: AsyncSession = Depends(get_db),
 ):
     user = await db.scalar(select(User).where(User.email == body.email))
+    if user and not user.is_active:
+        logger.info("OTP request for deactivated account: %s", body.email)
+        user = None  # ответ неотличим от несуществующего email
+
     if user:
         code = await create_otp_code(str(user.id), db)
         try:

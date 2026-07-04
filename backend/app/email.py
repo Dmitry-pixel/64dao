@@ -12,6 +12,14 @@ logger = logging.getLogger(__name__)
 TEMPLATES_FILE = Path("/var/www/64dao/uploads/email_templates.json")
 
 DEFAULT_TEMPLATES = {
+    "account_deactivated": {
+        "subject": "Доступ к 64 ДАО приостановлен",
+        "body": "Здравствуйте{{name_part}}!\n\nДоступ к вашему личному кабинету 64 ДАО приостановлен администратором.\n\nПо всем вопросам обращайтесь: support@64dao.ru",
+    },
+    "account_activated": {
+        "subject": "Доступ к 64 ДАО восстановлен",
+        "body": "Здравствуйте{{name_part}}!\n\nДоступ к вашему личному кабинету 64 ДАО восстановлен.\n\nВойти: https://64dao.ru/login",
+    },
     "otp": {
         "subject": "{code} — код входа в 64DAO",
         "body_html": (
@@ -132,6 +140,16 @@ async def send_welcome_email(to: str, name: str) -> None:
     subject, body = _render("welcome", {"name": name, "name_part": name_part})
     if settings.debug:
         logger.info("=== DEBUG WELCOME === email=%s name=%s ===", to, name)
+        return
+    await _send_message(to, subject, _wrap_html(body))
+
+
+async def send_account_status_email(to: str, name: str | None, activated: bool) -> None:
+    name_part = f", {name}" if name else ""
+    key = "account_activated" if activated else "account_deactivated"
+    subject, body = _render(key, {"name": name or "", "name_part": name_part})
+    if settings.debug:
+        logger.warning("=== DEBUG STATUS EMAIL === email=%s key=%s ===", to, key)
         return
     await _send_message(to, subject, _wrap_html(body))
 

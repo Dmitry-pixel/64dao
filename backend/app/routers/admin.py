@@ -293,6 +293,41 @@ async def delete_user(
 
 # ── Activity log ──────────────────────────────────────────────────────────────
 
+class SetStatusRequest(BaseModel):
+    is_active: bool
+
+
+@router.patch("/users/{user_id}/status", response_model=SuccessResponse)
+async def set_user_status(
+    user_id: str,
+    body: SetStatusRequest,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.email import send_account_status_email
+
+    if str(admin.id) == user_id:
+        raise HTTPException(status_code=400, detail="Нельзя изменить свой статус")
+    user = await db.scalar(select(User).where(User.id == user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if user.role == "admin":
+        raise HTTPException(status_code=400, detail="Нельзя блокировать администратора")
+    if user.is_active == body.is_active:
+        return SuccessResponse(message="Статус не изменён")
+
+    user.is_active = body.is_active
+    await db.flush()
+
+    try:
+        await send_account_status_email(user.email, user.full_name, body.is_active)
+    except Exception as exc:
+        import logging; logging.getLogger(__name__).error("Status email failed for %s: %s", user.email, exc)
+
+    status = "активирован" if body.is_active else "заблокирован"
+    return SuccessResponse(message=f"Пользователь {status}")
+
+
 @router.get("/logs", response_model=list[LogEntry])
 async def get_activity_log(
     admin: User = Depends(require_admin),

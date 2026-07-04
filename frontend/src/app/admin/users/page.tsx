@@ -11,6 +11,7 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState('')
   const [impersonating, setImpersonating] = useState<string | null>(null)
   const [roleChanging, setRoleChanging] = useState<string | null>(null)
+  const [statusChanging, setStatusChanging] = useState<string | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -60,6 +61,23 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function handleStatusToggle(u: any) {
+    const deactivate = u.is_active !== false
+    const msg = deactivate
+      ? `Заблокировать ${u.email}?\n\nПользователь потеряет доступ к личному кабинету и получит уведомление на email.`
+      : `Восстановить доступ для ${u.email}?\n\nПользователь получит уведомление на email.`
+    if (!confirm(msg)) return
+    setStatusChanging(u.id)
+    try {
+      await adminApi.setUserStatus(u.id, !deactivate)
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_active: !deactivate } : x))
+    } catch (e: any) {
+      alert(e.message ?? 'Ошибка')
+    } finally {
+      setStatusChanging(null)
+    }
+  }
+
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', color: 'var(--text-mute)' }}>Загрузка…</div>
 
   return (
@@ -92,6 +110,7 @@ export default function AdminUsersPage() {
                 <th>Роль</th>
                 <th>Создан</th>
                 <th>Действия</th>
+                <th>Статус</th>
               </tr>
             </thead>
             <tbody>
@@ -130,6 +149,20 @@ export default function AdminUsersPage() {
                         {impersonating === u.id ? '…' : '👁 Войти как'}
                       </button>
                     )}
+                  </td>
+                  <td>
+                    {u.role === 'admin'
+                      ? <span className="pill pill-completed">активен</span>
+                      : <button
+                          onClick={() => handleStatusToggle(u)}
+                          disabled={statusChanging === u.id}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, opacity: statusChanging === u.id ? 0.5 : 1 }}
+                          title="Нажмите чтобы изменить статус"
+                        >
+                          {u.is_active !== false
+                            ? <span className="pill pill-completed">активен</span>
+                            : <span className="pill" style={{ background: 'rgba(192,57,43,0.1)', color: 'var(--red)' }}>заблокирован</span>}
+                        </button>}
                   </td>
                 </tr>
               ))}
