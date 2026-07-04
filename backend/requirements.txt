@@ -1,5 +1,5 @@
 # ── Web framework ──────────────────────────────────────────────────────────────
-fastapi==0.115.5
+fastapi==0.139.0
 uvicorn[standard]==0.32.1
 
 # ── Database ───────────────────────────────────────────────────────────────────
@@ -9,9 +9,9 @@ psycopg2-binary==2.9.10
 alembic==1.14.0
 
 # ── Auth / Security ────────────────────────────────────────────────────────────
-python-jose[cryptography]==3.3.0
+python-jose[cryptography]==3.4.0
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.12
+python-multipart==0.0.31
 
 # ── Validation ─────────────────────────────────────────────────────────────────
 pydantic==2.10.3
@@ -25,7 +25,7 @@ aiosmtplib==3.0.2
 playwright==1.49.0
 
 # ── Utilities ──────────────────────────────────────────────────────────────────
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 aiofiles==24.1.0
 
 # Rate limiting (in-memory; переключить на Redis заменив storage_uri в main.py)
