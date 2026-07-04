@@ -170,3 +170,40 @@ async def test_logout_clears_cookie(auth_client):
     assert resp.status_code == 200
     set_cookie = resp.headers.get("set-cookie", "")
     assert "auth-token" in set_cookie
+
+
+# ── Deactivated account enforcement ───────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_login_deactivated_silent_no_otp(client, db_session, test_user, mock_email_senders):
+    test_user.is_active = False
+    await db_session.flush()
+
+    resp = await client.post("/api/auth/login", json={"email": test_user.email})
+    assert resp.status_code == 200
+    # ответ неотличим от несуществующего email
+    assert "зарегистрирован" in resp.json()["message"]
+    mock_email_senders["send_otp_email"].assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_resend_otp_deactivated_silent_no_otp(client, db_session, test_user, mock_email_senders):
+    test_user.is_active = False
+    await db_session.flush()
+
+    resp = await client.post("/api/auth/resend-otp", json={"email": test_user.email})
+    assert resp.status_code == 200
+    mock_email_senders["send_otp_email"].assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_deactivated_user_gets_403(auth_client, db_session, test_user):
+    # сессия выдана активному пользователю, затем аккаунт блокируется
+    resp = await auth_client.get("/api/auth/me")
+    assert resp.status_code == 200
+
+    test_user.is_active = False
+    await db_session.flush()
+
+    resp = await auth_client.get("/api/auth/me")
+    assert resp.status_code == 403

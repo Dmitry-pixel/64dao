@@ -533,3 +533,59 @@ async def test_admin_setup_without_key_unauthorized(client, db_session):
         "setup_key": "",
     })
     assert resp.status_code == 401
+
+
+# ── User status (activate/deactivate) ─────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_set_user_status_cannot_change_own_status(admin_client, test_admin):
+    resp = await admin_client.patch(
+        f"/api/admin/users/{test_admin.id}/status", json={"is_active": False}
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_set_user_status_cannot_block_admin(admin_client, db_session):
+    from unittest.mock import AsyncMock, patch
+    import uuid as _uuid
+    from app.models import User as _User
+    from app.auth import hash_password as _hp
+
+    other_admin = _User(
+        id=_uuid.uuid4(),
+        email=f"admin2-{_uuid.uuid4().hex[:8]}@example.com",
+        password_hash=_hp("AdminPassword123"),
+        full_name="Second Admin",
+        role="admin",
+    )
+    db_session.add(other_admin)
+    await db_session.flush()
+
+    with patch("app.email.send_account_status_email", new=AsyncMock()):
+        resp = await admin_client.patch(
+            f"/api/admin/users/{other_admin.id}/status", json={"is_active": False}
+        )
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_set_user_status_toggle_flow(admin_client, db_session, test_user):
+    from unittest.mock import AsyncMock, patch
+
+    with patch("app.email.send_account_status_email", new=AsyncMock()) as mock_send:
+        resp = await admin_client.patch(
+            f"/api/admin/users/{test_user.id}/status", json={"is_active": False}
+        )
+        assert resp.status_code == 200
+        await db_session.refresh(test_user)
+        assert test_user.is_active is False
+
+        resp = await admin_client.patch(
+            f"/api/admin/users/{test_user.id}/status", json={"is_active": True}
+        )
+        assert resp.status_code == 200
+        await db_session.refresh(test_user)
+        assert test_user.is_active is True
+
+        assert mock_send.await_count == 2
