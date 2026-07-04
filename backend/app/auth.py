@@ -2,7 +2,8 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Request, Response, HTTPException, Depends
-from jose import jwt, JWTError
+import jwt
+from jwt import PyJWTError
 from passlib.context import CryptContext
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,7 +62,7 @@ def decode_token(token: str) -> dict:
             settings.jwt_secret,
             algorithms=[settings.jwt_algorithm],
         )
-    except JWTError:
+    except PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
@@ -131,7 +132,7 @@ def verify_reset_token(token: str) -> dict:
     """Декодирует и проверяет токен сброса. Возвращает payload или бросает 400."""
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-    except JWTError:
+    except PyJWTError:
         raise HTTPException(status_code=400, detail="Ссылка недействительна или истекла")
     if payload.get("type") != "password_reset":
         raise HTTPException(status_code=400, detail="Неверный тип токена")

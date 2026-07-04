@@ -19,39 +19,21 @@
 
 ---
 
-## Остаточный риск — 2 CVE, одна первопричина
+## Остаточный риск — 0 CVE (закрыто в commit ниже)
 
-Обе удерживаются устаревшим python-jose. Обе низкоэксплуатируемы в текущей
-конфигурации (JWT на HS256 — асимметричный/ASN.1-путь не задействован).
+Обе CVE устранены миграцией python-jose -> PyJWT 2.13.0.
+jose удалён из дерева (PYSEC-2025-185); pyasn1 CVE-2026-30922 ушла
+вместе с транзитивной цепочкой jose->rsa->pyasn1-modules.
+pip-audit по requirements.txt: No known vulnerabilities found.
+144/144 теста зелёные на PyJWT 2.13.0.
 
-| CVE | Пакет | Почему остаётся | Эксплуатируемость |
-|---|---|---|---|
-| PYSEC-2025-185 | python-jose | без fix-версии | низкая (алгоритм задан явным списком в auth.py) |
-| CVE-2026-30922 | pyasn1 0.4.8 | транзитивно: jose→rsa→pyasn1-modules удерживают pyasn1 <0.5 | низкая (HS256, ASN.1 не парсится) |
+## Задача №1 — ВЫПОЛНЕНО (миграция python-jose -> PyJWT)
 
-Прямой пин pyasn1==0.6.3 невозможен: ResolutionImpossible из-за python-jose.
-
----
-
-## Задача №1 (приоритет высокий) — миграция python-jose → PyJWT
-
-Первопричинное решение: закрывает ОБЕ остаточные CVE разом и упрощает дерево
-(PyJWT для HS256 не тянет rsa/pyasn1 — они нужны только для асимметричных алгоритмов).
-
-Scope — изменение кода в backend/app/auth.py:
-- 7 вызовов jwt.encode/jwt.decode (строки ~38, 59, 87, 127, 133 + импорт стр. 5)
-- Текущий паттерн: явный algorithm=settings.jwt_algorithm при encode,
-  algorithms=[settings.jwt_algorithm] при decode — воспроизвести 1:1 в PyJWT
-- jose.JWTError → jwt.PyJWTError (обработка ошибок декодирования)
-- requirements.txt: убрать python-jose[cryptography], добавить PyJWT
-
-Проверка после: прогон 144 тестов в dao64_test (особенно test_auth.py —
-encode→decode цикл), затем финальный pip-audit → ожидаемо 0 уязвимостей.
-
-Риск регрессии: умеренный, покрыт тестами. HS256 — прямой аналог, API PyJWT
-близок к jose.
-
----
+Статус: DONE. PyJWT 2.13.0 в проде, 0 CVE в дереве зависимостей.
+auth.py: заменён импорт (jose->jwt) + 2 обработчика (JWTError->PyJWTError).
+Вызовы encode/decode не менялись — HS256 API-совместим.
+Урок метода: pip-audit -r в контейнере подмешивает CVE самого pip —
+читать колонку Name, не строку 'Found N'.
 
 ## Задача №2 (условная) — апгрейд next 14 → 15
 
