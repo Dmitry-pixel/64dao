@@ -512,6 +512,24 @@ async def update_pricing(body: dict, _: User = Depends(require_admin)):
 TEMPLATES_FILE = Path("/var/www/64dao/uploads/email_templates.json")
 
 DEFAULT_TEMPLATES = {
+    "account_deactivated": {
+        "subject": "Доступ к 64 ДАО приостановлен",
+        "body_html": (
+            "<p>Здравствуйте{name_part}!</p>"
+            "<p>Доступ к вашему личному кабинету <b>64 ДАО</b> приостановлен администратором.</p>"
+            "<p>По всем вопросам обращайтесь: <a href=\"mailto:support@64dao.ru\">support@64dao.ru</a></p>"
+        ),
+        "description": "Отправляется при блокировке пользователя администратором. Переменные: {name} — имя.",
+    },
+    "account_activated": {
+        "subject": "Доступ к 64 ДАО восстановлен",
+        "body_html": (
+            "<p>Здравствуйте{name_part}!</p>"
+            "<p>Доступ к вашему личному кабинету <b>64 ДАО</b> восстановлен.</p>"
+            "<p><a href=\"https://64dao.ru/login\">Войти в кабинет</a></p>"
+        ),
+        "description": "Отправляется при разблокировке пользователя. Переменные: {name} — имя.",
+    },
     "otp": {
         "subject": "{code} — код входа в 64DAO",
         "body_html": (

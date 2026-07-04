@@ -14,11 +14,19 @@ TEMPLATES_FILE = Path("/var/www/64dao/uploads/email_templates.json")
 DEFAULT_TEMPLATES = {
     "account_deactivated": {
         "subject": "Доступ к 64 ДАО приостановлен",
-        "body": "Здравствуйте{{name_part}}!\n\nДоступ к вашему личному кабинету 64 ДАО приостановлен администратором.\n\nПо всем вопросам обращайтесь: support@64dao.ru",
+        "body_html": (
+            "<p>Здравствуйте{name_part}!</p>"
+            "<p>Доступ к вашему личному кабинету <b>64 ДАО</b> приостановлен администратором.</p>"
+            "<p>По всем вопросам обращайтесь: <a href=\"mailto:support@64dao.ru\">support@64dao.ru</a></p>"
+        ),
     },
     "account_activated": {
         "subject": "Доступ к 64 ДАО восстановлен",
-        "body": "Здравствуйте{{name_part}}!\n\nДоступ к вашему личному кабинету 64 ДАО восстановлен.\n\nВойти: https://64dao.ru/login",
+        "body_html": (
+            "<p>Здравствуйте{name_part}!</p>"
+            "<p>Доступ к вашему личному кабинету <b>64 ДАО</b> восстановлен.</p>"
+            "<p><a href=\"https://64dao.ru/login\">Войти в кабинет</a></p>"
+        ),
     },
     "otp": {
         "subject": "{code} — код входа в 64DAO",

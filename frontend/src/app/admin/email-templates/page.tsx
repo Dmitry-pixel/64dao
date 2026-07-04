@@ -18,6 +18,14 @@ const TEMPLATE_META: Record<string, { label: string; vars: string[] }> = {
     label: 'Сброс пароля',
     vars: ['{name}', '{name_part}', '{reset_link}'],
   },
+  account_deactivated: {
+    label: 'Блокировка аккаунта',
+    vars: ['{name}', '{name_part}'],
+  },
+  account_activated: {
+    label: 'Восстановление доступа',
+    vars: ['{name}', '{name_part}'],
+  },
 }
 
 const VAR_HINTS: Record<string, string> = {
