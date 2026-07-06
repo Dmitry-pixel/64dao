@@ -209,6 +209,7 @@ class StrategyListItem(BaseModel):
     id:           uuid.UUID
     combination:  str
     title:        str | None
+    lifecycle_stage: str | None = None
     is_published: bool
     updated_at:   datetime
 
