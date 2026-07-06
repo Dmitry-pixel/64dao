@@ -34,7 +34,7 @@ export default async function DocumentPage({ params }: { params: Params }) {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? ''
     const res = await fetch(`${apiUrl}/api/documents/${params.slug}`, {
-      next: { revalidate: 3600 },
+      next: { revalidate: 60 },
     })
     if (res.ok) {
       // API возвращает JSON { slug, title, content, published, updated_at },
