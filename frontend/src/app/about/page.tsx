@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import AboutShell from '@/components/AboutShell'
 import LandingFonts from '@/components/LandingFonts'
+import JsonLd from '@/components/JsonLd'
 
 export const metadata: Metadata = {
   title: 'О нас — 64 ДАО',
@@ -27,8 +28,19 @@ export default async function AboutPage() {
     // Контент придёт пустым; AboutShell отрендерит обёртку без него
   }
 
+  const aboutSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: '64 ДАО',
+    url: 'https://64dao.ru',
+    logo: 'https://64dao.ru/assets/logo.svg',
+    description:
+      'Стратегическая диагностика бизнеса на основе «И-цзин»: определяет фазу компании, уместные управленческие решения, служит опорой для стратегических сессий.',
+  }
+
   return (
     <>
+      <JsonLd data={aboutSchema} />
       <LandingFonts />
       <AboutShell htmlContent={htmlContent} />
     </>

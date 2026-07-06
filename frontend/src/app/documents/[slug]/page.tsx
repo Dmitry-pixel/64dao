@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import LegalShell from '@/components/LegalShell'
 import LandingFonts from '@/components/LandingFonts'
+import JsonLd from '@/components/JsonLd'
 
 // ─── Мета-данные по slug ──────────────────────────────────────────────────────
 
@@ -8,6 +9,10 @@ const TITLES: Record<string, string> = {
   'privacy-policy':       'Политика обработки персональных данных',
   'user-agreement':       'Пользовательское соглашение',
   'personal-data-consent': 'Согласие на обработку персональных данных',
+}
+
+export function generateStaticParams() {
+  return Object.keys(TITLES).map((slug) => ({ slug }))
 }
 
 type Params = { slug: string }
@@ -46,8 +51,28 @@ export default async function DocumentPage({ params }: { params: Params }) {
 
   const title = apiTitle ?? TITLES[params.slug] ?? 'Правовой документ'
 
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Главная',
+        item: 'https://64dao.ru',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: title,
+        item: `https://64dao.ru/documents/${params.slug}`,
+      },
+    ],
+  }
+
   return (
     <>
+      <JsonLd data={breadcrumbSchema} />
       <LandingFonts />
       <LegalShell
         slug={params.slug}

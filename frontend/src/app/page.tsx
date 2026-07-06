@@ -7,11 +7,37 @@ import FaqSection from '@/components/FaqSection'
 import ContactSection from '@/components/ContactSection'
 import CookieBanner from '@/components/CookieBanner'
 import LandingFonts from '@/components/LandingFonts'
+import JsonLd from '@/components/JsonLd'
 
 export const metadata: Metadata = {
   title: '64 ДАО — «И-цзин» для стратегии компании',
   description:
     'Стратегическая диагностика на основе «И-цзин»: определяет фазу компании, уместные управленческие решения, служит опорой для стратегических сессий.',
+}
+
+const landingSchema = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': 'https://64dao.ru/#organization',
+      name: '64 ДАО',
+      url: 'https://64dao.ru',
+      logo: 'https://64dao.ru/assets/logo.svg',
+      description:
+        'Стратегическая диагностика бизнеса на основе «И-цзин»: определяет фазу компании, уместные управленческие решения, служит опорой для стратегических сессий.',
+    },
+    {
+      '@type': 'SoftwareApplication',
+      '@id': 'https://64dao.ru/#software',
+      name: '64 ДАО',
+      url: 'https://64dao.ru',
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      description:
+        'Онлайн-диагностика бизнеса на основе «И-цзин»: два метода оценки (6 бинарных вопросов и Business Model Canvas), результат — стратегический отчёт в PDF.',
+    },
+  ],
 }
 
 // ─── Server-side helpers для секции «Что в отчёте» ───────────────────────────
@@ -179,6 +205,7 @@ export default async function HomePage() {
 
   return (
     <div className="landing-scope" style={{ fontFamily: 'Inter, sans-serif', color: 'var(--foreground)', background: 'var(--background)' }}>
+      <JsonLd data={landingSchema} />
       <LandingFonts />
       <SiteNav />
 
