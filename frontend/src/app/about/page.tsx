@@ -14,7 +14,7 @@ export default async function AboutPage() {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? ''
     const res = await fetch(`${apiUrl}/api/documents/about`, {
-      next: { revalidate: 3600 },
+      next: { revalidate: 60 },
     })
     if (res.ok) {
       // API возвращает JSON { slug, title, content, published, updated_at },
