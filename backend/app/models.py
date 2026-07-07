@@ -156,6 +156,10 @@ class Order(Base):
     currency:      Mapped[str]         = mapped_column(String(3), nullable=False, default="RUB")
     status:        Mapped[str]         = mapped_column(String(20), nullable=False, default="pending")
     payment_id:    Mapped[str | None]  = mapped_column(String(255))
+    tochka_operation_id: Mapped[str | None] = mapped_column(String(255))
+    tochka_payment_link: Mapped[str | None] = mapped_column(String(500))
+    merchant_id:         Mapped[str | None] = mapped_column(String(255))
+    webhook_payload:     Mapped[dict | None] = mapped_column(JSONB)
     paid_at:       Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at:    Mapped[datetime]    = mapped_column(DateTime(timezone=True), server_default=func.now())
 

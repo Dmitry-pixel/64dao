@@ -75,6 +75,13 @@ class Settings(BaseSettings):
     # платёжный шлюз будет готов, переключить ENFORCE_CREDITS=true в .env.
     enforce_credits: bool = False
 
+    # ── Tochka Bank API ───────────────────────────────────────────────────────
+    tochka_api_base_url: str = "https://enter.tochka.com"  # sandbox: уточнить у Точки
+    tochka_customer_code: str = ""
+    tochka_merchant_id: str = ""
+    tochka_jwt_token: str = ""
+    tochka_webhook_secret: str = ""
+
     # ── Debug ─────────────────────────────────────────────────────────────────
     debug: bool = False
 
