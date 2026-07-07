@@ -1,7 +1,17 @@
 import Link from 'next/link'
 
 /** Подвал главной страницы — Server Component. */
-export default function SiteFooter({ year }: { year: number }) {
+async function getSocialLinks() {
+  const API = process.env.NEXT_PUBLIC_API_URL || ''
+  try {
+    const res = await fetch(`${API}/api/social-links`, { next: { revalidate: 60 } })
+    if (res.ok) return await res.json()
+  } catch {}
+  return { telegram: 'https://t.me/64dao_blog', vk: 'https://vk.com/64dao', max: 'https://max.ru/64dao_max' }
+}
+
+export default async function SiteFooter({ year }: { year: number }) {
+  const social = await getSocialLinks()
   return (
     <footer style={{ background: 'var(--brand-teal)' }}>
       <div
@@ -23,17 +33,17 @@ export default function SiteFooter({ year }: { year: number }) {
             Стратегическая диагностика компании на основе «И-цзин».
           </p>
           <div style={{ marginTop: 20, display: 'flex', gap: 12 }}>
-            <a href="https://t.me/" target="_blank" rel="noreferrer" aria-label="Telegram"
+            <a href={social.telegram} target="_blank" rel="noreferrer" aria-label="Telegram"
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 40, width: 40, borderRadius: '9999px', background: 'rgba(255,255,255,0.18)', color: '#1f3a52', textDecoration: 'none' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71l-4.07-3.04-1.95 1.9c-.21.21-.39.4-.78.4z" />
               </svg>
             </a>
-            <a href="https://vk.com/" target="_blank" rel="noreferrer" aria-label="ВКонтакте"
+            <a href={social.vk} target="_blank" rel="noreferrer" aria-label="ВКонтакте"
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 40, width: 40, borderRadius: '9999px', background: 'rgba(255,255,255,0.18)', color: '#1f3a52', textDecoration: 'none', fontFamily: 'Inter,sans-serif', fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em' }}>
               VK
             </a>
-            <a href="https://max.ru/" target="_blank" rel="noreferrer" aria-label="MAX"
+            <a href={social.max} target="_blank" rel="noreferrer" aria-label="MAX"
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 40, width: 40, borderRadius: '9999px', background: 'rgba(255,255,255,0.18)', color: '#1f3a52', textDecoration: 'none', fontFamily: 'Inter,sans-serif', fontWeight: 800, fontSize: 11, letterSpacing: '-0.01em' }}>
               MAX
             </a>
