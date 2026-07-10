@@ -466,45 +466,38 @@ async def start_impersonation(
 
 import json
 
-PRICING_FILE = Path("/var/www/64dao/uploads/pricing.json")
 
-DEFAULT_PRICING = {
-    "title": "Полный отчёт 64 ДАО",
-    "price": 14900,
-    "currency": "₽",
-    "description": "разовая оплата · НДС не облагается",
-    "features": [
-        {"label": "Диагностика", "value": "Метод 1 + Метод 2"},
-        {"label": "PDF-отчёт", "value": "Включён"},
-        {"label": "Онлайн-просмотр", "value": "Без ограничений"},
-        {"label": "Срок готовности", "value": "До 30 минут"},
-    ],
-    "payment_enabled": False,
-    "payment_note": "Платёжный шлюз (ЮKassa / Тинькофф) подключим после тестирования сайта. Пока что отчёты доступны в демо-режиме без оплаты.",
-}
-
-
-def _read_pricing() -> dict:
-    try:
-        return json.loads(PRICING_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return DEFAULT_PRICING.copy()
-
-
-def _write_pricing(data: dict) -> None:
-    PRICING_FILE.parent.mkdir(parents=True, exist_ok=True)
-    PRICING_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+# ── Тариф и цена ──────────────────────────────────────────────────────────────
+# Раньше здесь были собственные DEFAULT_PRICING/PRICING_FILE/_read_pricing/
+# _write_pricing — продублированные с routers/pricing.py. Теперь оба места
+# (и payments.py) читают/пишут через общий app/pricing_store.py.
+from app.pricing_store import read_pricing, write_pricing
 
 
 @router.get("/pricing")
 async def get_pricing(_: User = Depends(require_admin)):
-    return _read_pricing()
+    return read_pricing()
 
 
 @router.put("/pricing")
 async def update_pricing(body: dict, _: User = Depends(require_admin)):
-    _write_pricing(body)
+    write_pricing(body)
     return {"ok": True}
+
+
+# ── Точка Банк: JWT-токен и Client ID (редактируются без пересборки) ─────────
+from app.tochka_settings import masked_view as _tochka_masked_view, write_tochka_settings
+
+
+@router.get("/tochka-settings")
+async def get_tochka_settings_view(_: User = Depends(require_admin)):
+    return _tochka_masked_view()
+
+
+@router.put("/tochka-settings")
+async def update_tochka_settings_view(body: dict, _: User = Depends(require_admin)):
+    write_tochka_settings(body)
+    return _tochka_masked_view()
 
 
 # ── Email templates ───────────────────────────────────────────────────────────

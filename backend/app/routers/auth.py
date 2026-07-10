@@ -20,6 +20,7 @@ from app.email import send_otp_email, send_welcome_email, send_forgot_password_e
 settings = get_settings()
 from app.limiter import limiter
 from app.models import User
+from app.site_mode import get_site_mode
 from app.schemas import (
     LoginRequest, RegisterRequest, VerifyOTPRequest,
     ResendOTPRequest, UserOut, SuccessResponse,
@@ -39,6 +40,11 @@ async def register(
     db: AsyncSession = Depends(get_db),
 ):
     """Регистрация: email + пароль + имя + компания → OTP на почту."""
+    if get_site_mode().enabled:
+        raise HTTPException(
+            status_code=403,
+            detail="Регистрация временно недоступна. Сайт находится на техническом обслуживании.",
+        )
     existing = await db.scalar(select(User).where(User.email == body.email))
     if existing:
         raise HTTPException(status_code=409, detail="Email уже зарегистрирован")

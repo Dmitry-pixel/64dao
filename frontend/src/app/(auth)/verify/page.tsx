@@ -47,7 +47,22 @@ function VerifyForm() {
     setLoading(true)
     try {
       const { role } = await verifyOTP(email, code)
-      router.push(role === 'admin' ? '/admin' : '/dashboard')
+      if (role === 'admin') {
+        router.push('/admin')
+      } else {
+        let maintenanceOn = false
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL
+          const res = await fetch(`${apiUrl}/api/site-mode`, { cache: 'no-store' })
+          if (res.ok) {
+            const data = await res.json()
+            maintenanceOn = Boolean(data.enabled)
+          }
+        } catch {
+          maintenanceOn = false
+        }
+        router.push(maintenanceOn ? '/maintenance' : '/dashboard')
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError('Сессия истекла. Войдите заново.')

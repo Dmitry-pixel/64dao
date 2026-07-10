@@ -210,8 +210,11 @@ export function AdminSide({ current }: AdminSideProps) {
         Количество заказов <span className="num">{stats?.total_orders ?? '—'}</span>
       </Link>
       <Link href="/admin/pricing" className={current === 'pricing' ? 'on' : ''}>Тариф & цена</Link>
+      <Link href="/admin/payment-settings" className={current === 'payment-settings' ? 'on' : ''}>Настройка оплаты</Link>
+      <Link href="/admin/test-payment" className={current === 'test-payment' ? 'on' : ''}>Тест оплаты</Link>
       <Link href="/admin/email-templates" className={current === 'email-templates' ? 'on' : ''}>Email-шаблоны</Link>
       <Link href="/admin/social-links" className={current === 'social-links' ? 'on' : ''}>Соц. сети</Link>
+      <Link href="/admin/site-mode" className={current === 'site-mode' ? 'on' : ''}>Режим заглушки</Link>
       <Link href="/admin/logs" className={current === 'logs' ? 'on' : ''}>Логи</Link>
       <Link href="/404" className={current === '404' ? 'on' : ''}>Страница 404</Link>
     </aside>

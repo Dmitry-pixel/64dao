@@ -1,0 +1,53 @@
+"""
+Единый источник цены диагностики (pricing.json в volume dao64_uploads).
+
+Раньше DEFAULT_PRICING/PRICING_FILE были продублированы в routers/admin.py
+и routers/pricing.py — то есть уже было два независимых места с одним и
+тем же дефолтом. payments.py при этом вообще не знал об этом файле и
+использовал отдельную захардкоженную цену (5500 ₽), пока лендинг и админка
+показывали настоящую (14900 ₽) — отсюда расхождение.
+
+Теперь все три места (admin.py, routers/pricing.py, routers/payments.py)
+читают/пишут только через этот модуль.
+"""
+import json
+from pathlib import Path
+
+PRICING_FILE = Path("/var/www/64dao/uploads/pricing.json")
+
+DEFAULT_PRICING = {
+    "title": "Полный отчёт 64 ДАО",
+    "price": 14900,
+    "currency": "₽",
+    "description": "разовая оплата · НДС не облагается",
+    "features": [
+        {"label": "Диагностика", "value": "Метод 1 + Метод 2"},
+        {"label": "PDF-отчёт", "value": "Включён"},
+        {"label": "Онлайн-просмотр", "value": "Без ограничений"},
+        {"label": "Срок готовности", "value": "До 30 минут"},
+    ],
+    "payment_enabled": False,
+    "payment_note": "Оплата принимается картой и через СБП (Точка Банк). Сейчас идёт финальное тестирование платёжного шлюза — скоро включим приём платежей.",
+}
+
+
+def read_pricing() -> dict:
+    try:
+        return json.loads(PRICING_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return DEFAULT_PRICING.copy()
+
+
+def write_pricing(data: dict) -> None:
+    PRICING_FILE.parent.mkdir(parents=True, exist_ok=True)
+    PRICING_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def current_price() -> float:
+    """Текущая цена диагностики в рублях (число)."""
+    pricing = read_pricing()
+    return float(pricing.get("price", DEFAULT_PRICING["price"]))
+
+
+def is_payment_enabled() -> bool:
+    return bool(read_pricing().get("payment_enabled", False))

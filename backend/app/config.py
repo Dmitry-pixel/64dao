@@ -72,15 +72,23 @@ class Settings(BaseSettings):
     # ── Payments (feature flags) ─────────────────────────────────────────────
     # До подключения реальной платёжной системы credits-проверка отключена
     # по умолчанию (создание completed-assessment не блокируется). Когда
-    # платёжный шлюз будет готов, переключить ENFORCE_CREDITS=true в .env.
+    # платёжный шлюз будет готов и вебхук проверен тестовой отправкой —
+    # переключить ENFORCE_CREDITS=true в .env.
     enforce_credits: bool = False
 
     # ── Tochka Bank API ───────────────────────────────────────────────────────
-    tochka_api_base_url: str = "https://enter.tochka.com"  # sandbox: уточнить у Точки
-    tochka_customer_code: str = ""
-    tochka_merchant_id: str = ""
-    tochka_jwt_token: str = ""
-    tochka_webhook_secret: str = ""
+    tochka_api_base_url: str = "https://enter.tochka.com"
+    tochka_customer_code: str = ""     # Get Customers List → customerType: Business
+    tochka_merchant_id: str = ""       # Get Retailers → merchantId торговой точки МСС 7299
+    tochka_jwt_token: str = ""         # ЛК Точки → Сервисы → Интеграции и API → Сгенерировать JWT
+    tochka_webhook_secret: str = ""    # НЕ используется в новой схеме проверки (см. ниже) —
+                                        # оставлено для обратной совместимости, можно удалить.
+
+    # Налоговый режим для чека (54-ФЗ). ИП на УСН доходы.
+    tochka_tax_system_code: str = "usn_income"  # osn | usn_income | usn_income_outcome | esn | patent
+    # Ставка НДС в чеке НЕ здесь — см. app/tax_settings.py (переключатель
+    # vat_enabled в tax_settings.json, меняется без редеплоя). Сейчас ИП
+    # освобождён от НДС (доход не превышает лимит по УСН).
 
     # ── Debug ─────────────────────────────────────────────────────────────────
     debug: bool = False

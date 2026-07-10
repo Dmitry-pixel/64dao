@@ -1,25 +1,53 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from "next/server";
 
-const PROTECTED = ['/dashboard', '/admin', '/reports', '/profile', '/purchases', '/assessment']
-const AUTH_ONLY = ['/login', '/register', '/verify']
+const BYPASS_PREFIXES = [
+  "/admin",
+  "/login",
+  "/verify",
+  "/maintenance",
+  "/api",
+  "/favicon.ico",
+  "/robots.txt",
+  "/sitemap.xml",
+];
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl
-  const hasToken = req.cookies.has('auth-token')
+function isBypassed(pathname: string): boolean {
+  return BYPASS_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
+}
 
-  if (AUTH_ONLY.some(r => pathname.startsWith(r)) && hasToken) {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (isBypassed(pathname)) {
+    return NextResponse.next();
   }
 
-  if (PROTECTED.some(r => pathname.startsWith(r)) && !hasToken) {
-    const url = new URL('/login', req.url)
-    url.searchParams.set('from', pathname)
-    return NextResponse.redirect(url)
+  let enabled = false;
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const res = await fetch(`${apiUrl}/api/site-mode`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(2000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      enabled = Boolean(data.enabled);
+    }
+  } catch {
+    enabled = false;
   }
 
-  return NextResponse.next()
+  if (enabled) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/maintenance";
+    return NextResponse.rewrite(url);
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*', '/reports/:path*', '/profile/:path*', '/purchases/:path*', '/assessment/:path*', '/login', '/register', '/verify'],
-}
+  matcher: ["/((?!_next/static|_next/image).*)"],
+};

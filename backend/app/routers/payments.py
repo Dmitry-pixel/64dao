@@ -1,24 +1,28 @@
-from fastapi import APIRouter, Depends
+import logging
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.auth import get_current_user
+from app.auth import get_current_user, require_admin
 from app.db import get_db
 from app.models import Assessment, Order, User
 from app.tochka_client import get_tochka_client
-from fastapi import Request, HTTPException
+from app.config import get_settings
+from app.tax_settings import get_tax_settings, set_vat_enabled, current_vat_type
+from app.pricing_store import current_price, is_payment_enabled
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
 REPORTS_PER_ORDER = 2
-
-
-# TODO: Refund handling (when payment system is connected)
-#   When Order.status changes to 'refunded', the linked Assessment should be:
-#   1. Moved back to 'draft' status (so it doesn't count as used_assessments)
-#   2. OR deleted entirely if user requests full cancellation
-#   This way, calculate_credits() will automatically restore the balance.
-#   Currently, refunds are not supported (stub payment system).
+# Цена больше НЕ хардкодится здесь — берётся из pricing.json через
+# app.pricing_store (тот же источник, что у лендинга и админки "Тариф и цена").
+# Раньше тут было REPORT_PRICE = 5500.00, а реальная цена на сайте — 14900 ₽:
+# создание платежа ушло бы на неверную сумму.
 
 
 async def calculate_credits(user_id, db: AsyncSession) -> int:
@@ -63,8 +67,6 @@ async def list_orders(
     db: AsyncSession = Depends(get_db),
 ):
     """История заказов пользователя."""
-    from sqlalchemy.orm import selectinload
-
     result = await db.execute(
         select(Order)
         .where(Order.user_id == user.id)
@@ -100,18 +102,37 @@ async def create_payment(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.config import get_settings
+    if not is_payment_enabled():
+        raise HTTPException(status_code=503, detail="Payment is currently disabled")
+
     settings = get_settings()
+    price = current_price()
 
     order = Order(
         user_id=user.id,
         assessment_id=assessment_id,
-        amount=5500.00,
+        amount=price,
         currency="RUB",
         status="pending",
     )
     db.add(order)
     await db.flush()
+
+    # Состав чека (54-ФЗ). Один товар — услуга диагностики.
+    # vatType берётся динамически из tax_settings.json (переключатель НДС,
+    # см. app/tax_settings.py) — сейчас ИП освобождён от НДС (vat_enabled=False
+    # -> vatType="none"). Когда лимит по доходу будет превышен, переключить
+    # флаг командой из app/tax_settings.py, без редеплоя.
+    items = [
+        {
+            "name": "Стратегическая диагностика 64 DAO",
+            "amount": float(order.amount),
+            "quantity": 1,
+            "vatType": current_vat_type(),
+            "paymentMethod": "full_prepayment",
+            "paymentObject": "service",
+        }
+    ]
 
     client = get_tochka_client()
     try:
@@ -120,10 +141,88 @@ async def create_payment(
             purpose=f"Оплата диагностики 64 DAO, заказ {order.id}",
             order_id=str(order.id),
             customer_email=user.email,
+            items=items,
         )
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=502, detail=f"Tochka API error: {e}")
+        body = getattr(getattr(e, "response", None), "text", None)
+        raise HTTPException(status_code=502, detail=f"Tochka API error: {e} | body: {body}")
+
+    data = tochka_resp.get("Data", {})
+    order.tochka_operation_id = data.get("operationId")
+    order.tochka_payment_link = data.get("paymentLink")
+    order.merchant_id = settings.tochka_merchant_id
+
+    await db.commit()
+    await db.refresh(order)
+
+    return {
+        "order_id": str(order.id),
+        "payment_link": order.tochka_payment_link,
+    }
+
+
+@router.post("/test-create")
+async def create_test_payment(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Тестовый платёж на 1 ₽ (не полная цена) — проверить прохождение оплаты,
+    чека и вебхука через реальный Точка API без списания полной суммы.
+    Доступно только администратору.
+
+    Order.assessment_id обязателен по схеме БД (NOT NULL) — создаём
+    служебный Assessment (status='draft', без данных диагностики), он не
+    расходует кредиты и не появляется как отчёт пользователя.
+
+    Работает НЕЗАВИСИМО от pricing.payment_enabled — тестировать нужно
+    именно до включения оплаты для обычных пользователей.
+    """
+    settings = get_settings()
+
+    test_assessment = Assessment(
+        user_id=admin.id,
+        status="draft",
+        company_name="[ТЕСТ ОПЛАТЫ] служебная запись, можно игнорировать",
+    )
+    db.add(test_assessment)
+    await db.flush()
+
+    order = Order(
+        user_id=admin.id,
+        assessment_id=test_assessment.id,
+        amount=1.00,
+        currency="RUB",
+        status="pending",
+    )
+    db.add(order)
+    await db.flush()
+
+    items = [
+        {
+            "name": "ТЕСТ: проверка оплаты (1 ₽)",
+            "amount": 1.00,
+            "quantity": 1,
+            "vatType": current_vat_type(),
+            "paymentMethod": "full_prepayment",
+            "paymentObject": "service",
+        }
+    ]
+
+    client = get_tochka_client()
+    try:
+        tochka_resp = await client.create_payment_with_receipt(
+            amount=1.00,
+            purpose=f"ТЕСТ оплаты 64 DAO, заказ {order.id}",
+            order_id=str(order.id),
+            customer_email=admin.email,
+            items=items,
+        )
+    except Exception as e:
+        await db.rollback()
+        body = getattr(getattr(e, "response", None), "text", None)
+        raise HTTPException(status_code=502, detail=f"Tochka API error: {e} | body: {body}")
 
     data = tochka_resp.get("Data", {})
     order.tochka_operation_id = data.get("operationId")
@@ -144,34 +243,49 @@ async def tochka_webhook(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    body = await request.body()
+    """
+    ВАЖНО: тело вебхука от Точки — НЕ JSON, а «голая» строка JWT (RS256),
+    Content-Type: text/plain. Раньше здесь стоял request.json() — это
+    падало бы 400/500 на первом же реальном вебхуке от банка.
+
+    Подпись проверяется публичным ключом Точки (см. tochka_client.py).
+
+    ВАЖНО #2: Точка при создании/редактировании вебхука сама шлёт тестовый
+    запрос на этот URL и требует HTTP 200 в ответ — иначе подписку не
+    создаст (см. документацию: "Если в ответ не придёт код HTTP 200...").
+    Поэтому на непроверяемые/неопознанные запросы отвечаем 200 (просто
+    игнорируем), а не 401/404 — но НИКОГДА не доверяем и не применяем
+    данные, если подпись не прошла проверку или заказ не найден.
+    """
+    raw_body = await request.body()
     client = get_tochka_client()
 
-    if not client.verify_webhook(dict(request.headers), body):
-        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+    try:
+        claims = await client.verify_and_decode_webhook(raw_body)
+    except Exception as e:
+        logger.warning("Tochka webhook: signature verification failed: %s", e)
+        return {"status": "ignored", "reason": "invalid signature"}
 
-    payload = await request.json()
-    event_data = payload.get("Data", {})
-    operation_id = event_data.get("operationId")
-    status = event_data.get("status")
+    operation_id = claims.get("operationId")
+    status = claims.get("status")
 
     if not operation_id:
-        raise HTTPException(status_code=400, detail="Missing operationId")
+        return {"status": "ignored", "reason": "no operationId"}
 
     result = await db.execute(
         select(Order).where(Order.tochka_operation_id == operation_id)
     )
     order = result.scalar_one_or_none()
     if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+        logger.info("Tochka webhook: no order for operationId=%s (test/unknown webhook)", operation_id)
+        return {"status": "ignored", "reason": "order not found"}
 
     if order.status == "paid":
         return {"status": "already_processed"}
 
-    order.webhook_payload = payload
+    order.webhook_payload = claims
     if status == "APPROVED":
         order.status = "paid"
-        from datetime import datetime, timezone
         order.paid_at = datetime.now(timezone.utc)
     elif status in ("REJECTED", "DECLINED"):
         order.status = "failed"
@@ -200,10 +314,80 @@ async def get_order_status(
             remote_status = resp.get("Data", {}).get("status")
             if remote_status == "APPROVED":
                 order.status = "paid"
-                from datetime import datetime, timezone
                 order.paid_at = datetime.now(timezone.utc)
                 await db.commit()
         except Exception:
             pass
 
     return {"status": order.status}
+
+
+@router.post("/{order_id}/refund")
+async def refund_order(
+    order_id: str,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Возврат оплаченного заказа. Доступно только администратору
+    (ручной процесс — по обращению пользователя, см. Раздел 10
+    Пользовательского соглашения о возврате).
+
+    После возврата:
+      1. Order.status -> 'refunded'
+      2. Assessment (если есть и статус completed/paid) -> 'draft',
+         чтобы calculate_credits() снова учёл этот кредит как свободный.
+
+    Требует TOCHKA_MERCHANT_ID/JWT в .env и order.tochka_operation_id
+    (т.е. платёж должен быть реально проведён через Точку).
+    """
+    result = await db.execute(
+        select(Order)
+        .where(Order.id == order_id)
+        .options(selectinload(Order.assessment))
+    )
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.status != "paid":
+        raise HTTPException(status_code=400, detail=f"Order status is '{order.status}', not 'paid'")
+
+    if not order.tochka_operation_id:
+        raise HTTPException(status_code=400, detail="Order has no tochka_operation_id")
+
+    client = get_tochka_client()
+    try:
+        await client.refund_payment(order.tochka_operation_id)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Tochka refund error: {e}")
+
+    order.status = "refunded"
+
+    if order.assessment and order.assessment.status in ("completed", "paid"):
+        order.assessment.status = "draft"
+
+    await db.commit()
+    return {"status": "refunded"}
+
+
+# ── НДС: переключатель (для будущего admin UI) ──────────────────────────────
+# Быстрее всего переключить прямо из консоли, без похода через HTTP/UI:
+#   docker compose exec backend python3 -c \
+#     "from app.tax_settings import set_vat_enabled; print(set_vat_enabled(True))"
+# Эндпоинты ниже — для тех же двух действий через API/будущую кнопку в админке.
+
+@router.get("/admin/tax-settings")
+async def get_tax_settings_endpoint(
+    _admin: User = Depends(require_admin),
+):
+    return get_tax_settings()
+
+
+@router.put("/admin/tax-settings")
+async def update_tax_settings_endpoint(
+    vat_enabled: bool,
+    vat_type: str = "vat20",
+    _admin: User = Depends(require_admin),
+):
+    return set_vat_enabled(vat_enabled, vat_type)
