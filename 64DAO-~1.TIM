@@ -1,0 +1,11 @@
+[Unit]
+Description=Run 64dao alert watcher every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Unit=64dao-alerts.service
+
+[Install]
+WantedBy=timers.target
