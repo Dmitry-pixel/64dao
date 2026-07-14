@@ -21,6 +21,19 @@ from app.schemas import AssessmentCreate, AssessmentOut, ReportOut, StrategyOut
 settings = get_settings()
 router = APIRouter(prefix="/api/assessments", tags=["assessments"])
 
+
+def _ensure_result_access(assessment, user) -> None:
+    """Под enforce_credits результат диагностики (стратегия/PDF) доступен
+    только для completed/paid: кредит списывается при создании completed-
+    диагностики, draft результата не даёт (иначе — обход кредитов). Админ —
+    без ограничений. После рефанда assessment возвращается в draft, и доступ
+    к результату корректно закрывается."""
+    if settings.enforce_credits and user.role != "admin" and assessment.status == "draft":
+        raise HTTPException(
+            status_code=403,
+            detail="Результат доступен после оформления диагностики.",
+        )
+
 _MONTHS_RU = {
     "January": "января", "February": "февраля", "March": "марта",
     "April": "апреля", "May": "мая", "June": "июня",
@@ -174,6 +187,8 @@ async def generate_report_on_demand(
     if assessment.user_id != user.id and user.role != "admin":
         raise HTTPException(status_code=403, detail="Нет доступа")
 
+    _ensure_result_access(assessment, user)
+
     if assessment.reports:
         return assessment.reports[0]
     if settings.enforce_credits and assessment.status == "completed" and user.role != "admin":
@@ -243,6 +258,8 @@ async def stream_pdf_on_demand(
     if assessment.user_id != user.id and user.role != "admin":
         raise HTTPException(status_code=403, detail="Нет доступа")
 
+    _ensure_result_access(assessment, user)
+
     combination = assessment.method1_combination
     company_name = assessment.company_name or "Компания"
     user_name = user.full_name or ""
@@ -304,6 +321,8 @@ async def get_assessment_strategy(
         raise HTTPException(status_code=404, detail="Диагностика не найдена")
     if assessment.user_id != user.id and user.role != "admin":
         raise HTTPException(status_code=403, detail="Нет доступа")
+
+    _ensure_result_access(assessment, user)
 
     combination = assessment.method1_combination
     if not combination:
