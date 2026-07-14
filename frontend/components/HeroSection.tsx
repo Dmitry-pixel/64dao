@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import SampleReportModal from '@/components/SampleReportModal'
 
 function Hexagram({ seed }: { seed: number }) {
   const lines = Array.from({ length: 6 }, (_, i) => ((seed * 7 + i * 13) % 3) !== 0)
@@ -132,6 +133,7 @@ export default function HeroSection() {
   const yinRef    = useRef<HTMLDivElement>(null)
   const matrixRef = useRef<HTMLDivElement>(null)
   const [rowWidth, setRowWidth] = useState(1040)
+  const [leadOpen, setLeadOpen] = useState(false)
 
   useEffect(() => {
     const measure = () => {
@@ -243,22 +245,7 @@ export default function HeroSection() {
             >
               Пройти диагностику <span aria-hidden="true">→</span>
             </a>
-            <a href="/api/sample-report"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 2,
-                background: 'var(--foreground)',
-                padding: '14px 24px',
-                fontSize: 14,
-                fontWeight: 500,
-                color: 'var(--background)',
-                textDecoration: 'none',
-              }}
-            >
-              Посмотреть пример отчёта
-            </a>
+            <button type="button" onClick={() => setLeadOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2, background: 'var(--foreground)', padding: '14px 24px', fontSize: 14, fontWeight: 500, color: 'var(--background)', textDecoration: 'none', border: 'none', cursor: 'pointer' }}>Посмотреть пример отчёта</button>
           </div>
         </div>
 
@@ -338,6 +325,7 @@ export default function HeroSection() {
           }
         }
       `}</style>
+      <SampleReportModal open={leadOpen} onClose={() => setLeadOpen(false)} />
     </section>
   )
 }

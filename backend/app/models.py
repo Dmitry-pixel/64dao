@@ -169,3 +169,20 @@ class Order(Base):
 
     user:       Mapped["User"]       = relationship(back_populates="orders")
     assessment: Mapped["Assessment"] = relationship(back_populates="orders")
+
+
+# ── Sample-report leads (заявки на пример отчёта) ─────────────────────────────
+class SampleLead(Base):
+    __tablename__ = "sample_leads"
+
+    id:         Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    name:       Mapped[str]       = mapped_column(String(200), nullable=False)
+    channel:    Mapped[str]       = mapped_column(String(20), nullable=False)   # email | telegram | max
+    address:    Mapped[str]       = mapped_column(String(320), nullable=False)
+    consent:    Mapped[bool]      = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    ip:         Mapped[str | None]= mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        CheckConstraint("channel IN ('email','telegram','max')", name="chk_sample_lead_channel"),
+    )

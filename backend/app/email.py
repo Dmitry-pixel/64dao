@@ -3,6 +3,7 @@ import logging
 import aiosmtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 from pathlib import Path
 from app.config import get_settings
 
@@ -179,3 +180,41 @@ async def send_support_email(from_email: str, from_name: str | None, message: st
         logger.info("=== DEBUG SUPPORT === from=%s message=%s ===", from_email, message)
         return
     await _send_message(admin_email, subject, _wrap_html(body_html))
+
+
+async def send_sample_report_email(to: str, name: str | None = None) -> None:
+    """Письмо с примером отчёта (PDF во вложении)."""
+    name_part = f", {name}" if name else ""
+    body_html = _wrap_html(
+        f"<p>Здравствуйте{name_part}!</p>"
+        "<p>Во вложении — пример стратегического отчёта <b>64 ДАО</b>. "
+        "Он также открылся у вас в браузере.</p>"
+        "<p style=\"color:#999;font-size:12px;\">Команда 64DAO</p>"
+    )
+    if settings.debug:
+        logger.info("=== DEBUG SAMPLE REPORT === email=%s ===", to)
+        return
+
+    msg = MIMEMultipart("mixed")
+    msg["Subject"] = "Пример отчёта — 64 ДАО"
+    msg["From"] = f"64DAO <{settings.smtp_from_address}>"
+    msg["To"] = to
+
+    alt = MIMEMultipart("alternative")
+    alt.attach(MIMEText(body_html, "html", "utf-8"))
+    msg.attach(alt)
+
+    sample_file = Path("/var/www/64dao/uploads/sample_report.pdf")
+    if sample_file.exists():
+        part = MIMEApplication(sample_file.read_bytes(), _subtype="pdf")
+        part.add_header("Content-Disposition", "attachment", filename="64dao-sample-report.pdf")
+        msg.attach(part)
+
+    await aiosmtplib.send(
+        msg,
+        hostname=settings.smtp_host,
+        port=settings.smtp_port,
+        username=settings.smtp_user,
+        password=settings.smtp_pass,
+        use_tls=settings.smtp_use_tls,
+    )
