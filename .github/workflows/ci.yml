@@ -37,6 +37,7 @@ jobs:
       DB_NAME: dao64_test
       JWT_SECRET: ci-test-secret-not-for-prod
       ENFORCE_CREDITS: "false"
+      UPLOADS_DIR: /tmp/64dao_uploads
 
     steps:
       - uses: actions/checkout@v4
