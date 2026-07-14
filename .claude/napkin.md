@@ -70,3 +70,10 @@
 
 2. **[2026-05-23] I Ching used as strategic analysis framework, not mysticism**
    Do instead: treat hexagrams as archetypes for motivation, decision style, team roles. No religious framing unless explicitly requested.
+
+---
+
+## Testing
+
+1. **[2026-07-14] pytest: нужен `-e DB_NAME=dao64_test` + установка перед каждым прогоном**
+   Do instead: `docker compose exec backend pip install -q -r requirements-test.txt` (pytest НЕ в prod-образе, исчезает после каждой пересборки), затем `docker compose exec -e DB_NAME=dao64_test backend pytest tests/<file>.py -v`. Без `-e DB_NAME=dao64_test` conftest падает (assert-защита от прогона по проду `dao64`). Запускать файлы по одному — иначе флейки cross-file InterfaceError. Если базы нет: `docker compose exec db psql -U dao64 -d dao64 -c "CREATE DATABASE dao64_test OWNER dao64;"`.
