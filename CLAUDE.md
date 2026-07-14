@@ -1,153 +1,144 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude / AI agents working in this repository. Keep it truthful: if a rule here contradicts the code, fix the code or fix this file — do not leave both.
 
 ## Session Lifecycle
 
-**Starting**: Read MEMORY.md. Check handoffs/ for the latest handoff. Resume context.
-**Ending**: Write a handoff if work is in-progress. Save any corrections to memory.
+- **Starting:** read `napkin.md` (real gotchas) and the latest handoff if one exists. Resume context.
+- **Ending:** if work is in-progress, write a handoff. Save any correction from the operator so the same mistake isn't repeated.
 
 ## How I Work
 
 - Direct, no fluff. Skip preambles.
 - NO em dashes. Use colons or split sentences.
 - Lead with recommendations, not option lists.
-- Code should be production-ready, not "here's a starting point."
-
-## Workflow Rules
-
-1. Plan first for anything non-trivial. Think before coding.
-2. One sub-agent per focused task. Keep the main chat clean.
-3. After ANY correction from me, save it to memory. Don't make the same mistake twice.
-4. Verify before calling it done. Run tests. Check the diff.
+- Production-ready code, not "a starting point."
+- One focused sub-agent per task (see `.claude/agents/`). Keep the main chat clean.
+- Verify before calling it done: run the relevant tests, check the diff, confirm the patch is in the running container.
 
 ## Project
 
-Web application for business strategy diagnostics based on 64 hexagrams (I Ching). Users answer 6 A/B questions → get a combination like `ABABBA` → system maps it to one of 64 strategies → generates a PDF report.
+Web app for business strategy diagnostics based on 64 hexagrams / stratagems (I Ching). User answers 6 A/B questions -> a 6-char combination like `ABABBA` -> mapped to one of 64 strategies -> structured report (HTML in the account + PDF). Single-operator SaaS (ИП Подласов Д.С.), Russian-language, `64dao.ru`. Monetization: one-off paid reports via Точка Банк (no subscriptions, no multi-tenancy).
 
-**Stack:** FastAPI 0.115 · PostgreSQL 16 · SQLAlchemy 2 async · Next.js 14 App Router · Docker Compose · FastPanel nginx (host)
+## Stack (actual)
+
+- **Backend:** FastAPI 0.139 · SQLAlchemy 2 async · asyncpg · PostgreSQL 16 · Alembic 1.14 · Pydantic v2 + pydantic-settings · PyJWT 2.13 (HS256) · passlib[bcrypt] · aiosmtplib · slowapi · Playwright 1.49 (Chromium, HTML->PDF).
+- **Frontend:** Next.js 14.2.35 App Router · React 18 · TypeScript 5 · Tailwind · react-hook-form + zod · lucide-react. Standalone Docker output.
+- **Infra:** Docker Compose · FastPanel nginx on the host (ports 80/443) · VPS.
+- **Payments:** Точка Банк acquiring (JWT auth, RS256 webhook signature). **No Stripe.**
+- **Email:** aiosmtplib to `smtp.timeweb.ru:465`, in-house template system in `app/email.py`. **No Resend.**
+- **Jobs:** none. Scheduling is host cron (backup, docker cache cleanup). **No BullMQ, no in-app scheduler.**
+
+There is no Prisma, no ORM other than SQLAlchemy, no message queue, and no tenant isolation layer. Ignore any past reference to those.
 
 ## Key Commands
-- npm run dev - start the dev server
-- npm test - run unit tests
-- npm run typecheck - type-check the project
-- npm run lint - lint the project
-- npx prisma migrate dev - run migrations locally
 
-
-### Deploy to production (from local Windows, SSH to VPS)
+**Local dev (Docker):**
 ```bash
-# Full redeploy after git push
-ssh root@188.225.77.18 "cd /var/www/64dao && git fetch origin && git reset --hard origin/main && docker compose build && docker compose up -d"
-
-# Rebuild only backend (faster, after Python-only changes)
-ssh root@188.225.77.18 "cd /var/www/64dao && git reset --hard origin/main && docker compose build backend && docker compose up -d backend"
-
-# Rebuild only frontend (after TypeScript/Next.js changes)
-ssh root@188.225.77.18 "cd /var/www/64dao && git reset --hard origin/main && docker compose build frontend && docker compose up -d"
-```
-
-### Logs and debugging
-```bash
-ssh root@188.225.77.18 "docker logs dao64_backend --tail 50"
-ssh root@188.225.77.18 "docker logs dao64_frontend --tail 30"
-ssh root@188.225.77.18 "curl -sk https://64dao.ru/api/health"
-```
-
-### Database migrations (Alembic)
-```bash
-# Run inside backend container on VPS
-ssh root@188.225.77.18 "docker exec dao64_backend alembic upgrade head"
-ssh root@188.225.77.18 "docker exec dao64_backend alembic revision --autogenerate -m 'description'"
-```
-
-### Local development
-```bash
-cp backend/.env.example backend/.env  # fill in DB, JWT, SMTP vars
+cp backend/.env.example  backend/.env        # fill DB, JWT, SMTP, Точка vars
 cp frontend/.env.example frontend/.env.local
 docker compose up -d --build
 ```
 
+**Backend tests** (pytest is NOT in the prod image — install first):
+```bash
+docker compose exec backend pip install -r requirements-test.txt
+docker compose exec backend pytest tests/ -q          # run per-file if cross-file InterfaceError appears
+# `live`-marked tests (test_smoke.py, test_sanity.py::TestLiveAPI) hit https://64dao.ru and need network
+```
+
+**Frontend scripts** (from `frontend/package.json`): `next dev` · `next build` · `next start` · `next lint`. There is no `test` or `typecheck` script — type errors surface during `next build`.
+
+**Migrations (Alembic, inside backend container):**
+```bash
+docker exec dao64_backend alembic upgrade head
+docker exec dao64_backend alembic revision --autogenerate -m "description"
+```
+
+## Deploy (manual, push from the server over SSH)
+
+There is **no CI/CD**. Deploy is manual. Updates are committed and pushed from the VPS itself.
+
+```bash
+# On the VPS:
+cd /var/www/64dao
+git add <files> && git commit -m "..." && git push origin main
+docker compose build backend && docker compose up -d backend      # backend-only
+docker compose build frontend && docker compose up -d frontend    # frontend-only
+docker compose build && docker compose up -d                      # full
+```
+
+**Backend has NO source volume** (`docker-compose.yml` mounts only `uploads`). `docker compose restart backend` runs the OLD image and does NOT pick up `.py` changes — you MUST `build` then `up -d`. Use `restart` only for env/config changes.
+
+After a schema change, run `alembic upgrade head` in the container as a separate step — it is not part of the build. A new migration only reaches the container after `docker compose build backend`.
+
+**Logs / health:**
+```bash
+docker logs dao64_backend --tail 50
+curl -sk https://64dao.ru/api/health
+```
+
+**Rollback:** `git reset --hard <prev>` + rebuild. Alembic downgrades are not routinely tested — check the migration's `downgrade()` before relying on it.
+
 ## Architecture
-- Business logic lives in services or domain modules.
-- API routes stay thin and call into services.
-- Use the existing email template system; do not add a new one.
-- The BullMQ worker handles all scheduled jobs. Do not add cron.
-- Tenant isolation is enforced at the service layer, not the route.
 
-## Documentation
-For deeper context, consult these before guessing:
-- `docs/architecture.md` — service boundaries, request flow, tenant isolation model
-- `docs/billing.md` — Stripe webhook handling, invoice lifecycle, proration rules
-- `docs/email.md` — template system, Resend setup, list of available templates
-- `docs/jobs.md` — BullMQ queue names, job patterns, retry/backoff policy
-- `docs/db.md` — schema conventions, tenant isolation patterns, soft-delete rules
-- `docs/runbooks/` — production incident runbooks
-- `prisma/schema.prisma` — source of truth for the data model
-- ADRs in `docs/adr/` — past architecture decisions; read before contradicting one
+- API routes stay thin and call into helper modules; there is no formal service layer and none is needed at this scale.
+- Domain settings (price, VAT, Точка token, site mode) live as JSON files in the `dao64_uploads` volume via dedicated modules: `pricing_store.py`, `tax_settings.py`, `tochka_settings.py`, `site_mode.py`. Read/write only through these, never duplicate the defaults.
+- Use the existing email template system in `app/email.py`; do not add a new one.
+- Do not add cron inside the app. Host cron handles backup and cache cleanup.
 
-For Next.js, Prisma, Auth.js, BullMQ, or Resend specifics, check the official docs rather than guessing.
-
-
-
-### Backend (`backend/`)
-- **Entry:** `app/main.py` — mounts all routers, CORS, rate limiter (slowapi), lifespan
-- **Auth:** `app/auth.py` — OTP email flow (no passwords for regular users), JWT in httpOnly cookie `auth-token`, impersonation token with `impersonated_by` field
-- **Routers:** `app/routers/` — `auth`, `assessments`, `reports`, `admin` (each with `/api/<name>` prefix)
-- **Models:** `app/models.py` — `User`, `OtpCode`, `Strategy`, `Assessment`, `Report`, `Order`
-- **PDF:** `app/pdf.py` — uses Playwright to render HTML → PDF
-- **Config:** `app/config.py` — all settings from `.env` via pydantic-settings
+### Backend (`backend/app/`)
+- **Entry:** `main.py` — mounts routers, CORS (exact `app_url`, no trailing slash), slowapi rate limiter, global exception handler, `/api/health`, static `/uploads` mount, lifespan.
+- **Auth:** `auth.py` — OTP email flow (regular users are passwordless), JWT in httpOnly+secure+samesite cookie `auth-token`; admin impersonation token carries `impersonated_by`; user-enumeration timing jitter on login.
+- **Rate limiter:** `limiter.py` — keys by real client IP via `X-Real-IP` (set by nginx `/api`), not the proxy IP. Do not revert to bare `get_remote_address` or the limit becomes global.
+- **Routers:** `routers/` — `auth`, `assessments`, `reports`, `admin`, `strategies`, `documents`, `payments`, `pricing`, `contact`, `support`, `social_links`, `sample_report`, `site_mode` (each `/api/<name>`).
+- **Models:** `models.py` — `User`, `OtpCode`, `Strategy`, `Assessment`, `Report`, `Order`.
+- **PDF:** `pdf.py` — Playwright renders HTML -> PDF. Report sections 01-04 are synchronized between HTML and PDF. Do not modify the combination-assembly or the U+4DC0..U+4DFF hexagram-symbol logic.
+- **Payments:** `tochka_client.py` (`create_payment_with_receipt`, `get_payment_status`, `refund_payment`, `verify_and_decode_webhook`). Webhook body is a bare RS256 JWT string (Content-Type text/plain), verified against Точка's public key — not JSON.
+- **Config:** `config.py` — pydantic-settings from `.env`. Feature flags: `enforce_credits` (default False); payment enable lives in `pricing.json`.
 
 ### Frontend (`frontend/`)
-**Critical path alias:** `tsconfig.json` sets `"@/*": ["./*"]` — this means `@/` resolves to `frontend/`, NOT `frontend/src/`. So:
-- `@/lib/api` → `frontend/lib/api.ts` ← **the real API client**
-- `@/components/AdminNav` → `frontend/components/AdminNav.tsx`
-- Files under `frontend/src/` must use `@/src/...` or relative imports to reach siblings
+- **Path alias:** `tsconfig.json` sets `"@/*": ["./*"]` -> `@/` resolves to `frontend/`, NOT `frontend/src/`.
+  - `@/lib/api` -> `frontend/lib/api.ts` (the real API client)
+  - `@/components/AdminNav` -> `frontend/components/AdminNav.tsx`
+- **Pages:** `src/app/` (App Router). `(auth)` group = login/register/verify/forgot/reset. Admin under `src/app/admin/*`.
+- **Shared components:** `frontend/components/`. NOTE: `frontend/src/components/` is dead code (a stale duplicate `AdminNav.tsx` lives there) — do not import from it; prefer deleting it.
+- `middleware.ts` guards routes; real authorization is enforced server-side via `Depends(require_admin)` / `get_current_user`.
+- `styled-jsx` (`<style jsx>`) works only in Client Components. For Server Component pages, put `@media` rules in `globals.css`.
+- Dynamic `[slug]` routes need `generateStaticParams()` or they go `force-dynamic`/`no-store` and block crawling (see `napkin.md`).
 
-**App structure:**
-- `src/app/` — Next.js App Router pages (all user-facing routes)
-- `src/app/(auth)/` — login, register, verify (grouped, no extra layout)
-- `components/` — shared components (AppNav, AdminNav, ImpersonationBanner, Logo)
-- `lib/api.ts` — all API calls, centralized `adminApi` object
-- `middleware.ts` — protects routes, redirects unauthenticated users
+### Admin impersonation
+`POST /api/admin/impersonate/{user_id}` (admin-only) · `POST /api/admin/impersonate/stop` · `GET /api/admin/impersonate/status` (both current-user, work while impersonating).
 
-### Admin Impersonation
-Admin can view the app as any non-admin user:
-- `POST /api/admin/impersonate/{user_id}` — sets auth cookie with `impersonated_by` field
-- `POST /api/admin/impersonate/stop` — restores admin cookie
-- `GET /api/admin/impersonate/status` — frontend polls this to show banner
-- `ImpersonationBanner` component is injected in root `layout.tsx`, shown globally when active
+### Production infrastructure
+- VPS, Ubuntu, FastPanel. FastPanel's own nginx (`fastpanel2-nginx`) holds 80/443; the compose nginx service is disabled. The LIVE vhost is on the host at `/usr/local/fastpanel2-nginx/vhosts/64dao.conf` (outside this repo); `deploy/nginx/*.conf` are reference copies and DO drift from it. Verify on the host before trusting them.
+- `location /uploads/` proxies to the backend and is hardened with `deny` rules for `*.json` (secrets/config) and `/uploads/reports/` (PII). If FastPanel regenerates the vhost, re-add these and re-check `curl https://64dao.ru/uploads/tochka_settings.json` returns 404.
+- Containers: `dao64_backend` (127.0.0.1:8000), `dao64_frontend` (127.0.0.1:3000), `dao64_db`. Volume `dao64_uploads` mounted at `/var/www/64dao/uploads`.
 
-### Production Infrastructure
-- **Server:** VPS 188.225.77.18, Ubuntu, FastPanel hosting panel
-- **Nginx:** FastPanel's own nginx (`fastpanel2-nginx`) holds ports 80/443. Config at `/etc/nginx/fastpanel2-sites/64dao-static.conf`. Our Docker nginx is **disabled** (commented out in compose).
-- **Docker containers:** `dao64_backend` (port 127.0.0.1:8000), `dao64_frontend` (port 127.0.0.1:3000), `dao64_db`. Nginx proxies `/api/` → backend, `/` → frontend.
-- **Uploads volume:** `dao64_uploads` — persists between deploys, mounted at `/var/www/64dao/uploads`
-- **SSH key:** `~/.ssh/id_ed25519` on dev machine is authorized on VPS root
-
-### Build-time vs runtime env vars
-`NEXT_PUBLIC_API_URL` is a **build-time** variable baked into the JS bundle. It must be set as a build `arg` in `docker-compose.yml` (currently `https://64dao.ru`). Changing it in `.env.local` at runtime has no effect.
-
-### Data flow: Assessment → Strategy
-1. User answers 6 questions (A or B each) → `method1_combination` = 6-char string e.g. `ABABBA`
-2. Each combination maps to one of 64 hexagrams via binary index
-3. `Strategy` table in DB stores content for each combination
-4. `Assessment` status: `draft` → `completed` → `paid`
-5. `Report` is generated as PDF via Playwright when assessment is paid/completed
+### Build-time vs runtime env
+`NEXT_PUBLIC_API_URL` is baked into the JS bundle at build time via the `build.args` in `docker-compose.yml` (`https://64dao.ru`). Changing it in `.env.local` at runtime has no effect.
 
 ## Important Constraints
-- Next.js 14 (not 15): `params` in page components is a plain object, not a Promise. Do **not** use `React.use(params)` — use `params.id` directly.
-- Async SQLAlchemy: always `await db.flush()` after mutations, commit happens in `get_db` dependency.
-- CORS is strict: `allow_origins` must exactly match `settings.app_url` — no trailing slash.
-- Admin setup: `POST /api/admin/setup` works only once (before any admin exists) and requires `ADMIN_SETUP_KEY` from `.env`.
+
+- Next.js 14 (not 15): `params` in page components is a plain object. Use `params.id` directly, not `React.use(params)`.
+- Async SQLAlchemy: `await db.flush()` after mutations; commit happens in the `get_db` dependency.
+- CORS is strict: `allow_origins` must exactly match `settings.app_url` (no trailing slash).
+- Admin bootstrap: `POST /api/admin/setup` works once (before any admin exists) and requires `ADMIN_SETUP_KEY`.
+- `role` CheckConstraint allows only `('user','admin')`. Code still references an `editor` role (`assessments.py`, `strategies.py`) — those branches are currently dead. Resolve before relying on `editor`.
+- Secrets and JSON settings must NOT be reachable via nginx static `/uploads/`. Storing credentials there exposed them publicly once — keep the nginx `deny` rules in place.
+- Schema changes go through Alembic only. Do not hand-edit the DB on prod without a paired migration. New migrations must reach `origin/main` BEFORE `alembic upgrade` on prod, or the version pointer will reference a missing revision.
 
 ## Testing
-- Every feature has success, validation failure, and not-found tests.
-- Use test data builders, not inline setup objects.
+
+- Tests in `backend/tests/` (auth, assessments, reports, strategies, admin, sanity, smoke).
+- Every feature: success, validation-failure, and not-found tests.
 - Do not mock the database unless existing tests do.
+- Uncovered routers (add smoke when touched): `payments`, `support`, `contact`, `site_mode`, `social_links`, `sample_report`.
 
 ## Don't do
-- Do not log raw payment payloads.
-- Do not return database errors directly to the client.
-- Do not edit migrations after they have been merged.
 
+- Do not log raw payment payloads, OTP codes, reset links, or PII (debug logs in `email.py` are gated behind `settings.debug`; keep it that way).
+- Do not return raw database errors to the client.
+- Do not edit migrations after they are merged.
+- Do not enable `ENFORCE_CREDITS` / `pricing.payment_enabled` until `payments` has smoke coverage.
+- Do not mix a refactor and a behavior change in one commit without saying so.
