@@ -92,6 +92,7 @@ app.include_router(site_mode.router)
 
 # ── Static uploads ────────────────────────────────────────────────────────────
 uploads_parent = str(Path(settings.uploads_dir).parent)
+Path(uploads_parent).mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=uploads_parent), name="uploads")
 
 # ── Health ────────────────────────────────────────────────────────────────────
