@@ -269,7 +269,7 @@ async def stream_pdf_on_demand(
     strategy = None
     if combination:
         q = select(Strategy).where(Strategy.combination == combination)
-        if user.role not in ("admin", "editor"):
+        if user.role != "admin":
             q = q.where(Strategy.is_published == True)
         strategy = await db.scalar(q)
 

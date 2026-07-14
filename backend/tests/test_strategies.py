@@ -1,9 +1,9 @@
 """
 test_strategies.py — regression-тесты роутера /api/strategies.
 
-Покрывает: GET /all (admin/editor only), GET /{combination} (любой
+Покрывает: GET /all (admin only), GET /{combination} (любой
 авторизованный, без фильтра is_published), PUT /{combination} (upsert,
-admin/editor only, partial update через exclude_unset).
+admin only, partial update через exclude_unset).
 """
 import pytest
 from sqlalchemy import select

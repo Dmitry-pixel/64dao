@@ -15,7 +15,7 @@ async def get_all_strategies(
     db: AsyncSession = Depends(get_db),
 ):
     """Все 64 стратегии для админки."""
-    if user.role not in ("admin", "editor"):
+    if user.role != "admin":
         raise HTTPException(status_code=403, detail="Доступ запрещён")
     result = await db.execute(select(Strategy).order_by(Strategy.combination))
     return result.scalars().all()
@@ -47,8 +47,8 @@ async def upsert_strategy(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Создать или обновить стратегию (только admin/editor)."""
-    if user.role not in ("admin", "editor"):
+    """Создать или обновить стратегию (только admin)."""
+    if user.role != "admin":
         raise HTTPException(status_code=403, detail="Доступ запрещён")
 
     combination = combination.upper()
