@@ -445,7 +445,7 @@ async def test_pricing_regular_user_forbidden(auth_client, isolated_pricing_file
 
 @pytest.fixture
 def isolated_templates_file(monkeypatch, tmp_path):
-    import app.pricing_store as pricing_store
+    import app.routers.admin as admin_router
 
     fake_path = tmp_path / "email_templates.json"
     monkeypatch.setattr(admin_router, "TEMPLATES_FILE", fake_path)
@@ -475,7 +475,7 @@ async def test_update_email_templates_writes_to_isolated_file(admin_client, isol
 
 @pytest.fixture
 def isolated_docs_dir(monkeypatch, tmp_path):
-    import app.pricing_store as pricing_store
+    import app.routers.admin as admin_router
 
     fake_dir = tmp_path / "docs"
     monkeypatch.setattr(admin_router, "DOCS_DIR", fake_dir)
