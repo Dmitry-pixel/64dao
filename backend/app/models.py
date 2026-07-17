@@ -59,7 +59,7 @@ class Strategy(Base):
     combination:                Mapped[str]       = mapped_column(String(6), unique=True, nullable=False, index=True)
     title:                      Mapped[str | None]= mapped_column(String(255))
     current_state:              Mapped[dict | None]= mapped_column(JSONB)
-    stratagema_title:           Mapped[str | None]= mapped_column(String(255))
+    stratagema_title:           Mapped[str | None]= mapped_column(Text)
     lifecycle_stage:            Mapped[str | None]= mapped_column(String(100))
     lifecycle_description:      Mapped[str | None]= mapped_column(Text)
     # 6 блоков жизненного цикла (по одному на каждый вопрос диагностики)
