@@ -57,7 +57,7 @@ class Strategy(Base):
 
     id:                         Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
     combination:                Mapped[str]       = mapped_column(String(6), unique=True, nullable=False, index=True)
-    title:                      Mapped[str | None]= mapped_column(String(255))
+    title:                      Mapped[str | None]= mapped_column(Text)
     current_state:              Mapped[dict | None]= mapped_column(JSONB)
     stratagema_title:           Mapped[str | None]= mapped_column(Text)
     lifecycle_stage:            Mapped[str | None]= mapped_column(String(100))
@@ -73,7 +73,7 @@ class Strategy(Base):
     scenario_text:              Mapped[str | None]= mapped_column(Text)
     marketing_text:             Mapped[str | None]= mapped_column(Text)
     management_text:            Mapped[str | None]= mapped_column(Text)
-    transition_title:           Mapped[str | None]= mapped_column(String(255))
+    transition_title:           Mapped[str | None]= mapped_column(Text)
     transition_lifecycle_stage: Mapped[str | None]= mapped_column(String(100))
     transition_description:     Mapped[str | None]= mapped_column(Text)
     image_url:                  Mapped[str | None]= mapped_column(Text)
