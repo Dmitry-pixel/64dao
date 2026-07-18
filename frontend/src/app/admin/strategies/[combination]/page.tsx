@@ -115,6 +115,7 @@ type FormData = {
   assm_contracts: string; assm_sync: string; assm_creative: string; assm_interaction: string;
   assm_resources: string; assm_research: string; assm_trade: string; assm_failures: string; assm_success: string;
   transition_title: string; transition_lifecycle_stage: string; transition_description: string;
+  fin_pattern_essence: string; fin_pattern_mistake: string;
   scenario_innovation_strategy: string; scenario_innovation_type: string;
   scenario_value_discipline: string; scenario_leadership_principles: string;
   scenario_growth_strategy: string; scenario_focus: string;
@@ -129,6 +130,7 @@ const EMPTY_FORM: FormData = {
   assm_contracts: '', assm_sync: '', assm_creative: '', assm_interaction: '',
   assm_resources: '', assm_research: '', assm_trade: '', assm_failures: '', assm_success: '',
   transition_title: '', transition_lifecycle_stage: '', transition_description: '',
+  fin_pattern_essence: '', fin_pattern_mistake: '',
   scenario_innovation_strategy: '', scenario_innovation_type: '', scenario_value_discipline: '',
   scenario_leadership_principles: '', scenario_growth_strategy: '', scenario_focus: '',
 };
@@ -194,6 +196,8 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
             assm_trade:                 data.assm_trade        || '',
             assm_failures:              data.assm_failures     || '',
             assm_success:               data.assm_success      || '',
+            fin_pattern_essence:        data.fin_pattern_essence || '',
+            fin_pattern_mistake:        data.fin_pattern_mistake || '',
             transition_title:           data.transition_title   || '',
             transition_lifecycle_stage: data.transition_lifecycle_stage || '',
             transition_description:     data.transition_description    || '',
@@ -252,6 +256,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
         assm_interaction: f.assm_interaction,
         assm_resources: f.assm_resources, assm_research: f.assm_research,
         assm_trade: f.assm_trade, assm_failures: f.assm_failures, assm_success: f.assm_success,
+        fin_pattern_essence: f.fin_pattern_essence, fin_pattern_mistake: f.fin_pattern_mistake,
         transition_title: f.transition_title,
         transition_lifecycle_stage: f.transition_lifecycle_stage,
         transition_description: f.transition_description,
@@ -384,6 +389,11 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
 
         <Sec label="Управление" title="Рекомендации по управлению" help="Как организовать команду и принятие решений.">
           <FA label="" fk="management_text" dv={f.management_text} rows={6} ph="Опишите управленческие рекомендации…" onChange={handleChange} />
+        </Sec>
+
+        <Sec label="Финансовый паттерн" title="Паттерн гексаграммы (финансовая функция)" help="Используется в разделе «Финансовая функция» отчёта: суть — для текущей гексаграммы, ошибка — как предостережение целевого состояния.">
+          <FA label="Суть ситуации (1–2 предложения)" fk="fin_pattern_essence" dv={f.fin_pattern_essence} rows={3} ph="Например: ресурс превышает ясность его применения; энергия системы ищет выход." onChange={handleChange} />
+          <FA label="Типичная ошибка (1 предложение)" fk="fin_pattern_mistake" dv={f.fin_pattern_mistake} rows={3} ph="Например: активность ради активности — автоматизация без целевой модели." onChange={handleChange} />
         </Sec>
 
         <Sec label="Предположения" title="Предположения, лежащие в основе принятия решения" help="Тематические блоки — отображаются в отчёте после раздела «Управление».">

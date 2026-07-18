@@ -19,11 +19,16 @@ from app.models import Assessment, Report, Strategy
 VALID_COMBINATION = "AABABA"  # 6 символов A/B — проходит regex-валидацию схемы
 
 
+# Финблок обязателен для completed-диагностики Метода 1 (FINANCE_BLOCK_REQUIRED=true).
+FINANCE_ANSWERS = {f"{b}.{p}": 3 for b in range(1, 7) for p in range(1, 5)}
+
+
 def assessment_payload(**overrides) -> dict:
     payload = {
         "method1_answers": {"goal": "A", "strategy": "B"},
         "method1_combination": VALID_COMBINATION,
         "method2_data": None,
+        "finance_answers": FINANCE_ANSWERS,
         "company_name": "Тестовая Компания",
         "status": "completed",
     }

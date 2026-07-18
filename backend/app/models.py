@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    String, Boolean, Text, Numeric, DateTime,
-    ForeignKey, CheckConstraint, func,
+    String, Boolean, Text, Numeric, DateTime, Integer,
+    ForeignKey, CheckConstraint, UniqueConstraint, func,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -77,6 +77,9 @@ class Strategy(Base):
     transition_lifecycle_stage: Mapped[str | None]= mapped_column(String(100))
     transition_description:     Mapped[str | None]= mapped_column(Text)
     image_url:                  Mapped[str | None]= mapped_column(Text)
+    # Слой C — паттерны финансовых гексаграмм (для текущей и результирующей)
+    fin_pattern_essence:        Mapped[str | None]= mapped_column(Text)  # суть ситуации (1–2 предложения)
+    fin_pattern_mistake:        Mapped[str | None]= mapped_column(Text)  # типичная ошибка (1 предложение)
     # Предположения для связи с будущим (13 тематических блоков)
     assm_planning:              Mapped[str | None]= mapped_column(Text)
     assm_growth:                Mapped[str | None]= mapped_column(Text)
@@ -105,6 +108,28 @@ class Strategy(Base):
     )
 
 
+# ── FinContent (контент интерпретации фин. функции: слои A, B, D, E) ──────────
+class FinContent(Base):
+    __tablename__ = "fin_content"
+
+    id:         Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    kind:       Mapped[str]       = mapped_column(String(20), nullable=False, index=True)
+    key:        Mapped[str]       = mapped_column(String(40), nullable=False)
+    payload:    Mapped[dict]      = mapped_column(JSONB, nullable=False)
+    sort:       Mapped[int]       = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    is_active:  Mapped[bool]      = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    created_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("kind", "key", name="uq_fin_content_kind_key"),
+        CheckConstraint(
+            "kind IN ('tonality','quadrant','trigram','tension_rule','action_package')",
+            name="chk_fin_content_kind",
+        ),
+    )
+
+
 # ── Assessments ───────────────────────────────────────────────────────────────
 class Assessment(Base):
     __tablename__ = "assessments"
@@ -114,6 +139,9 @@ class Assessment(Base):
     method1_answers:     Mapped[dict | None]= mapped_column(JSONB)
     method1_combination: Mapped[str | None]= mapped_column(String(6))
     method2_data:        Mapped[dict | None]= mapped_column(JSONB)
+    finance_answers:     Mapped[dict | None]= mapped_column(JSONB)   # {"1.1": 3, "1.2": null, ...}; NULL только для legacy
+    finance_result:      Mapped[dict | None]= mapped_column(JSONB)   # снимок скоринга (воспроизводимость отчёта)
+    finance_combination: Mapped[str | None]= mapped_column(String(6))
     company_name:        Mapped[str | None]= mapped_column(String(255), nullable=True)
     status:              Mapped[str]       = mapped_column(String(20), nullable=False, default="draft")
     created_at:          Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -122,6 +150,7 @@ class Assessment(Base):
     __table_args__ = (
         CheckConstraint("status IN ('draft','completed','paid')", name="chk_assessment_status"),
         CheckConstraint(r"method1_combination IS NULL OR method1_combination ~ '^[AB]{6}$'", name="chk_assessment_combination"),
+        CheckConstraint(r"finance_combination IS NULL OR finance_combination ~ '^[AB]{6}$'", name="chk_assessment_finance_combination"),
     )
 
     user:    Mapped["User"]          = relationship(back_populates="assessments")

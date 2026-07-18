@@ -52,6 +52,7 @@ class AssessmentCreate(BaseModel):
     method1_answers:     dict[str, str] | None = None
     method1_combination: str | None = None
     method2_data:        dict[str, Method2Block] | None = None
+    finance_answers:     dict[str, int | None] | None = None
     company_name:        str | None = None
     status:              str = Field(default="completed")
 
@@ -70,6 +71,16 @@ class AssessmentCreate(BaseModel):
         for key, val in v.items():
             if val not in ("A", "B"):
                 raise ValueError(f"Answer for key {key} must be 'A' or 'B'")
+        return v
+
+    @field_validator("finance_answers")
+    @classmethod
+    def validate_finance_answers(cls, v: dict | None) -> dict | None:
+        if v is None:
+            return v
+        for key, val in v.items():
+            if val is not None and val not in (1, 2, 3, 4):
+                raise ValueError(f"finance answer {key} must be 1..4 or null")
         return v
 
     @field_validator("status")
@@ -101,6 +112,8 @@ class AssessmentOut(BaseModel):
     created_at:          datetime
     reports:             list[ReportOut] = []
     strategy_image_url:  str | None = None
+    finance_combination: str | None = None
+    finance_result:      dict[str, Any] | None = None
 
 
 # ── Strategies ────────────────────────────────────────────────────────────────
@@ -143,6 +156,8 @@ class StrategyCreate(BaseModel):
     assm_trade:                 str | None = None
     assm_failures:              str | None = None
     assm_success:               str | None = None
+    fin_pattern_essence:        str | None = None
+    fin_pattern_mistake:        str | None = None
     is_published:               bool = False
 
     @field_validator("combination")
@@ -199,6 +214,8 @@ class StrategyOut(BaseModel):
     assm_trade:                 str | None
     assm_failures:              str | None
     assm_success:               str | None
+    fin_pattern_essence:        str | None = None
+    fin_pattern_mistake:        str | None = None
     is_published:               bool
     updated_at:                 datetime
 
@@ -257,3 +274,22 @@ class ImpersonateStatus(BaseModel):
 class SuccessResponse(BaseModel):
     success: bool = True
     message: str  = ""
+
+
+# ── FinContent (контент интерпретации финансовой функции) ─────────────────────
+
+class FinContentOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id:        uuid.UUID
+    kind:      str
+    key:       str
+    payload:   dict[str, Any]
+    sort:      int
+    is_active: bool
+
+
+class FinContentUpsert(BaseModel):
+    payload:   dict[str, Any]
+    sort:      int = 0
+    is_active: bool = True

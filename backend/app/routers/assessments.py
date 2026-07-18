@@ -16,6 +16,9 @@ from app.db import get_db
 from app.models import Assessment, Report, Strategy, User
 from app.pdf import generate_pdf, build_report_html
 from app.routers.payments import calculate_credits
+from app.finance_service import resolve_submission_finance, FinanceRequiredError
+from app.finance_scoring import InvalidAnswersError, BlockUnderfilledError
+from app.finance_interpret import load_content, build_interpretation
 from app.schemas import AssessmentCreate, AssessmentOut, ReportOut, StrategyOut
 
 settings = get_settings()
@@ -63,6 +66,18 @@ async def create_assessment(
                 detail="Нет доступных диагностик. Оплатите новую диагностику, чтобы получить доступ.",
             )
 
+    # Финансовый блок Метода 1: скоринг считает сервер (не доверяем фронту).
+    is_method1 = body.method2_data is None
+    try:
+        finance_result, finance_combination = resolve_submission_finance(
+            body.finance_answers,
+            status=body.status,
+            is_method1=is_method1,
+            finance_required=settings.finance_block_required,
+        )
+    except (FinanceRequiredError, InvalidAnswersError, BlockUnderfilledError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     assessment = Assessment(
         user_id=user.id,
         method1_answers=body.method1_answers,
@@ -70,6 +85,9 @@ async def create_assessment(
         method2_data={k: v.model_dump() for k, v in (body.method2_data or {}).items()},
         company_name=body.company_name or user.company_name,
         status=body.status,
+        finance_answers=body.finance_answers,
+        finance_result=finance_result,
+        finance_combination=finance_combination,
     )
     db.add(assessment)
     await db.flush()
@@ -214,6 +232,18 @@ async def generate_report_on_demand(
     now = datetime.now(timezone.utc)
     date_str = _date_ru(now)
 
+    # Финансовый раздел: собираем интерпретацию только если есть результат скоринга.
+    # Legacy-диагностики (finance_result IS NULL) — раздел не выводится, ошибок нет.
+    finance_result = assessment.finance_result
+    finance_interpretation = None
+    finance_strategy = None
+    if finance_result:
+        finance_content = await load_content(db)
+        finance_interpretation = build_interpretation(finance_result, finance_content)
+        fin_combo = assessment.finance_combination or finance_result.get("combination_current")
+        if fin_combo:
+            finance_strategy = await db.scalar(select(Strategy).where(Strategy.combination == fin_combo))
+
     html = build_report_html(
         company_name=company_name,
         user_name=user_name,
@@ -221,6 +251,9 @@ async def generate_report_on_demand(
         combination=combination or "",
         strategy=strategy,
         method2_data=method2_data,
+        finance_result=finance_result,
+        finance_interpretation=finance_interpretation,
+        finance_strategy=finance_strategy,
     )
 
     filename = f"{assessment_id}-{int(datetime.now().timestamp())}.pdf"
@@ -275,6 +308,18 @@ async def stream_pdf_on_demand(
 
     date_str = _date_ru(datetime.now(timezone.utc))
 
+    # Финансовый раздел: собираем интерпретацию только если есть результат скоринга.
+    # Legacy-диагностики (finance_result IS NULL) — раздел не выводится, ошибок нет.
+    finance_result = assessment.finance_result
+    finance_interpretation = None
+    finance_strategy = None
+    if finance_result:
+        finance_content = await load_content(db)
+        finance_interpretation = build_interpretation(finance_result, finance_content)
+        fin_combo = assessment.finance_combination or finance_result.get("combination_current")
+        if fin_combo:
+            finance_strategy = await db.scalar(select(Strategy).where(Strategy.combination == fin_combo))
+
     html = build_report_html(
         company_name=company_name,
         user_name=user_name,
@@ -282,6 +327,9 @@ async def stream_pdf_on_demand(
         combination=combination or "",
         strategy=strategy,
         method2_data=method2_data,
+        finance_result=finance_result,
+        finance_interpretation=finance_interpretation,
+        finance_strategy=finance_strategy,
     )
 
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
@@ -335,3 +383,31 @@ async def get_assessment_strategy(
         raise HTTPException(status_code=404, detail="Стратегия не найдена")
 
     return strategy
+
+
+@router.get("/{assessment_id}/finance-interpretation")
+async def get_finance_interpretation(
+    assessment_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Собранная интерпретация финблока для браузерного HTML-отчёта.
+    Возвращает has_finance=False для legacy-диагностик без финансовых данных."""
+    result = await db.execute(select(Assessment).where(Assessment.id == assessment_id))
+    assessment = result.scalar_one_or_none()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Диагностика не найдена")
+    if assessment.user_id != user.id and user.role != "admin":
+        raise HTTPException(status_code=403, detail="Нет доступа")
+    _ensure_result_access(assessment, user)
+
+    if not assessment.finance_result:
+        return {"has_finance": False}
+    content = await load_content(db)
+    interp = build_interpretation(assessment.finance_result, content)
+    return {
+        "has_finance": True,
+        "finance_result": assessment.finance_result,
+        "finance_combination": assessment.finance_combination,
+        "interpretation": interp,
+    }

@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic'
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { getMe, type AuthUser } from '@/lib/api'
+import { getMe, getFinanceItems, type AuthUser, type FinanceBlock } from '@/lib/api'
 
 const QUESTIONS = [
   {
@@ -67,7 +67,7 @@ function AssessmentInner() {
   const methodParam = searchParams.get('method')
 
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [mode, setMode] = useState<'choose' | 'company' | 'method1' | 'method2' | 'waiting'>(
+  const [mode, setMode] = useState<'choose' | 'company' | 'method1' | 'method2' | 'finance_intro' | 'finance' | 'waiting'>(
     methodParam === '1' ? 'company' : methodParam === '2' ? 'company' : 'choose'
   )
   const [pendingMethod, setPendingMethod] = useState<'method1' | 'method2'>(
@@ -81,6 +81,11 @@ function AssessmentInner() {
   const [bmcTexts, setBmcTexts] = useState<Record<number, string>>({})
   const [activeBlock, setActiveBlock] = useState(0)
   const [submitting, setSubmitting] = useState(false)
+  const [financeAnswers, setFinanceAnswers] = useState<Record<string, number | null>>({})
+  const [finBlockIdx, setFinBlockIdx] = useState(0)
+  const [finItems, setFinItems] = useState<FinanceBlock[] | null>(null)
+  const [finScale, setFinScale] = useState<Record<string, string>>({})
+  const [finLoading, setFinLoading] = useState(false)
 
   useEffect(() => {
     getMe().catch(() => router.push('/login'))
@@ -91,6 +96,15 @@ function AssessmentInner() {
     setSelected(answers[step] || null)
   }, [step, answers])
 
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      const inFlow = mode === 'method1' || mode === 'finance_intro' || mode === 'finance'
+      if (inFlow && Object.keys(answers).length > 0) { e.preventDefault(); e.returnValue = '' }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [mode, answers])
+
   function handleAnswer(v: 'A' | 'B') {
     setSelected(v)
     setAnswers(prev => ({ ...prev, [step]: v }))
@@ -98,11 +112,41 @@ function AssessmentInner() {
 
   function nextStep() {
     if (!selected) return
-    if (step < 5) {
-      setStep(s => s + 1)
-    } else {
-      submitMethod1()
+    if (step < 5) { setStep(s => s + 1) } else { goToFinance() }
+  }
+
+  async function goToFinance() {
+    setMode('finance_intro')
+    if (!finItems) {
+      setFinLoading(true)
+      try {
+        const data = await getFinanceItems()
+        setFinItems(data.blocks); setFinScale(data.scale_labels)
+      } catch { alert('Не удалось загрузить вопросы финансового блока. Попробуйте ещё раз.') }
+      finally { setFinLoading(false) }
     }
+  }
+
+  function setFinAnswer(itemId: string, value: number | null) {
+    setFinanceAnswers(prev => ({ ...prev, [itemId]: value }))
+  }
+  function finBlockUnknowns(items: { item_id: string }[]) {
+    return items.filter(it => financeAnswers[it.item_id] === null).length
+  }
+  function finBlockComplete(items: { item_id: string }[]) {
+    const answered = items.every(it => it.item_id in financeAnswers)
+    return answered && finBlockUnknowns(items) <= 1
+  }
+  function finNext() {
+    if (!finItems) return
+    const block = finItems[finBlockIdx]
+    if (!finBlockComplete(block.items)) return
+    if (finBlockIdx < 5) setFinBlockIdx(i => i + 1)
+    else submitMethod1()
+  }
+  function finPrev() {
+    if (finBlockIdx > 0) setFinBlockIdx(i => i - 1)
+    else setMode('finance_intro')
   }
 
   function prevStep() {
@@ -123,6 +167,7 @@ function AssessmentInner() {
         body: JSON.stringify({
           method1_answers: answersMap,
           method1_combination: combo,
+          finance_answers: financeAnswers,
           company_name: companyName.trim() || undefined,
           status: 'completed',
         }),
@@ -392,6 +437,93 @@ function AssessmentInner() {
     )
   }
 
+  // ── Финансовый блок — интерстициал ───────────────────────────────────────
+  if (mode === 'finance_intro') return (
+    <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
+      <NavBar />
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '64px 40px' }}>
+        <span style={S.labelRed}>Метод 01 · Часть 2 из 2</span>
+        <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 34, fontWeight: 400, color: '#1a2540', margin: '10px 0 12px' }}>
+          Финансовая функция
+        </h1>
+        <p style={{ fontFamily: 'sans-serif', fontSize: 14, color: 'rgba(26,37,64,0.65)', lineHeight: 1.7, marginBottom: 28, maxWidth: 560 }}>
+          Вторая часть диагностики — 24 утверждения в 6 блоках, около 10 минут. Оцените каждое по шкале 1–4
+          по фактическому состоянию компании, а не по планам. Если данных нет — «Не знаю» (не более одного на блок).
+        </p>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button style={S.btnGhost} onClick={() => { setMode('method1'); setStep(5) }}>← Назад</button>
+          <button style={{ ...S.btnPrimary, opacity: (finLoading || !finItems) ? 0.5 : 1 }} disabled={finLoading || !finItems} onClick={() => setMode('finance')}>
+            {finLoading ? 'Загрузка…' : 'Продолжить →'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
+  // ── Финансовый блок — степпер 6 блоков × 4 утверждения ────────────────────
+  if (mode === 'finance') {
+    if (!finItems) return (
+      <div style={{ minHeight: '100vh', background: '#e8e4db' }}><NavBar />
+        <div style={S.qStage}><p style={{ fontFamily: 'sans-serif', color: 'rgba(26,37,64,0.6)' }}>Загрузка…</p></div>
+      </div>
+    )
+    const block = finItems[finBlockIdx]
+    const unknowns = finBlockUnknowns(block.items)
+    const complete = finBlockComplete(block.items)
+    return (
+      <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
+        <NavBar />
+        <div style={S.qStage}>
+          <div style={S.qProgress}>
+            <span style={{ fontFamily: 'sans-serif', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.4)' }}>Метод 01 · Часть 2 · Финансовая функция</span>
+            <div style={S.qProgressBar}><div style={{ ...S.qProgressFill, width: `${(finBlockIdx / 6) * 100}%` }} /></div>
+            <span style={{ fontFamily: 'Georgia,serif', fontSize: 14, color: '#1a2540' }}>Блок {finBlockIdx + 1} / 6</span>
+          </div>
+
+          <div style={S.finHead}>
+            <div style={S.qEyebrow}>Блок {block.block} из 6</div>
+            <h2 style={{ ...S.qQuestion, fontSize: 26 }}>{block.title}</h2>
+            <p style={S.finLegend}>{[1, 2, 3, 4].map(n => `${n} — ${finScale[String(n)] || ''}`).join('   ·   ')}</p>
+          </div>
+
+          <div style={{ maxWidth: 760 }}>
+            {block.items.map(it => {
+              const val = it.item_id in financeAnswers ? financeAnswers[it.item_id] : undefined
+              return (
+                <div key={it.item_id} style={S.finItem}>
+                  <div style={S.finItemText}>{it.text}</div>
+                  <div style={S.finScaleRow}>
+                    {[1, 2, 3, 4].map(n => (
+                      <button key={n} title={finScale[String(n)] || ''}
+                        style={{ ...S.finScaleBtn, ...(val === n ? S.finScaleBtnOn : {}) }}
+                        onClick={() => setFinAnswer(it.item_id, n)}>{n}</button>
+                    ))}
+                    <button style={{ ...S.finScaleBtn, ...(val === null ? S.finUnknownOn : {}) }}
+                      onClick={() => setFinAnswer(it.item_id, null)}>Не знаю</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {unknowns > 1 && (
+            <p style={{ fontFamily: 'sans-serif', fontSize: 12, color: '#c0392b', marginTop: 8 }}>
+              В блоке допускается не более одного ответа «Не знаю». Уточните оценку.
+            </p>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 28, maxWidth: 760 }}>
+            <button style={S.btnGhost} onClick={finPrev}>← Назад</button>
+            <button style={{ ...S.btnPrimary, opacity: (!complete || submitting) ? 0.4 : 1, minWidth: 150, justifyContent: 'center' }}
+              disabled={!complete || submitting} onClick={finNext}>
+              {finBlockIdx === 5 ? (submitting ? 'Отправка…' : 'Завершить →') : 'Далее →'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // ── Метод 2 — BMC ─────────────────────────────────────────────────────────
   if (mode === 'method2') {
     const block = BMC_BLOCKS[activeBlock]
@@ -534,6 +666,15 @@ const S: Record<string, React.CSSProperties> = {
   waitText: { fontFamily: 'sans-serif', fontSize: 14, color: 'rgba(26,37,64,0.6)', maxWidth: 480, lineHeight: 1.7, margin: '0 0 24px' },
   waitBar: { width: 320, height: 3, background: 'rgba(26,37,64,0.1)', borderRadius: 99, overflow: 'hidden', margin: '0 auto' },
   waitBarFill: { width: '60%', height: '100%', background: '#c0392b', borderRadius: 99, animation: 'none' },
+  // Method 1 — финансовый блок
+  finHead: { marginBottom: 20 },
+  finLegend: { fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)', marginTop: 10, lineHeight: 1.6 },
+  finItem: { background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '16px 20px', marginBottom: 12 },
+  finItemText: { fontFamily: 'sans-serif', fontSize: 14, color: '#1a2540', lineHeight: 1.55, marginBottom: 12 },
+  finScaleRow: { display: 'flex', gap: 8, flexWrap: 'wrap' as const },
+  finScaleBtn: { minWidth: 40, padding: '8px 14px', border: '1px solid rgba(26,37,64,0.2)', borderRadius: 6, background: 'none', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', color: '#1a2540' },
+  finScaleBtnOn: { background: '#1e3a8a', color: '#fff', borderColor: '#1e3a8a' },
+  finUnknownOn: { background: 'rgba(26,37,64,0.55)', color: '#fff', borderColor: 'rgba(26,37,64,0.55)' },
   // Common
   btnPrimary: { background: '#1a2540', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 22px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', fontWeight: 500 },
   btnGhost: { background: 'none', color: '#1a2540', border: '1px solid rgba(26,37,64,0.2)', borderRadius: 6, padding: '10px 22px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer' },

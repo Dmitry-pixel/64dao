@@ -15,7 +15,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.config import get_settings
 from app.pdf import close_browser
-from app.routers import auth, assessments, reports, admin, strategies, documents, payments, pricing, contact, social_links, sample_report, support, site_mode
+from app.routers import auth, assessments, reports, admin, strategies, documents, payments, pricing, contact, social_links, sample_report, support, site_mode, fin_content, method1
 
 settings = get_settings()
 
@@ -89,6 +89,8 @@ app.include_router(social_links.router)
 app.include_router(sample_report.router)
 app.include_router(support.router)
 app.include_router(site_mode.router)
+app.include_router(fin_content.router)
+app.include_router(method1.router)
 
 # ── Static uploads ────────────────────────────────────────────────────────────
 uploads_parent = str(Path(settings.uploads_dir).parent)

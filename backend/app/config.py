@@ -76,6 +76,12 @@ class Settings(BaseSettings):
     # переключить ENFORCE_CREDITS=true в .env.
     enforce_credits: bool = False
 
+    # ── Финансовый блок Метода 1 (feature flag) ──────────────────────────────
+    # Жёсткая обязательность finance_answers для completed-диагностики Метода 1.
+    # По умолчанию False: старый фронт без финблока работает, финрезультат пуст.
+    # Включить (FINANCE_BLOCK_REQUIRED=true) синхронно с новым фронтом (Этап 6).
+    finance_block_required: bool = False
+
     # ── Tochka Bank API ───────────────────────────────────────────────────────
     tochka_api_base_url: str = "https://enter.tochka.com"
     tochka_customer_code: str = ""     # Get Customers List → customerType: Business

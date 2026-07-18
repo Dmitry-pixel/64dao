@@ -110,6 +110,7 @@ export async function createAssessment(data: {
   method1_answers?: Record<string, string>
   method1_combination?: string | null
   method2_data?: Record<string, { score: number; text: string }>
+  finance_answers?: Record<string, number | null>
   company_name?: string | null
   status?: string
 }) {
@@ -117,6 +118,24 @@ export async function createAssessment(data: {
     method: 'POST',
     body: JSON.stringify(data),
   })
+}
+
+export interface FinanceItem {
+  item_id: string
+  text: string
+}
+export interface FinanceBlock {
+  block: number
+  title: string
+  items: FinanceItem[]
+}
+export interface FinanceItemsResponse {
+  scale_labels: Record<string, string>
+  blocks: FinanceBlock[]
+}
+
+export async function getFinanceItems() {
+  return request<FinanceItemsResponse>('/api/method1/finance-items')
 }
 
 export async function listAssessments() {
@@ -309,4 +328,6 @@ export interface Assessment {
   created_at: string
   reports: ReportOut[]
   strategy_image_url: string | null
+  finance_combination?: string | null
+  finance_result?: Record<string, unknown> | null
 }

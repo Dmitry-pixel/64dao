@@ -9,6 +9,9 @@ import html as html_lib
 from pathlib import Path
 from typing import Any
 
+from app.finance_pdf import finance_section_html
+from app.method1_questions import BASE_QUESTIONS
+
 from playwright.async_api import async_playwright, Browser, Playwright
 
 
@@ -236,6 +239,9 @@ _HEXAGRAM_BY_NUM: dict[int, str] = {
     num: name for num, name, _ in _HEXAGRAM_LIST
 }
 
+# number → combination
+_COMBO_BY_NUM: dict[int, str] = {num: combo for num, name, combo in _HEXAGRAM_LIST}
+
 # Таблица соответствия: номер текущей гексаграммы → номер целевой
 _TARGET_HEXAGRAM: dict[int, int] = {
      1:  9,  2: 62,  3: 49,  4:  7,  5: 63,  6:  6,  7: 62,  8: 23,
@@ -421,6 +427,71 @@ def _lifecycle_blocks(strategy: Any, combination: str) -> str:
 </div>"""
 
 
+def _answers_table(combination: str) -> str:
+    """Таблица ответов на 6 базовых вопросов: вопрос → выбранный вариант A/B."""
+    rows: list[tuple[str, str | None]] = []
+    for i, q in enumerate(BASE_QUESTIONS):
+        if i < len(combination) and combination[i] in ("A", "B"):
+            letter = combination[i]
+            choice = q["a"] if letter == "A" else q["b"]
+            rows.append((q["q"], f"{letter} — {choice}"))
+        else:
+            rows.append((q["q"], None))
+    return _table_rows(rows)
+
+
+def _base_hex_images(combination: str, target_hex_info: tuple | None) -> str:
+    """Картинки гексаграмм базовой части: текущая + целевая."""
+    def cell(svg: str, label: str, sub: str) -> str:
+        return (f'<div style="text-align:center;">{svg}'
+                f'<div style="font-size:10px;color:#c0392b;font-family:Arial,sans-serif;letter-spacing:1px;font-weight:600;margin-top:6px;">{e(label)}</div>'
+                f'<div style="font-size:11px;color:rgba(26,37,64,0.6);font-family:Arial,sans-serif;">{e(sub)}</div></div>')
+    cur_entry = _HEXAGRAM_BY_COMBO.get(combination)
+    cur_sub = f"№ {cur_entry[0]} · {cur_entry[1]}" if cur_entry else combination
+    cells = cell(_hexagram_svg(combination, 90), "Текущая", cur_sub) if combination else ""
+    if target_hex_info:
+        t_num, t_name, _ = target_hex_info
+        t_combo = _COMBO_BY_NUM.get(t_num)
+        if t_combo:
+            cells += ('<div style="font-size:26px;color:#c0392b;align-self:center;">→</div>'
+                      + cell(_hexagram_svg(t_combo, 90), "Целевая", f"№ {t_num} · {t_name}"))
+    return (f'<div style="display:flex;align-items:center;justify-content:center;gap:28px;'
+            f'margin:8px 0 20px;">{cells}</div>')
+
+
+def _finance_description_html(finance_strategy: Any | None) -> str:
+    """Описание из strategies по фин-комбинации: стадия ЖЦ, ЖЦ-блоки, сценарий,
+    маркетинг, управление, предположения. Пусто, если стратегии нет."""
+    if not finance_strategy:
+        return ""
+    fs = finance_strategy
+
+    def txt_block(title: str, val: str | None) -> str:
+        body = e(val) if val else '<em style="opacity:0.4;">Не заполнено</em>'
+        return (f'<h2 style="font-size:16px;font-weight:400;color:#1a2540;margin:18px 0 10px;">{e(title)}</h2>'
+                '<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:16px 20px;'
+                'background:rgba(255,255,255,0.4);page-break-inside:avoid;">'
+                f'<p style="font-size:13px;color:rgba(26,37,64,0.72);line-height:1.7;margin:0;font-family:Arial,sans-serif;">{body}</p></div>')
+
+    stage = getattr(fs, "lifecycle_stage", None)
+    stage_badge = (f'<div style="display:inline-block;padding:4px 14px;border-radius:4px;font-size:13px;'
+                   f'font-family:Arial,sans-serif;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.2);'
+                   f'color:#c0392b;margin:6px 0 14px;">Стадия жизненного цикла: {e(stage)}</div>') if stage else ""
+
+    combo = getattr(fs, "combination", "") or ""
+    parts = [
+        '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:22px 0 12px;">'
+        '<span style="font-size:11px;color:#c0392b;margin-right:8px;">Описание</span>Стратегический профиль финансовой гексаграммы</h2>',
+        stage_badge,
+        _lifecycle_blocks(fs, combo),
+        txt_block("Сценарий развития", getattr(fs, "scenario_text", None)),
+        txt_block("Маркетинг", getattr(fs, "marketing_text", None)),
+        txt_block("Управление", getattr(fs, "management_text", None)),
+        _assumptions_block(fs),
+    ]
+    return "".join(parts)
+
+
 def build_report_html(
     company_name: str,
     user_name: str,
@@ -428,6 +499,9 @@ def build_report_html(
     combination: str,
     strategy: Any | None,
     method2_data: dict[str, Any] | None,
+    finance_result: dict | None = None,
+    finance_interpretation: dict | None = None,
+    finance_strategy: Any | None = None,
 ) -> str:
     """Собирает полный HTML отчёта (все данные уже экранированы через e()).
 
@@ -533,14 +607,10 @@ def build_report_html(
         ) if strategy and strategy.lifecycle_stage else ""
 
         current_state_html = f"""
-<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px;">
   <div style="background:rgba(26,37,64,0.03);border-radius:6px;padding:14px 18px;">
     <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#c0392b;font-weight:600;font-family:Arial,sans-serif;">Стратагема</div>
     <div style="font-size:17px;color:#1a2540;margin-top:6px;font-family:Georgia,serif;">{e(strategy.stratagema_title) if strategy and strategy.stratagema_title else '<em style="opacity:0.4;font-size:14px;">Не заполнено</em>'}</div>
-  </div>
-  <div style="background:rgba(26,37,64,0.03);border-radius:6px;padding:14px 18px;">
-    <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#c0392b;font-weight:600;font-family:Arial,sans-serif;">Стадия жизненного цикла</div>
-    <div style="font-size:17px;color:#1a2540;margin-top:6px;font-family:Georgia,serif;">{e(strategy.lifecycle_stage) if strategy and strategy.lifecycle_stage else '<em style="opacity:0.4;font-size:14px;">Не заполнено</em>'}</div>
   </div>
   <div style="background:rgba(26,37,64,0.03);border-radius:6px;padding:14px 18px;">
     <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#c0392b;font-weight:600;font-family:Arial,sans-serif;">Комбинация</div>
@@ -559,10 +629,12 @@ def build_report_html(
   </div>
   <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 10px;"><span style="font-size:11px;color:#c0392b;margin-right:8px;">01</span>Текущее состояние</h2>
   {current_state_html}
-  {lifecycle_badge_html}
-  {_lifecycle_blocks(strategy, combination) if strategy else ""}
+  {_base_hex_images(combination, target_hex_info)}
+  <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:24px 0 12px;">Таблица ответов</h2>
+  {_answers_table(combination)}
   <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:24px 0 12px;">Таблица стратагемы</h2>
   {_table_rows(sc_rows)}
+  {transition_html}
   <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
               display:flex;justify-content:space-between;font-family:Arial,sans-serif;
               font-size:10px;color:rgba(26,37,64,0.3);">
@@ -572,7 +644,7 @@ def build_report_html(
 
     # ── Страница 2: Сценарий + Маркетинг + Управление + Предположения + Переход ──
     page2 = ""
-    if strategy and not is_method2:
+    if False:  # база облегчена: сценарий/маркетинг/управление/предположения → раздел «Финансовая функция»
         def _text_block(text: str | None) -> str:
             val = (e(text) if text else '<em style="opacity:0.4;">Не заполнено</em>')
             return (
@@ -668,6 +740,14 @@ def build_report_html(
   </div>
 </div>"""
 
+    # ── Финансовая функция (Метод 1, только при наличии результата скоринга) ──
+    finance_section = ""
+    if (not is_method2) and finance_result and finance_interpretation:
+        finance_section = finance_section_html(
+            finance_result, finance_interpretation, company_name,
+            _finance_description_html(finance_strategy),
+        )
+
     return f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -726,6 +806,8 @@ def build_report_html(
 {page1}
 
 {page2}
+
+{finance_section}
 
 {bmc_section}
 

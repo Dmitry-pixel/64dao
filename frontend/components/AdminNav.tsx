@@ -165,6 +165,7 @@ export function AdminSide({ current }: AdminSideProps) {
       <Link href="/admin/strategies" className={current === 'strategies' ? 'on' : ''}>
         64 стратегии <span className="num">{stats?.strategies ?? '—'} / 64</span>
       </Link>
+      <Link href="/admin/fin-content" className={current === 'fin-content' ? 'on' : ''}>Финансовая интерпретация</Link>
       <Link href="/admin/documents/about" className={current === 'doc-about' ? 'on' : ''}>О нас</Link>
 
       <h4>Пользователи</h4>

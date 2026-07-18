@@ -2,6 +2,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getMe, listAssessments, deleteAssessment, logout, type AuthUser, type Assessment } from '@/lib/api'
+import { HEXAGRAM_MAP } from '@/lib/hexagrams'
+
+const finChar = (c?: string | null) =>
+  c && HEXAGRAM_MAP[c] ? String.fromCodePoint(0x4DC0 + HEXAGRAM_MAP[c].n - 1) : ''
 import React from 'react'
 
 function SupportForm() {
@@ -217,6 +221,24 @@ export default function DashboardPage() {
                     <div style={S.cardDetail}>
                       {a.reports.length > 0 ? `${a.reports.length} отчёт сформирован` : 'Отчёт формируется'}
                     </div>
+                    {a.finance_combination && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                        <span style={{ fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase' as const, fontWeight: 700, color: '#c0392b', background: 'rgba(192,57,43,0.08)', border: '1px solid rgba(192,57,43,0.2)', borderRadius: 4, padding: '2px 8px' }}>
+                          Финансовая функция
+                        </span>
+                        <span style={{ fontFamily: 'serif', fontSize: 20, color: '#1e3a8a', lineHeight: 1 }} title={`Текущая · ${a.finance_combination}`}>
+                          {finChar(a.finance_combination)}
+                        </span>
+                        {typeof a.finance_result?.combination_resulting === 'string' && (
+                          <>
+                            <span style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)' }}>→</span>
+                            <span style={{ fontFamily: 'serif', fontSize: 20, color: '#2d6a2d', lineHeight: 1 }} title={`Целевая · ${a.finance_result.combination_resulting}`}>
+                              {finChar(a.finance_result.combination_resulting as string)}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="dash-card-actions-mobile" style={S.cardActions}>
                     <span style={a.status === 'completed' || a.status === 'paid' ? S.pillDone : S.pillDraft}>
