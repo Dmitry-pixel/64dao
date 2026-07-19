@@ -473,14 +473,9 @@ export default function ReportPage() {
                     {finStrategy.lifecycle_stage && (
                       <div style={{ marginTop: 14 }}><span style={S.labelRed}>Стадия жизненного цикла</span><div style={S.stateVal}>{finStrategy.lifecycle_stage}</div></div>
                     )}
-                    <div className="report-lc-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14 }}>
-                      {LC_LABELS.map(([field, label]) => (
-                        <div key={field} style={{ background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '12px 14px' }}>
-                          <div style={{ fontSize: 9, fontFamily: 'sans-serif', letterSpacing: 1, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.45)', fontWeight: 600, marginBottom: 6 }}>{label}</div>
-                          <p style={{ fontSize: 13, color: '#1a2540', lineHeight: 1.6, margin: 0, fontFamily: 'sans-serif' }}>{finStrategy[field] || <em style={{ opacity: 0.35 }}>Не заполнено</em>}</p>
-                        </div>
-                      ))}
-                    </div>
+                    {finStrategy.stratagema_title && (
+                      <div style={{ marginTop: 12, padding: '12px 16px', borderRadius: 6, background: 'rgba(30,58,138,0.08)', border: '1px solid rgba(30,58,138,0.2)', color: '#1e3a8a', fontFamily: 'sans-serif', fontSize: 13, lineHeight: 1.6 }}>{finStrategy.stratagema_title}</div>
+                    )}
                     <div style={{ marginTop: 16 }}>
                       {capLabel('Сценарий развития')}
                       <div style={S.reportText}>{finStrategy.scenario_text ? finStrategy.scenario_text.split('\n').map((pp: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{pp}</p>) : <em style={{ opacity: 0.4 }}>Не заполнено</em>}</div>
@@ -539,6 +534,16 @@ export default function ReportPage() {
                     </div>
                   )}
 
+                  {it.planned_steps?.length > 0 && (
+                    <div style={{ marginTop: 16 }}>{capLabel('Плановые шаги')}
+                      {it.planned_steps.map((pr: any, i: number) => (
+                        <div key={i} style={{ marginBottom: 10 }}>
+                          <div style={{ fontFamily: 'sans-serif', fontSize: 13, color: '#1a2540' }}><strong>{pr.block_title}</strong></div>
+                          <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)', marginTop: 2 }}>{pr.package_text}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div style={{ marginTop: 16 }}>
                     {capLabel('Траектория')}
                     {it.trajectory ? (

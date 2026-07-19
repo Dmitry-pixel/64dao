@@ -354,7 +354,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
       <div key={formKey}>
         <Sec label="Основное" title="Заголовок и стратагема" help="Отображается в шапке отчёта пользователя.">
           <FI label="Заголовок стратегии" fk="title" dv={f.title} ph={hex.name} onChange={handleChange} />
-          <FI label="Стратагема (название)" fk="stratagema_title" dv={f.stratagema_title} ph="Краткая формулировка стратагемы" onChange={handleChange} />
+          <FA label="Стратагема (название)" fk="stratagema_title" rows={3} dv={f.stratagema_title} ph="Краткая формулировка стратагемы" onChange={handleChange} />
           <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={S_LBL}>Стадия жизненного цикла</label>

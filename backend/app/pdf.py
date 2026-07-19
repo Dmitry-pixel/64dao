@@ -400,11 +400,11 @@ _LC_LABELS = [
 ]
 
 
-def _lifecycle_blocks(strategy: Any, combination: str) -> str:
+def _lifecycle_blocks(strategy: Any, combination: str, with_lc: bool = True) -> str:
     """6 блоков жизненного цикла для PDF — по одному на каждый вопрос."""
     header = ""
     if strategy and strategy.stratagema_title:
-        header = f'<div style="display:inline-block;padding:3px 10px;border-radius:3px;font-size:10px;font-family:Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;background:rgba(30,58,138,0.08);border:1px solid rgba(30,58,138,0.2);color:#1e3a8a;margin-bottom:10px;">{e(strategy.stratagema_title)}</div>'
+        header = f'<div style="display:block;padding:12px 16px;border-radius:6px;font-size:13px;font-family:Arial,sans-serif;line-height:1.6;background:rgba(30,58,138,0.08);border:1px solid rgba(30,58,138,0.2);color:#1e3a8a;margin-bottom:12px;">{e(strategy.stratagema_title)}</div>'
     if strategy and strategy.title:
         header += f'<h3 style="font-size:16px;font-weight:500;color:#1a2540;margin-bottom:16px;font-family:Arial,sans-serif;">{e(strategy.title)}</h3>'
 
@@ -419,11 +419,13 @@ def _lifecycle_blocks(strategy: Any, combination: str) -> str:
   <p style="font-size:12px;color:#1a2540;line-height:1.6;margin:0;font-family:Arial,sans-serif;">{e(value) if value else '<em style="opacity:0.35;">Не заполнено</em>'}</p>
 </div>"""
 
+    grid_html = (
+        f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">{blocks_html}</div>'
+        if with_lc else ""
+    )
     return f"""<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px 24px;background:rgba(255,255,255,0.4);">
 {header}
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-{blocks_html}
-</div>
+{grid_html}
 </div>"""
 
 
@@ -483,7 +485,7 @@ def _finance_description_html(finance_strategy: Any | None) -> str:
         '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:22px 0 12px;">'
         '<span style="font-size:11px;color:#c0392b;margin-right:8px;">Описание</span>Стратегический профиль финансовой гексаграммы</h2>',
         stage_badge,
-        _lifecycle_blocks(fs, combo),
+        _lifecycle_blocks(fs, combo, with_lc=False),
         txt_block("Сценарий развития", getattr(fs, "scenario_text", None)),
         txt_block("Маркетинг", getattr(fs, "marketing_text", None)),
         txt_block("Управление", getattr(fs, "management_text", None)),

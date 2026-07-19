@@ -142,7 +142,23 @@ def build_interpretation(result: dict, content: dict) -> dict:
     caveats = _build_caveats(result)
 
     # Следующие шаги — детерминированно из пакетов подвижных линий (план §3.4 п.9)
-    next_steps = [p["package_text"] for p in priorities if p["package_text"] != PLACEHOLDER]
+    # Плановые шаги: иньские линии без подвижности, от слабейшей к сильнейшей
+    planned = [l for l in lines if l["symbol"] == "B" and not l["moving"]]
+    planned.sort(key=lambda l: (l["score"], l["line"]))
+    planned_steps = []
+    for l in planned:
+        n = l["line"]
+        pkg = c("action_package", f"line{n}_yin")
+        planned_steps.append({
+            "line": n,
+            "block_title": BLOCKS[n]["title"],
+            "state": l["state"],
+            "package_title": (pkg or {}).get("title"),
+            "package_text": (pkg or {}).get("text", PLACEHOLDER),
+        })
+
+    next_steps = [p["package_text"] for p in (priorities + planned_steps)
+                  if p["package_text"] != PLACEHOLDER]
 
     return {
         "tonality": tonality,
@@ -151,6 +167,7 @@ def build_interpretation(result: dict, content: dict) -> dict:
         "pattern_current": pattern_current,
         "tensions": tensions,
         "priorities": priorities,
+        "planned_steps": planned_steps,
         "trajectory": trajectory,
         "caveats": caveats,
         "next_steps": next_steps,
