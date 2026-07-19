@@ -311,3 +311,38 @@ async def test_get_assessment_strategy_no_matching_strategy_404(auth_client, db_
 
     resp = await auth_client.get(f"/api/assessments/{assessment.id}/strategy")
     assert resp.status_code == 404
+
+
+# -- Unknown-answers limit (MAX_UNKNOWNS_TOTAL = 3) ---------------------------
+
+def _finance_with_unknowns(*item_ids: str) -> dict:
+    """FINANCE_ANSWERS with given items set to None (max 1 per block)."""
+    answers = dict(FINANCE_ANSWERS)
+    for iid in item_ids:
+        answers[iid] = None
+    return answers
+
+
+@pytest.mark.asyncio
+async def test_create_assessment_four_unknowns_rejected(auth_client):
+    resp = await auth_client.post("/api/assessments", json=assessment_payload(
+        finance_answers=_finance_with_unknowns("1.4", "2.4", "3.4", "4.3"),
+    ))
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_create_assessment_three_unknowns_accepted_and_flagged(auth_client, db_session):
+    resp = await auth_client.post("/api/assessments", json=assessment_payload(
+        finance_answers=_finance_with_unknowns("1.4", "2.4", "3.4"),
+    ))
+    assert resp.status_code == 200
+
+    saved = await db_session.scalar(
+        select(Assessment).where(Assessment.id == resp.json()["id"])
+    )
+    assert saved.finance_result is not None
+    assert "LOW_DATA_COMPLETENESS" in saved.finance_result["quality_flags"]
+
+    partial = [ln for ln in saved.finance_result["lines"] if "PARTIAL_BLOCK" in ln["flags"]]
+    assert len(partial) == 3

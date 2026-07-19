@@ -469,6 +469,8 @@ function AssessmentInner() {
     )
     const block = finItems[finBlockIdx]
     const unknowns = finBlockUnknowns(block.items)
+    const unknownLimit = 3
+    const totalUnknowns = Object.values(financeAnswers).filter(v => v === null).length
     const complete = finBlockComplete(block.items)
     return (
       <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
@@ -484,6 +486,9 @@ function AssessmentInner() {
             <div style={S.qEyebrow}>Блок {block.block} из 6</div>
             <h2 style={{ ...S.qQuestion, fontSize: 26 }}>{block.title}</h2>
             <p style={S.finLegend}>{[1, 2, 3, 4].map(n => `${n} — ${finScale[String(n)] || ''}`).join('   ·   ')}</p>
+            <p style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.55)', lineHeight: 1.6, marginTop: 10, maxWidth: 620 }}>
+              «Не знаю» снижает точность: балл по линии будет рассчитан по трём пунктам, а сама линия помечается в отчёте как неполная. Выбирайте, только если данных действительно нет.
+            </p>
           </div>
 
           <div style={{ maxWidth: 760 }}>
@@ -498,7 +503,8 @@ function AssessmentInner() {
                         style={{ ...S.finScaleBtn, ...(val === n ? S.finScaleBtnOn : {}) }}
                         onClick={() => setFinAnswer(it.item_id, n)}>{n}</button>
                     ))}
-                    <button style={{ ...S.finScaleBtn, ...(val === null ? S.finUnknownOn : {}) }}
+                    <button disabled={val !== null && totalUnknowns >= unknownLimit}
+                      style={{ ...S.finScaleBtn, marginLeft: 18, opacity: (val !== null && totalUnknowns >= unknownLimit) ? 0.35 : 1, ...(val === null ? S.finUnknownOn : {}) }}
                       onClick={() => setFinAnswer(it.item_id, null)}>Не знаю</button>
                   </div>
                 </div>
@@ -506,6 +512,10 @@ function AssessmentInner() {
             })}
           </div>
 
+          <p style={{ fontFamily: 'sans-serif', fontSize: 12, marginTop: 10, color: totalUnknowns >= unknownLimit ? '#c0392b' : 'rgba(26,37,64,0.5)' }}>
+            {'\u00ab\u041d\u0435 \u0437\u043d\u0430\u044e\u00bb: '}{totalUnknowns}{' \u0438\u0437 '}{unknownLimit}
+            {totalUnknowns >= unknownLimit ? '\u0020\u2014\u0020\u043b\u0438\u043c\u0438\u0442 \u0438\u0441\u0447\u0435\u0440\u043f\u0430\u043d' : ''}
+          </p>
           {unknowns > 1 && (
             <p style={{ fontFamily: 'sans-serif', fontSize: 12, color: '#c0392b', marginTop: 8 }}>
               В блоке допускается не более одного ответа «Не знаю». Уточните оценку.
@@ -514,8 +524,8 @@ function AssessmentInner() {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 28, maxWidth: 760 }}>
             <button style={S.btnGhost} onClick={finPrev}>← Назад</button>
-            <button style={{ ...S.btnPrimary, opacity: (!complete || submitting) ? 0.4 : 1, minWidth: 150, justifyContent: 'center' }}
-              disabled={!complete || submitting} onClick={finNext}>
+            <button style={{ ...S.btnPrimary, opacity: (!complete || unknowns > 1 || submitting) ? 0.4 : 1, minWidth: 150, justifyContent: 'center' }}
+              disabled={!complete || unknowns > 1 || submitting} onClick={finNext}>
               {finBlockIdx === 5 ? (submitting ? 'Отправка…' : 'Завершить →') : 'Далее →'}
             </button>
           </div>

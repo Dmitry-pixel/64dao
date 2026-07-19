@@ -41,6 +41,20 @@ class BlockUnderfilledError(FinanceScoringError):
         super().__init__(f"Блок {block}: ≥2 пропусков — линия не определяется")
 
 
+MAX_UNKNOWNS_TOTAL = 3
+
+
+class TooManyUnknownsError(InvalidAnswersError):
+    """Более MAX_UNKNOWNS_TOTAL ответов «Не знаю» на анкету (лимит достоверности)."""
+
+    def __init__(self, count: int):
+        self.count = count
+        super().__init__(
+            f"Ответов «Не знаю»: {count}. "
+            f"Допустимо не более {MAX_UNKNOWNS_TOTAL} на анкету."
+        )
+
+
 # ── Результат ─────────────────────────────────────────────────────────────────
 @dataclass
 class LineResult:
@@ -84,6 +98,10 @@ def _classify(avg: float, symbol: str, moving: bool) -> str:
 def compute_finance_result(answers: dict[str, int | None]) -> dict:
     """Полный скоринг. Возвращает dict (finance_result)."""
     validate_answers(answers)
+
+    unknown_total = sum(1 for v in answers.values() if v is None)
+    if unknown_total > MAX_UNKNOWNS_TOTAL:
+        raise TooManyUnknownsError(unknown_total)
 
     lines: list[LineResult] = []
     quality_flags: list[str] = []

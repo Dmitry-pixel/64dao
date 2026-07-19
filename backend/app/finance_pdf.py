@@ -23,7 +23,7 @@ _FIN_STATE_RU = {
 _FIN_FLAG_RU = {
     "INCONSISTENT_BLOCK": "противоречивые ответы",
     "BORDERLINE_LINE":    "неустойчивое определение",
-    "PARTIAL_BLOCK":      "неполный блок",
+    "PARTIAL_BLOCK":      "один «Не знаю»",
     "VETO_APPLIED":       "вето",
     "VETO_UNKNOWN":        "4.1 неизвестно",
 }
