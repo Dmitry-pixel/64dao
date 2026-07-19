@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     db_pass: str
     db_host: str = "localhost"
     db_port: int = 5432
+
+    # Пересобирать PDF при каждом скачивании.
+    # False — отдавать сохранённый файл (используется в тестах: иначе каждый
+    # вызов скачивания поднимает Chromium и прогон растягивается на минуты).
+    regenerate_pdf_on_download: bool = True
     db_name: str = "dao64"
 
     @property

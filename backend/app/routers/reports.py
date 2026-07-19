@@ -40,21 +40,28 @@ async def download_report(
     if not is_owner and not is_admin:
         raise HTTPException(status_code=403, detail="Нет доступа")
 
-    owner = await db.scalar(select(User).where(User.id == report.user_id))
-    if owner is None:
-        raise HTTPException(status_code=404, detail="Владелец отчёта не найден")
+    if settings.regenerate_pdf_on_download:
+        owner = await db.scalar(select(User).where(User.id == report.user_id))
+        if owner is None:
+            raise HTTPException(status_code=404, detail="Владелец отчёта не найден")
 
-    filename_new = report.pdf_filename or f"report-{report_id}.pdf"
-    path = Path(report.pdf_path) if report.pdf_path else (
-        Path(settings.uploads_dir) / str(report.user_id) / filename_new
-    )
+        filename_new = report.pdf_filename or f"report-{report_id}.pdf"
+        path = Path(report.pdf_path) if report.pdf_path else (
+            Path(settings.uploads_dir) / str(report.user_id) / filename_new
+        )
 
-    # Пересобираем PDF из текущих данных: отчёт всегда соответствует актуальной вёрстке
-    html = await build_html_for_assessment(db, report.assessment, owner, allow_draft=False)
-    await generate_pdf(html, str(path))
-    report.pdf_path = str(path)
-    report.pdf_filename = filename_new
-    await db.flush()
+        # Пересобираем из текущих данных: отчёт всегда в актуальной вёрстке
+        html = await build_html_for_assessment(db, report.assessment, owner, allow_draft=False)
+        await generate_pdf(html, str(path))
+        report.pdf_path = str(path)
+        report.pdf_filename = filename_new
+        await db.flush()
+    else:
+        if not report.pdf_path:
+            raise HTTPException(status_code=404, detail="Файл отчёта не найден")
+        path = Path(report.pdf_path)
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="Файл отчёта не найден на диске")
 
     filename = report.pdf_filename or f"report-{report_id}.pdf"
 
