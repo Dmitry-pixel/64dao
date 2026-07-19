@@ -258,3 +258,56 @@ class TestLiveAPI:
             pytest.fail("expected 404")
         except urllib.error.HTTPError as e:
             assert e.code == 404, f"expected 404, got {e.code}"
+
+
+# ── Finance: next_steps / planned_steps ───────────────────────────────────────
+
+from app.finance_scoring import compute_finance_result
+from app.finance_interpret import build_interpretation
+
+_FIN_CONTENT_STUB = {
+    "tonality": {}, "quadrant": {}, "trigram": {}, "tension_rule": {},
+    "fin_pattern": {},
+    "action_package": {
+        "line1_yin": {"title": "P1", "text": "STEP_LINE1_YIN"},
+    },
+}
+
+
+def _answers(**overrides) -> dict:
+    """All items = 3, then overrides. Item ids are '<block>.<pos>'."""
+    a = {f"{b}.{p}": 3 for b in range(1, 7) for p in range(1, 5)}
+    a.update(overrides)
+    return a
+
+
+class TestFinanceNextSteps:
+
+    def test_yin_line_without_moving_produces_planned_step(self):
+        # Блок 1: 2,2,3(reverse->2),2 => avg 2.0 => symbol B, moving False
+        answers = _answers(**{"1.1": 2, "1.2": 2, "1.3": 3, "1.4": 2})
+        result = compute_finance_result(answers)
+
+        line1 = result["lines"][0]
+        assert line1["symbol"] == "B"
+        assert line1["moving"] is False
+
+        interp = build_interpretation(result, _FIN_CONTENT_STUB)
+
+        assert interp["priorities"] == []
+        assert len(interp["planned_steps"]) == 1
+        assert interp["planned_steps"][0]["line"] == 1
+        assert interp["planned_steps"][0]["package_text"] == "STEP_LINE1_YIN"
+        assert interp["next_steps"] == ["STEP_LINE1_YIN"]
+
+    def test_all_yang_lines_produce_no_steps(self):
+        result = compute_finance_result(_answers())
+
+        assert all(l["symbol"] == "A" for l in result["lines"])
+        assert all(l["moving"] is False for l in result["lines"])
+
+        interp = build_interpretation(result, _FIN_CONTENT_STUB)
+
+        assert interp["priorities"] == []
+        assert interp["planned_steps"] == []
+        assert interp["next_steps"] == []
