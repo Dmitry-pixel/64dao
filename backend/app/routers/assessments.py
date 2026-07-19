@@ -411,3 +411,52 @@ async def get_finance_interpretation(
         "finance_combination": assessment.finance_combination,
         "interpretation": interp,
     }
+
+
+async def build_html_for_assessment(db, assessment, user, allow_draft: bool = False) -> str:
+    """Единая сборка HTML отчёта: создание, предпросмотр и скачивание."""
+    combination = assessment.method1_combination
+    company_name = assessment.company_name or user.company_name or "Компания"
+    user_name = user.full_name or ""
+    method2_data = assessment.method2_data
+
+    strategy = None
+    if combination:
+        q = select(Strategy).where(Strategy.combination == combination)
+        if not allow_draft:
+            q = q.where(Strategy.is_published == True)
+        strategy = await db.scalar(q)
+
+    finance_result = assessment.finance_result
+    finance_interpretation = None
+    finance_strategy = None
+    if finance_result:
+        finance_content = await load_content(db)
+        finance_interpretation = build_interpretation(finance_result, finance_content)
+        fin_combo = assessment.finance_combination or finance_result.get("combination_current")
+        if fin_combo:
+            finance_strategy = await db.scalar(
+                select(Strategy).where(Strategy.combination == fin_combo)
+            )
+
+    from app.models import LifecycleStage
+    stages_rows = (await db.execute(
+        select(LifecycleStage).order_by(LifecycleStage.sort_order)
+    )).scalars().all()
+    lifecycle_stages = [
+        {"sort_order": s.sort_order, "name": s.name, "description": s.description}
+        for s in stages_rows
+    ]
+
+    return build_report_html(
+        lifecycle_stages=lifecycle_stages,
+        company_name=company_name,
+        user_name=user_name,
+        date_str=_date_ru(datetime.now(timezone.utc)),
+        combination=combination or "",
+        strategy=strategy,
+        method2_data=method2_data,
+        finance_result=finance_result,
+        finance_interpretation=finance_interpretation,
+        finance_strategy=finance_strategy,
+    )

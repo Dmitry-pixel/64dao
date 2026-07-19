@@ -315,7 +315,6 @@ def _assumptions_block(strategy: Any) -> str:
         )
     return (
         '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:24px 0 12px;">'
-        '<span style="font-size:11px;color:#c0392b;margin-right:8px;">03</span>'
         'Предположения, лежащие в основе принятия решения. Связи с будущим'
         '</h2>'
         '<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:24px;'
@@ -326,66 +325,26 @@ def _assumptions_block(strategy: Any) -> str:
 
 
 def _transition_block(strategy: Any, target_hex_info: tuple | None) -> str:
-    """HTML-блок 'Целевой сценарий' с символом и названием целевой гексаграммы."""
+    """Раздел 03 «Целевой сценарий»: только описание перехода."""
     if not strategy:
         return ""
-
-    if target_hex_info:
-        t_num, t_name, t_symbol = target_hex_info
-        hex_col = (
-            '<div style="text-align:center;flex-shrink:0;min-width:90px;">'
-            '<div style="font-size:64px;line-height:1;color:#1a2540;margin-bottom:6px;">'
-            + t_symbol +
-            '</div>'
-            '<div style="font-size:10px;color:#c0392b;font-family:Arial,sans-serif;'
-            'letter-spacing:1px;font-weight:600;">'
-            + "Гексаграмма " + str(t_num) +
-            '</div>'
-            '<div style="font-size:11px;color:rgba(26,37,64,0.7);font-family:Arial,sans-serif;'
-            'margin-top:3px;">'
-            + e(t_name) +
-            '</div>'
-        '</div>'
-    )
-    else:
-        hex_col = ""
-
-    title_html = (e(strategy.transition_title)
-                  if strategy.transition_title
-                  else '<em style="opacity:0.4;">Название перехода не заполнено</em>')
-    stage_html = (e(strategy.transition_lifecycle_stage)
-                  if getattr(strategy, "transition_lifecycle_stage", None)
-                  else '<em style="opacity:0.4;">Стадия целевого состояния не заполнена</em>')
-    desc_html  = (e(strategy.transition_description)
-                  if strategy.transition_description
-                  else '<em style="opacity:0.4;">Описание перехода не заполнено</em>')
-
+    desc_html = (e(strategy.transition_description)
+                 if strategy.transition_description
+                 else '<em style="opacity:0.4;">Описание перехода не заполнено</em>')
     return (
-        '<div style="margin-top:24px;padding:16px 20px;'
+        '<div style="padding:16px 20px;'
         'border:1px solid rgba(192,57,43,0.2);border-radius:6px;'
         'background:rgba(192,57,43,0.04);">'
         '<div style="font-size:10px;color:#c0392b;letter-spacing:2px;'
         'text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:12px;">'
-        '<span style="margin-right:8px;">04</span>Целевой сценарий'
+        '<span style="margin-right:8px;">03</span>Целевой сценарий'
         '</div>'
-        '<div style="display:flex;align-items:flex-start;gap:20px;">'
-        + hex_col +
-        '<div style="flex:1;">'
-        '<h3 style="font-size:16px;font-weight:500;color:#1a2540;margin-bottom:6px;">'
-        + title_html +
-        '</h3>'
         '<div style="font-size:10px;color:rgba(26,37,64,0.45);text-transform:uppercase;'
-        'letter-spacing:1px;font-family:Arial,sans-serif;margin-bottom:4px;">Стадия целевого состояния</div>'
-        '<p style="font-size:12px;color:rgba(26,37,64,0.65);'
-        'font-family:Arial,sans-serif;line-height:1.5;margin:0 0 10px;">'
-        + stage_html +
-        '</p>'
+        'letter-spacing:1px;font-family:Arial,sans-serif;margin-bottom:6px;">Описание перехода</div>'
         '<p style="font-size:12px;color:rgba(26,37,64,0.65);'
         'font-family:Arial,sans-serif;line-height:1.7;margin:0;">'
         + desc_html +
         '</p>'
-        '</div>'
-        '</div>'
         '</div>'
     )
 
@@ -442,6 +401,65 @@ def _answers_table(combination: str) -> str:
     return _table_rows(rows)
 
 
+def _hex_diagram_html(combination: str, scenario: dict | None) -> str:
+    """Раздел 01: гексаграмма по центру, ответы слева, параметры стратагемы справа."""
+    sc = scenario or {}
+    labels = list(SCENARIO_LABELS.items())
+
+    def line_html(ch: str) -> str:
+        if ch == "A":
+            return '<div style="width:110px;height:11px;background:#1a2540;border-radius:2px;"></div>'
+        half = '<div style="width:46px;height:11px;background:#1a2540;border-radius:2px;"></div>'
+        return ('<div style="width:110px;height:11px;display:flex;'
+                'justify-content:space-between;">' + half + half + '</div>')
+
+    k = ('font-size:8px;letter-spacing:1px;text-transform:uppercase;color:#c0392b;'
+         'font-weight:700;font-family:Arial,sans-serif;margin-bottom:2px;')
+    qs = ('font-size:9.5px;line-height:1.35;color:rgba(26,37,64,0.5);'
+          'font-family:Arial,sans-serif;margin-bottom:2px;')
+    v = 'font-size:11px;line-height:1.4;color:#1a2540;font-family:Arial,sans-serif;'
+    dash = 'flex:0 0 34px;height:0;border-top:1.5px dashed rgba(26,37,64,0.25);'
+    empty = '<em style="opacity:0.4;">Не заполнено</em>'
+
+    rows = ""
+    for j, i in enumerate([5, 4, 3, 2, 1, 0]):
+        ch = combination[i] if i < len(combination) else ""
+        bq = BASE_QUESTIONS[i]
+        ans = e(bq["a"]) if ch == "A" else (e(bq["b"]) if ch == "B" else "—")
+        key, label = labels[j]
+        pval = sc.get(key) or None
+        rows += (
+            '<div style="display:flex;align-items:center;min-height:74px;page-break-inside:avoid;">'
+            '<div style="flex:1 1 0;min-width:0;text-align:right;padding-right:10px;">'
+            f'<div style="{k}">Линия {i + 1} · Вопрос {i + 1}</div>'
+            f'<div style="{qs}">{e(bq["q"])}</div>'
+            f'<div style="{v}">{ans}</div></div>'
+            f'<div style="{dash}"></div>'
+            f'<div style="flex:0 0 110px;display:flex;justify-content:center;">{line_html(ch)}</div>'
+            f'<div style="{dash}"></div>'
+            '<div style="flex:1 1 0;min-width:0;padding-left:10px;">'
+            f'<div style="{k}">Линия {i + 1} · {e(label)}</div>'
+            f'<div style="{v}">{e(pval) if pval else empty}</div></div>'
+            '</div>'
+        )
+
+    hdr = ('font-size:9px;letter-spacing:1.4px;text-transform:uppercase;'
+           'color:rgba(26,37,64,0.45);font-weight:700;font-family:Arial,sans-serif;')
+    return (
+        '<div style="margin-top:6px;">'
+        '<div style="display:flex;padding-bottom:8px;margin-bottom:6px;'
+        'border-bottom:1px solid rgba(26,37,64,0.1);">'
+        f'<div style="flex:1 1 0;text-align:right;padding-right:44px;{hdr}">Ответы диагностики</div>'
+        '<div style="flex:0 0 110px;"></div>'
+        f'<div style="flex:1 1 0;padding-left:44px;{hdr}">Параметры стратагемы</div>'
+        '</div>'
+        + rows +
+        '<div style="font-size:9px;color:rgba(26,37,64,0.35);text-align:center;'
+        'margin-top:8px;font-family:Arial,sans-serif;">линия 1 — нижняя</div>'
+        '</div>'
+    )
+
+
 def _base_hex_images(combination: str, target_hex_info: tuple | None) -> str:
     """Картинки гексаграмм базовой части: текущая + целевая."""
     def cell(svg: str, label: str, sub: str) -> str:
@@ -461,7 +479,80 @@ def _base_hex_images(combination: str, target_hex_info: tuple | None) -> str:
             f'margin:8px 0 20px;">{cells}</div>')
 
 
-def _finance_description_html(finance_strategy: Any | None) -> str:
+_LC_CHART_Y = [192, 98, 52, 138, 78]
+
+
+def _catmull(pts) -> str:
+    d = "M %.1f %.1f" % pts[0]
+    for i in range(len(pts) - 1):
+        p0 = pts[i - 1] if i > 0 else pts[i]
+        p1, p2 = pts[i], pts[i + 1]
+        p3 = pts[i + 2] if i + 2 < len(pts) else pts[i + 1]
+        d += " C %.1f %.1f, %.1f %.1f, %.1f %.1f" % (
+            p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6,
+            p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6,
+            p2[0], p2[1],
+        )
+    return d
+
+
+def _lifecycle_chart_html(stages, index) -> str:
+    """График стадии жизненного цикла с отметкой текущей стадии."""
+    if not stages or len(stages) < 2:
+        return ""
+    x0, x1 = 80.0, 740.0
+    n = len(stages)
+    pts = [
+        (x0 + (x1 - x0) * i / (n - 1),
+         float(_LC_CHART_Y[i] if i < len(_LC_CHART_Y) else 120))
+        for i in range(n)
+    ]
+    cur = -1
+    for i, s in enumerate(stages):
+        if s.get("sort_order") == index:
+            cur = i
+    parts = []
+    for i, (x, y) in enumerate(pts):
+        on = i == cur
+        if on:
+            parts.append(
+                f'<line x1="{x:.1f}" y1="{y + 11:.1f}" x2="{x:.1f}" y2="206" '
+                f'stroke="#c0392b" stroke-width="1.5" stroke-dasharray="4 4"/>'
+            )
+        parts.append(
+            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{9 if on else 5}" '
+            f'fill="{"#c0392b" if on else "#fdfcf9"}" '
+            f'stroke="{"#c0392b" if on else "#1a2540"}" stroke-width="2"/>'
+        )
+        parts.append(
+            f'<text x="{x:.1f}" y="228" text-anchor="middle" font-family="Arial,sans-serif" '
+            f'font-size="{14.5 if on else 12.5}" font-weight="{700 if on else 400}" '
+            f'fill="{"#c0392b" if on else "rgba(26,37,64,0.5)"}">{e(stages[i].get("name"))}</text>'
+        )
+    stage = stages[cur] if cur >= 0 else None
+    title = e(stage.get("name")) if stage else '<em style="opacity:0.4;">Не определена</em>'
+    desc = e(stage.get("description")) if stage and stage.get("description") else ""
+    desc_html = (
+        f'<p style="font-size:12px;color:rgba(26,37,64,0.7);line-height:1.6;'
+        f'margin:8px 0 0;font-family:Arial,sans-serif;">{desc}</p>'
+    ) if desc else ""
+    return (
+        '<div style="margin:14px 0 18px;page-break-inside:avoid;">'
+        '<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#c0392b;'
+        'font-weight:700;font-family:Arial,sans-serif;margin-bottom:6px;">Стадия жизненного цикла</div>'
+        f'<div style="font-size:17px;color:#1a2540;font-family:Georgia,serif;">{title}</div>'
+        '<svg viewBox="0 0 820 252" width="100%" xmlns="http://www.w3.org/2000/svg" '
+        'style="display:block;margin-top:10px;">'
+        '<line x1="40" y1="206" x2="780" y2="206" stroke="rgba(26,37,64,0.2)" stroke-width="1"/>'
+        f'<path d="{_catmull(pts)}" fill="none" stroke="#1e3a8a" stroke-width="2.5"/>'
+        + "".join(parts) +
+        '</svg>'
+        + desc_html +
+        '</div>'
+    )
+
+
+def _finance_description_html(finance_strategy: Any | None, lifecycle_stages=None) -> str:
     """Описание из strategies по фин-комбинации: стадия ЖЦ, ЖЦ-блоки, сценарий,
     маркетинг, управление, предположения. Пусто, если стратегии нет."""
     if not finance_strategy:
@@ -484,7 +575,7 @@ def _finance_description_html(finance_strategy: Any | None) -> str:
     parts = [
         '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:22px 0 12px;">'
         '<span style="font-size:11px;color:#c0392b;margin-right:8px;">Описание</span>Стратегический профиль финансовой гексаграммы</h2>',
-        stage_badge,
+        _lifecycle_chart_html(lifecycle_stages, getattr(fs, "lifecycle_stage_index", None)),
         _lifecycle_blocks(fs, combo, with_lc=False),
         txt_block("Сценарий развития", getattr(fs, "scenario_text", None)),
         txt_block("Маркетинг", getattr(fs, "marketing_text", None)),
@@ -504,6 +595,7 @@ def build_report_html(
     finance_result: dict | None = None,
     finance_interpretation: dict | None = None,
     finance_strategy: Any | None = None,
+    lifecycle_stages=None,
 ) -> str:
     """Собирает полный HTML отчёта (все данные уже экранированы через e()).
 
@@ -609,15 +701,9 @@ def build_report_html(
         ) if strategy and strategy.lifecycle_stage else ""
 
         current_state_html = f"""
-<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px;">
-  <div style="background:rgba(26,37,64,0.03);border-radius:6px;padding:14px 18px;">
-    <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#c0392b;font-weight:600;font-family:Arial,sans-serif;">Стратагема</div>
-    <div style="font-size:17px;color:#1a2540;margin-top:6px;font-family:Georgia,serif;">{e(strategy.stratagema_title) if strategy and strategy.stratagema_title else '<em style="opacity:0.4;font-size:14px;">Не заполнено</em>'}</div>
-  </div>
-  <div style="background:rgba(26,37,64,0.03);border-radius:6px;padding:14px 18px;">
-    <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#c0392b;font-weight:600;font-family:Arial,sans-serif;">Комбинация</div>
-    <div style="font-size:17px;color:#1a2540;margin-top:6px;font-family:monospace;letter-spacing:3px;">{e(combination)}</div>
-  </div>
+<div style="background:rgba(26,37,64,0.03);border-radius:6px;padding:14px 18px;margin-bottom:18px;">
+  <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#c0392b;font-weight:600;font-family:Arial,sans-serif;">Стратагема</div>
+  <div style="font-size:17px;color:#1a2540;margin-top:6px;font-family:Georgia,serif;">{e(strategy.stratagema_title) if strategy and strategy.stratagema_title else '<em style="opacity:0.4;font-size:14px;">Не заполнено</em>'}</div>
 </div>"""
 
         page1 = f"""
@@ -631,12 +717,7 @@ def build_report_html(
   </div>
   <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 10px;"><span style="font-size:11px;color:#c0392b;margin-right:8px;">01</span>Текущее состояние</h2>
   {current_state_html}
-  {_base_hex_images(combination, target_hex_info)}
-  <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:24px 0 12px;">Таблица ответов</h2>
-  {_answers_table(combination)}
-  <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:24px 0 12px;">Таблица стратагемы</h2>
-  {_table_rows(sc_rows)}
-  {transition_html}
+  {_hex_diagram_html(combination, sc)}
   <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
               display:flex;justify-content:space-between;font-family:Arial,sans-serif;
               font-size:10px;color:rgba(26,37,64,0.3);">
@@ -747,8 +828,13 @@ def build_report_html(
     if (not is_method2) and finance_result and finance_interpretation:
         finance_section = finance_section_html(
             finance_result, finance_interpretation, company_name,
-            _finance_description_html(finance_strategy),
+            _finance_description_html(finance_strategy, lifecycle_stages),
         )
+
+    transition_page = (
+        f'<div style="padding:40px 50px;background:#e8e4db;">{transition_html}</div>'
+        if transition_html else ""
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="ru">
@@ -810,6 +896,8 @@ def build_report_html(
 {page2}
 
 {finance_section}
+
+{transition_page}
 
 {bmc_section}
 

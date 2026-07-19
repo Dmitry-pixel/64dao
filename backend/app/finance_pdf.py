@@ -75,7 +75,7 @@ def finance_section_html(finance_result: dict, interp: dict, company_name: str, 
 
     def h2(num: str, text: str) -> str:
         return (f'<h2 style="font-size:18px;font-weight:400;color:{ink};margin:22px 0 12px;">'
-                f'<span style="font-size:11px;color:{accent};margin-right:8px;">{num}</span>{e(text)}</h2>')
+                f'{e(text)}</h2>')
 
     # 1 — заголовок + текущая гексаграмма
     moving_note = ("Подвижные линии: " + ", ".join(str(n) for n in moving_lines)) if moving_lines \
@@ -197,6 +197,8 @@ def finance_section_html(finance_result: dict, interp: dict, company_name: str, 
         f'<span style="font-size:11px;font-weight:700;color:{accent};font-family:Arial,sans-serif;letter-spacing:2px;">64DAO</span>'
         f'<span style="font-size:10px;color:rgba(26,37,64,0.3);font-family:Arial,sans-serif;">{e(company_name)} · финансовая функция</span>'
         '</div>'
+        f'<h2 style="font-size:22px;font-weight:400;color:{ink};margin:0 0 18px;">'
+        f'<span style="font-size:11px;color:{accent};margin-right:10px;">02</span>Финансовая функция</h2>'
         f'{header}'
         f'{h2("01","Диагноз")}{diagnosis}'
         f'{description_html}'

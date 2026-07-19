@@ -5,7 +5,7 @@ from sqlalchemy import (
     ForeignKey, CheckConstraint, UniqueConstraint, func,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from app.db import Base
 
 
@@ -52,6 +52,15 @@ class OtpCode(Base):
 
 
 # ── Strategies (64 combinations) ─────────────────────────────────────────────
+LIFECYCLE_STAGE_ORDER = {
+    "зарождение": 1,
+    "расцвет":    2,
+    "зрелость":   3,
+    "упадок":     4,
+    "обновление": 5,
+}
+
+
 class Strategy(Base):
     __tablename__ = "strategies"
 
@@ -62,6 +71,7 @@ class Strategy(Base):
     stratagema_title:           Mapped[str | None]= mapped_column(Text)
     lifecycle_stage:            Mapped[str | None]= mapped_column(String(100))
     lifecycle_description:      Mapped[str | None]= mapped_column(Text)
+    lifecycle_stage_index:      Mapped[int | None]= mapped_column(Integer)
     # 6 блоков жизненного цикла (по одному на каждый вопрос диагностики)
     lc_profit:                  Mapped[str | None]= mapped_column(Text)  # Формирование прибыли
     lc_strategy:                Mapped[str | None]= mapped_column(Text)  # Рыночная стратегия
@@ -99,6 +109,13 @@ class Strategy(Base):
     assm_trade:                 Mapped[str | None]= mapped_column(Text)
     assm_failures:              Mapped[str | None]= mapped_column(Text)
     assm_success:               Mapped[str | None]= mapped_column(Text)
+
+    @validates("lifecycle_stage")
+    def _sync_lifecycle_index(self, key, value):
+        self.lifecycle_stage_index = (
+            LIFECYCLE_STAGE_ORDER.get(value.strip().lower()) if value else None
+        )
+        return value
     is_published:               Mapped[bool]      = mapped_column(Boolean, nullable=False, default=False)
     created_at:                 Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:                 Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -215,3 +232,14 @@ class SampleLead(Base):
     __table_args__ = (
         CheckConstraint("channel IN ('email','telegram','max')", name="chk_sample_lead_channel"),
     )
+
+
+
+# ── Lifecycle stages (справочник стадий жизненного цикла) ────────────────────
+class LifecycleStage(Base):
+    __tablename__ = "lifecycle_stages"
+
+    id:          Mapped[int]        = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sort_order:  Mapped[int]        = mapped_column(Integer, nullable=False, unique=True)
+    name:        Mapped[str]        = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)

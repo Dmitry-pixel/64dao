@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { getMe, getAssessment, reportDownloadUrl, type AuthUser, type Assessment } from '@/lib/api'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
+import HexDiagram, { HexLines } from '@/components/HexDiagram'
+import LifecycleChart from '@/components/LifecycleChart'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
 
@@ -27,7 +29,7 @@ function comboToChar(combo: string): string {
 }
 
 // Returns target hexagram info or null
-function getTargetHex(combo: string): { char: string; n: number; name: string } | null {
+function getTargetHex(combo: string): { char: string; n: number; name: string; combo: string } | null {
   const entry = HEXAGRAM_MAP[combo]
   if (!entry) return null
   const targetN = TARGET_HEX[entry.n]
@@ -39,6 +41,7 @@ function getTargetHex(combo: string): { char: string; n: number; name: string } 
     char: String.fromCodePoint(0x4DC0 + targetN - 1),
     n: targetN,
     name: found[1].name,
+    combo: found[0],
   }
 }
 
@@ -182,8 +185,8 @@ export default function ReportPage() {
     ? ['01 — Бизнес-модель (9 блоков)']
     : [
         '01 — Текущее состояние',
-        '02 — Целевой сценарий',
-        '03 — Финансовая функция',
+        '02 — Финансовая функция',
+        '03 — Целевой сценарий',
       ]
 
   // Дата с временем
@@ -312,128 +315,19 @@ export default function ReportPage() {
             <div style={S.section} id="s0">
               <h2 style={S.sectionH2}><span style={S.num}>01</span>Текущее состояние</h2>
               <p style={S.muted}>Параметры, которые система определила по вашим ответам.</p>
-              <div style={S.stateGrid}>
-                <div style={S.stateCell}>
-                  <span style={S.labelRed}>Стратагема</span>
-                  <div style={S.stateVal}>{strategy?.stratagema_title || <em style={{ opacity: 0.4, fontSize: 14 }}>Не заполнено</em>}</div>
-                </div>
-                <div style={S.stateCell}>
-                  <span style={S.labelRed}>Комбинация</span>
-                  <div style={{ ...S.stateVal, fontFamily: 'monospace', letterSpacing: 3 }}>{combo}</div>
-                </div>
+              <div style={{ background: 'rgba(26,37,64,0.03)', borderRadius: 6, padding: '14px 18px' }}>
+                <span style={S.labelRed}>Стратагема</span>
+                <div style={S.stateVal}>{strategy?.stratagema_title || <em style={{ opacity: 0.4, fontSize: 14 }}>Не заполнено</em>}</div>
               </div>
 
-
-              {/* Таблица ответов на 6 базовых вопросов */}
-              <div style={{ marginTop: 16 }}>
-                <span style={S.labelRed}>Таблица ответов</span>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'sans-serif', fontSize: 14, marginTop: 8 }}>
-                  <thead><tr><th style={S.th}>Вопрос</th><th style={S.th}>Ответ</th></tr></thead>
-                  <tbody>
-                    {BASE_QUESTIONS.map((q, i) => {
-                      const ch = combo[i]
-                      const txt = ch === 'A' ? q.a : ch === 'B' ? q.b : ''
-                      return (
-                        <tr key={i}>
-                          <td style={S.td}>{q.q}</td>
-                          <td style={S.td}>{ch === 'A' || ch === 'B' ? `${ch} — ${txt}` : <em style={{ opacity: 0.4 }}>—</em>}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Таблица стратагемы — всегда отображаем все 6 строк */}
-              <div style={S.scenarioTable}>
-                <div style={S.scenarioHead}>
-                  <span style={S.labelRed}>Таблица стратагемы</span>
-                  <span style={S.faint}>Гексаграмма {combo}</span>
-                </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'sans-serif', fontSize: 14 }}>
-                  <thead>
-                    <tr>
-                      <th style={S.th}>Параметр</th>
-                      <th style={S.th}>Значение</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {SCENARIO_LABELS.map(([key, label]) => {
-                      const val = strategy?.scenario?.[key]
-                      return (
-                        <tr key={key}>
-                          <td style={S.td}>{label}</td>
-                          <td style={S.td}>{val || <em style={{ opacity: 0.4 }}>Не заполнено</em>}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <HexDiagram
+                combo={combo}
+                questions={BASE_QUESTIONS}
+                labels={SCENARIO_LABELS}
+                scenario={strategy?.scenario}
+              />
             </div>
 
-            {/* Секция 04 — Целевой сценарий */}
-            <div style={S.section} id="s4">
-              <h2 style={S.sectionH2}><span style={S.num}>04</span>Целевой сценарий</h2>
-
-              {/* Название перехода */}
-              <div style={{ marginBottom: 12 }}>
-                <span style={S.labelRed}>Название перехода</span>
-                <div style={{ ...S.stateVal, marginTop: 4 }}>
-                  {strategy?.transition_title || <em style={{ opacity: 0.4, fontSize: 14 }}>Не заполнено</em>}
-                </div>
-              </div>
-
-              {/* Стадия целевого состояния */}
-              <div style={{ marginBottom: 12 }}>
-                <span style={S.labelRed}>Стадия целевого состояния</span>
-                <div style={{ ...S.stateVal, marginTop: 4 }}>
-                  {strategy?.transition_lifecycle_stage || <em style={{ opacity: 0.4, fontSize: 14 }}>Не заполнено</em>}
-                </div>
-              </div>
-
-              {/* Описание перехода */}
-              <div style={{ marginBottom: 20 }}>
-                <span style={S.labelRed}>Описание перехода</span>
-                <div style={{ ...S.reportText, marginTop: 8 }}>
-                  {strategy?.transition_description
-                    ? strategy.transition_description.split('\n').map((p: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{p}</p>)
-                    : <p style={S.muted}>Описание перехода будет добавлено при публикации стратегии.</p>}
-                </div>
-              </div>
-
-              {/* Визуализация перехода: текущая → целевая гексаграмма */}
-              <div style={S.transitionCard}>
-                <div style={{ textAlign: 'center' as const }}>
-                  <div style={S.hexLg}>{hexChar || '?'}</div>
-                  <div style={S.faint}>сейчас</div>
-                  {hexInfo && (
-                    <div style={{ fontFamily: 'sans-serif', fontSize: 10, color: 'rgba(26,37,64,0.4)', marginTop: 2 }}>
-                      №{hexInfo.n} · {hexInfo.name}
-                    </div>
-                  )}
-                </div>
-                <div style={{ flex: 1, borderTop: '1px dashed rgba(26,37,64,0.2)', position: 'relative' as const }}>
-                  <span style={S.transitionLabel}>12–18 месяцев</span>
-                </div>
-                <div style={{ textAlign: 'center' as const }}>
-                  {targetHex ? (
-                    <>
-                      <div style={{ ...S.hexLg, color: '#2d6a2d' }}>{targetHex.char}</div>
-                      <div style={S.faint}>цель</div>
-                      <div style={{ fontFamily: 'sans-serif', fontSize: 10, color: 'rgba(26,37,64,0.4)', marginTop: 2 }}>
-                        №{targetHex.n} · {targetHex.name}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div style={{ ...S.hexLg, color: '#2d6a2d' }}>?</div>
-                      <div style={S.faint}>цель</div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
 
             {/* ── Финансовая функция ── */}
             {finReport?.has_finance && (() => {
@@ -447,9 +341,9 @@ export default function ReportPage() {
               )
               return (
                 <div style={S.section} id="sf">
-                  <h2 style={S.sectionH2}><span style={S.num}>03</span>Финансовая функция</h2>
+                  <h2 style={S.sectionH2}><span style={S.num}>02</span>Финансовая функция</h2>
                   <div style={S.stateGrid}>
-                    <div style={S.stateCell}><span style={S.labelRed}>Гексаграмма</span><div style={S.stateVal}>№ {hc.number} · {hc.name}</div></div>
+                    <div style={S.stateCell}><span style={S.labelRed}>Гексаграмма</span><div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 6 }}><HexLines combo={fr.combination_current || ''} /><div style={{ ...S.stateVal, marginTop: 0 }}>№ {hc.number} · {hc.name}</div></div></div>
                     <div style={S.stateCell}><span style={S.labelRed}>Комбинация</span><div style={{ ...S.stateVal, fontFamily: 'monospace', letterSpacing: 3 }}>{fr.combination_current}</div></div>
                   </div>
 
@@ -462,9 +356,9 @@ export default function ReportPage() {
                   </div>
 
                   {finStrategy && (<>
-                    {finStrategy.lifecycle_stage && (
-                      <div style={{ marginTop: 14 }}><span style={S.labelRed}>Стадия жизненного цикла</span><div style={S.stateVal}>{finStrategy.lifecycle_stage}</div></div>
-                    )}
+                      {finStrategy.lifecycle_stage_index && (
+                        <LifecycleChart index={finStrategy.lifecycle_stage_index} />
+                      )}
                     {finStrategy.stratagema_title && (
                       <div style={{ marginTop: 12, padding: '12px 16px', borderRadius: 6, background: 'rgba(30,58,138,0.08)', border: '1px solid rgba(30,58,138,0.2)', color: '#1e3a8a', fontFamily: 'sans-serif', fontSize: 13, lineHeight: 1.6 }}>{finStrategy.stratagema_title}</div>
                     )}
@@ -538,16 +432,39 @@ export default function ReportPage() {
                   )}
                   <div style={{ marginTop: 16 }}>
                     {capLabel('Траектория')}
-                    {it.trajectory ? (
-                      <>
-                        <div style={S.transitionCard}>
-                          <div style={{ textAlign: 'center' as const }}><div style={S.hexLg}>{comboToChar(fr.combination_current) || '?'}</div><div style={S.faint}>№{it.trajectory.current?.number}</div></div>
-                          <div style={{ flex: 1, borderTop: '1px dashed rgba(26,37,64,0.2)' }} />
-                          <div style={{ textAlign: 'center' as const }}><div style={{ ...S.hexLg, color: '#2d6a2d' }}>{comboToChar(fr.combination_resulting || '') || '?'}</div><div style={S.faint}>№{it.trajectory.resulting?.number}</div></div>
-                        </div>
-                        <p style={{ ...S.reportText, marginTop: 10 }}>{it.trajectory.essence} <span style={{ color: '#c0392b' }}>Предостережение:</span> {it.trajectory.mistake}</p>
-                      </>
-                    ) : <p style={S.muted}>Подвижных линий нет — конфигурация стабильна.</p>}
+                      {(() => {
+                        const curCombo = fr.combination_current || ''
+                        const moving = !!it.trajectory
+                        const tgt = moving ? null : getTargetHex(curCombo)
+                        const rightCombo = moving ? (fr.combination_resulting || '') : (tgt?.combo || '')
+                        const rightNum = moving ? it.trajectory.resulting?.number : tgt?.n
+                        const rightLabel = moving ? 'результирующая' : 'целевая'
+                        return (
+                          <>
+                            <div style={S.transitionCard}>
+                              <div style={{ textAlign: 'center' as const }}>
+                                <HexLines combo={curCombo} />
+                                <div style={{ ...S.faint, marginTop: 6 }}>сейчас · №{hc.number}</div>
+                              </div>
+                              <div style={{ flex: 1, borderTop: '1px dashed rgba(26,37,64,0.2)' }} />
+                              <div style={{ textAlign: 'center' as const }}>
+                                <HexLines combo={rightCombo} />
+                                <div style={{ ...S.faint, marginTop: 6 }}>{rightLabel}{rightNum ? ` · №${rightNum}` : ''}</div>
+                              </div>
+                            </div>
+                            <div style={{ ...S.faint, marginTop: 8 }}>
+                              {moving
+                                ? 'Переход определён подвижными линиями финансовой гексаграммы.'
+                                : 'Подвижных линий нет, переход определён таблицей соответствия гексаграмм.'}
+                            </div>
+                            <p style={{ ...S.reportText, marginTop: 10 }}>
+                              {moving
+                                ? <>{it.trajectory.essence} <span style={{ color: '#c0392b' }}>Предостережение:</span> {it.trajectory.mistake}</>
+                                : 'Конфигурация стабильна.'}
+                            </p>
+                          </>
+                        )
+                      })()}
                   </div>
 
                   {it.caveats?.length > 0 && (
@@ -564,6 +481,22 @@ export default function ReportPage() {
                 </div>
               )
             })()}
+            {/* Секция 03 — Целевой сценарий */}
+            <div style={S.section} id="s4">
+              <h2 style={S.sectionH2}><span style={S.num}>03</span>Целевой сценарий</h2>
+
+              {/* Описание перехода */}
+              <div style={{ marginBottom: 20 }}>
+                <span style={S.labelRed}>Описание перехода</span>
+                <div style={{ ...S.reportText, marginTop: 8 }}>
+                  {strategy?.transition_description
+                    ? strategy.transition_description.split('\n').map((p: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{p}</p>)
+                    : <p style={S.muted}>Описание перехода будет добавлено при публикации стратегии.</p>}
+                </div>
+              </div>
+
+            </div>
+
           </>)}
         </div>
       </div>

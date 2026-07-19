@@ -222,6 +222,10 @@ export const adminApi = {
     return res.json()
   },
   deleteSampleReport: () => request('/api/admin/sample-report', { method: 'DELETE' }),
+  lifecycleStages: () =>
+    request<{ sort_order: number; name: string; description: string | null }[]>('/api/admin/lifecycle-stages'),
+  saveLifecycleStages: (d: { sort_order: number; description: string | null }[]) =>
+    request('/api/admin/lifecycle-stages', { method: 'PUT', body: JSON.stringify(d) }),
 }
 
 // ── Strategies (public/user) ──────────────────────────────────────────────────

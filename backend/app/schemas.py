@@ -124,6 +124,7 @@ class StrategyCreate(BaseModel):
     current_state:              dict[str, str] | None = None
     stratagema_title:           str | None = None
     lifecycle_stage:            str | None = None
+    lifecycle_stage_index:      int | None = None
     lifecycle_description:      str | None = None
     lc_profit:                  str | None = None
     lc_strategy:                str | None = None
@@ -181,6 +182,7 @@ class StrategyOut(BaseModel):
     current_state:              dict | None
     stratagema_title:           str | None
     lifecycle_stage:            str | None
+    lifecycle_stage_index:      int | None
     lifecycle_description:      str | None
     lc_profit:                  str | None
     lc_strategy:                str | None
@@ -293,3 +295,11 @@ class FinContentUpsert(BaseModel):
     payload:   dict[str, Any]
     sort:      int = 0
     is_active: bool = True
+
+
+class LifecycleStageOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    sort_order:  int
+    name:        str
+    description: str | None

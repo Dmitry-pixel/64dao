@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import require_admin, get_current_user, hash_password, create_impersonation_token, create_token, decode_token, set_auth_cookie
 from app.config import get_settings
 from app.db import get_db
-from app.models import User, Assessment, Report, Strategy, Order
+from app.models import User, Assessment, Report, Strategy, Order, LifecycleStage
 from app.schemas import (
     AdminSetupRequest, AdminStats, LogEntry,
     StrategyCreate, StrategyUpdate, StrategyOut, StrategyListItem,
@@ -736,4 +736,38 @@ async def delete_sample_report(_: User = Depends(require_admin)):
     if not SAMPLE_REPORT_FILE.exists():
         raise HTTPException(status_code=404, detail="Файл не найден")
     SAMPLE_REPORT_FILE.unlink()
+    return {"ok": True}
+
+
+class LifecycleStagePatch(BaseModel):
+    sort_order: int
+    description: str | None = None
+
+
+@router.get("/lifecycle-stages")
+async def admin_get_lifecycle_stages(
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = await db.execute(select(LifecycleStage).order_by(LifecycleStage.sort_order))
+    return [
+        {"sort_order": s.sort_order, "name": s.name, "description": s.description}
+        for s in rows.scalars().all()
+    ]
+
+
+@router.put("/lifecycle-stages")
+async def admin_update_lifecycle_stages(
+    body: list[LifecycleStagePatch],
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = await db.execute(select(LifecycleStage))
+    by_order = {s.sort_order: s for s in rows.scalars().all()}
+    for item in body:
+        stage = by_order.get(item.sort_order)
+        if stage is None:
+            raise HTTPException(status_code=404, detail="Stage not found")
+        stage.description = item.description
+    await db.flush()
     return {"ok": True}

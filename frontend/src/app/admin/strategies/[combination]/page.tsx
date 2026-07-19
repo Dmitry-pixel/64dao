@@ -167,7 +167,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
           formRef.current = {
             title:                      data.title              || hex.name,
             stratagema_title:           data.stratagema_title   || '',
-            lifecycle_stage:            data.lifecycle_stage    || hex.stage,
+            lifecycle_stage:            data.lifecycle_stage    || '',
             lifecycle_description:      data.lifecycle_description || '',
             lc_profit:                  data.lc_profit          || lc.lc_profit,
             lc_strategy:                data.lc_strategy        || lc.lc_strategy,
@@ -209,16 +209,16 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
             scenario_focus:             sc.focus           || '',
           };
           setIsPublished(data.is_published || false);
-          setLcStage(data.lifecycle_stage || hex.stage);
+          setLcStage(data.lifecycle_stage || '');
           setTrStage(data.transition_lifecycle_stage || '');
         } else {
-          formRef.current = { ...EMPTY_FORM, title: hex.name, lifecycle_stage: hex.stage, ...lc };
-          setLcStage(hex.stage);
+          formRef.current = { ...EMPTY_FORM, title: hex.name, lifecycle_stage: '', ...lc };
+          setLcStage('');
         }
       })
       .catch(() => {
-        formRef.current = { ...EMPTY_FORM, title: hex.name, lifecycle_stage: hex.stage, ...autoFillLc(combination) };
-        setLcStage(hex.stage);
+        formRef.current = { ...EMPTY_FORM, title: hex.name, lifecycle_stage: '', ...autoFillLc(combination) };
+        setLcStage('');
       })
       .finally(() => {
         setFormKey(1);   // форма рендерится один раз с правильными данными
@@ -234,7 +234,6 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
   const save = async (publish: boolean) => {
     // Синхронизируем select-значения из state в ref перед сохранением
     formRef.current.lifecycle_stage = lcStage;
-    formRef.current.transition_lifecycle_stage = trStage;
 
     setSaving(true); setError('');
     try {
@@ -311,7 +310,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
           <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, margin: '4px 0 4px', color: '#1a2540', display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: 40 }}>{comboToHex(combination)}</span>{f.title || hex.name}
           </h1>
-          <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.5)', margin: 0 }}>Стадия: {hex.stage}</p>
+          <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.5)', margin: 0 }}>Стадия: {lcStage || '—'}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={() => router.push('/admin/strategies')} style={btn({ border: '1px solid rgba(26,37,64,0.2)', background: 'transparent', color: '#1a2540' })}>← К списку</button>
@@ -358,7 +357,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
           <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={S_LBL}>Стадия жизненного цикла</label>
-              <select value={lcStage || hex.stage} onChange={e => setLcStage(e.target.value)} style={S_INP}>
+              <select value={lcStage} onChange={e => setLcStage(e.target.value)} style={S_INP}>
                 {['Зарождение','Расцвет','Зрелость','Обновление','Упадок'].map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
@@ -424,25 +423,14 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
                 <div style={{ fontSize: 64, lineHeight: 1, color: '#1a2540', marginBottom: 4 }}>{String.fromCodePoint(0x4DC0 + targetHex.n - 1)}</div>
                 <div style={{ fontFamily: 'sans-serif', fontSize: 10, color: '#c0392b', letterSpacing: 1, fontWeight: 700, textTransform: 'uppercase' }}>Гексаграмма {targetHex.n}</div>
                 <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)', marginTop: 2 }}>{targetHex.name}</div>
-                <div style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)', marginTop: 2 }}>{targetHex.stage}</div>
               </div>
               <div>
                 <div style={{ fontFamily: 'sans-serif', fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(26,37,64,0.4)', marginBottom: 4 }}>Целевая гексаграмма</div>
                 <div style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: '#1a2540', marginBottom: 4 }}>{targetHex.name}</div>
                 <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#1e3a8a', letterSpacing: 2, marginBottom: 4 }}>{targetHex.combo}</div>
-                <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)' }}>Стадия: {targetHex.stage}</div>
               </div>
             </div>
           )}
-          <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <FI label="Название перехода" fk="transition_title" dv={f.transition_title} ph="Название целевой стратегии" onChange={handleChange} />
-            <div>
-              <label style={S_LBL}>Стадия целевого состояния</label>
-              <select value={trStage} onChange={e => setTrStage(e.target.value)} style={S_INP}>
-                {['','Зарождение','Расцвет','Зрелость','Обновление','Упадок'].map(s => <option key={s} value={s}>{s || '—'}</option>)}
-              </select>
-            </div>
-          </div>
           <FA label="Описание перехода" fk="transition_description" dv={f.transition_description} rows={4} ph="Опишите как компании перейти к целевому состоянию…" onChange={handleChange} />
         </Sec>
 

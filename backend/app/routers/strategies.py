@@ -3,8 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user
 from app.db import get_db
-from app.models import Strategy, User
-from app.schemas import StrategyOut, StrategyListItem, StrategyCreate, StrategyUpdate
+from app.models import Strategy, User, LifecycleStage
+from app.schemas import StrategyOut, StrategyListItem, StrategyCreate, StrategyUpdate, LifecycleStageOut
 
 router = APIRouter(prefix="/api/strategies", tags=["strategies"])
 
@@ -19,6 +19,18 @@ async def get_all_strategies(
         raise HTTPException(status_code=403, detail="Доступ запрещён")
     result = await db.execute(select(Strategy).order_by(Strategy.combination))
     return result.scalars().all()
+
+
+@router.get("/lifecycle-stages", response_model=list[LifecycleStageOut])
+async def get_lifecycle_stages(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Справочник стадий жизненного цикла, по возрастанию порядка."""
+    rows = await db.execute(
+        select(LifecycleStage).order_by(LifecycleStage.sort_order)
+    )
+    return rows.scalars().all()
 
 
 @router.get("/{combination}", response_model=StrategyOut)
