@@ -411,9 +411,6 @@ a { color: inherit; text-decoration: none; }
 
 /* ── Адаптив блоков ЖЦ в отчёте (report/[id]) ── */
 @media (max-width: 600px) {
-  .report-lc-grid {
-    grid-template-columns: 1fr !important;
-  }
 }
 
 /* ── Адаптив форм в админке (редактирование стратегий) ── */

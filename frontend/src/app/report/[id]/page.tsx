@@ -156,14 +156,6 @@ export default function ReportPage() {
     'Структура издержек': 'Какие затраты ключевые? Постоянные или переменные? На чём фокус?',
   }
 
-  const LC_LABELS: [string, string][] = [
-    ['lc_profit',    'Формирование прибыли'],
-    ['lc_strategy',  'Рыночная стратегия'],
-    ['lc_decisions', 'Принятие решений'],
-    ['lc_consumer',  'Тип потребителя'],
-    ['lc_market',    'Статус рынка'],
-    ['lc_value',     'Тип ценности'],
-  ]
 
   const ASSM_LABELS: [string, string][] = [
     ['assm_planning',     'Планирование'],
