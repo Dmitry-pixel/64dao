@@ -547,6 +547,7 @@ def _finance_description_html(finance_strategy: Any | None, lifecycle_stages=Non
     parts = [
         '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:22px 0 12px;">'
         '<span style="font-size:11px;color:#c0392b;margin-right:8px;">Описание</span>Стратегический профиль финансовой гексаграммы</h2>',
+        stage_badge,
         _lifecycle_chart_html(lifecycle_stages, getattr(fs, "lifecycle_stage_index", None)),
         _lifecycle_blocks(fs, combo, with_lc=False),
         txt_block("Сценарий развития", getattr(fs, "scenario_text", None)),

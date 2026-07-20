@@ -78,7 +78,7 @@ def test_finance_section_present_and_complete():
     assert "№ 14" in html
     assert "Прекращение инвестиций на фоне успеха." in html
     assert "противоречив" in html
-    assert "Таблица ответов" in html
+    assert "Ответы диагностики" in html
     assert "Где сейчас фокус усилий компании?" in html
     assert "Рост выручки и объёма продаж" in html
     fin_idx = html.index("Финансовая функция")

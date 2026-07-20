@@ -103,9 +103,9 @@ async def test_e2e_finance_flow(auth_client, db_session):
     base = html[:fi_idx]
     assert "Текущее состояние" in base
     assert "Базовая стратагема" in base
-    assert "Таблица ответов" in base
-    assert "Таблица стратагемы" in base
-    assert "Целевой сценарий" in base
+    assert "Ответы диагностики" in base
+    assert "Параметры стратагемы" in base
+    assert "Целевой сценарий" in html  # раздел идёт после финансового блока
     assert "Сценарий развития" not in base
     assert "Описание сценария развития для AAAABB." not in base
 
@@ -150,7 +150,7 @@ async def test_legacy_without_finance_regenerates(auth_client, db_session, monke
     )
     assert "<!DOCTYPE html>" in html
     assert "Финансовая функция" not in html
-    assert "Таблица стратагемы" in html
+    assert "Параметры стратагемы" in html
 
 
 @pytest.mark.asyncio

@@ -19,6 +19,7 @@ conftest.py — общие фикстуры для regression-тестов 64dao
 """
 import os
 import asyncio
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
@@ -28,7 +29,17 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-os.environ.setdefault("DB_NAME", "dao64_test")
+# Изоляция тестового окружения ДО импорта app.config: get_settings()
+# обёрнут в lru_cache, после первого вызова подмена не подействует.
+# setdefault здесь не годится — DB_NAME приходит из боевого .env.
+_TEST_UPLOADS = tempfile.mkdtemp(prefix="64dao-test-uploads-")
+os.environ["DB_NAME"] = "dao64_test"
+# Не поднимать Chromium при скачивании: отдаём сохранённый файл.
+os.environ["REGENERATE_PDF_ON_DOWNLOAD"] = "false"
+# Отвязать от боевого тома: site_mode.json оттуда управляет режимом
+# техобслуживания и делал результат прогона зависимым от состояния прода.
+os.environ["UPLOAD_DIR"] = _TEST_UPLOADS
+os.environ["UPLOADS_DIR"] = _TEST_UPLOADS
 
 from app.config import get_settings  # noqa: E402
 from app.db import Base, get_db  # noqa: E402
