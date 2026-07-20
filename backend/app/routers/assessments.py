@@ -217,44 +217,7 @@ async def generate_report_on_demand(
                 detail="Нет доступных диагностик. Оплатите новую диагностику, чтобы получить доступ.",
             )
 
-    combination = assessment.method1_combination
-    company_name = assessment.company_name or user.company_name or "Компания"
-    user_name = user.full_name or ""
-    # Передаём None если поле не задано (None = Метод 1, {} или {...} = Метод 2)
-    method2_data = assessment.method2_data
-
-    strategy = None
-    if combination:
-        strategy = await db.scalar(
-            select(Strategy).where(Strategy.combination == combination, Strategy.is_published == True)
-        )
-
-    now = datetime.now(timezone.utc)
-    date_str = _date_ru(now)
-
-    # Финансовый раздел: собираем интерпретацию только если есть результат скоринга.
-    # Legacy-диагностики (finance_result IS NULL) — раздел не выводится, ошибок нет.
-    finance_result = assessment.finance_result
-    finance_interpretation = None
-    finance_strategy = None
-    if finance_result:
-        finance_content = await load_content(db)
-        finance_interpretation = build_interpretation(finance_result, finance_content)
-        fin_combo = assessment.finance_combination or finance_result.get("combination_current")
-        if fin_combo:
-            finance_strategy = await db.scalar(select(Strategy).where(Strategy.combination == fin_combo))
-
-    html = build_report_html(
-        company_name=company_name,
-        user_name=user_name,
-        date_str=date_str,
-        combination=combination or "",
-        strategy=strategy,
-        method2_data=method2_data,
-        finance_result=finance_result,
-        finance_interpretation=finance_interpretation,
-        finance_strategy=finance_strategy,
-    )
+    html = await build_html_for_assessment(db, assessment, user, allow_draft=False)
 
     filename = f"{assessment_id}-{int(datetime.now().timestamp())}.pdf"
     output_path = str(Path(settings.uploads_dir) / str(user.id) / filename)
@@ -293,44 +256,7 @@ async def stream_pdf_on_demand(
 
     _ensure_result_access(assessment, user)
 
-    combination = assessment.method1_combination
-    company_name = assessment.company_name or "Компания"
-    user_name = user.full_name or ""
-    # Передаём None если поле не задано (None = Метод 1, {} или {...} = Метод 2)
-    method2_data = assessment.method2_data
-
-    strategy = None
-    if combination:
-        q = select(Strategy).where(Strategy.combination == combination)
-        if user.role != "admin":
-            q = q.where(Strategy.is_published == True)
-        strategy = await db.scalar(q)
-
-    date_str = _date_ru(datetime.now(timezone.utc))
-
-    # Финансовый раздел: собираем интерпретацию только если есть результат скоринга.
-    # Legacy-диагностики (finance_result IS NULL) — раздел не выводится, ошибок нет.
-    finance_result = assessment.finance_result
-    finance_interpretation = None
-    finance_strategy = None
-    if finance_result:
-        finance_content = await load_content(db)
-        finance_interpretation = build_interpretation(finance_result, finance_content)
-        fin_combo = assessment.finance_combination or finance_result.get("combination_current")
-        if fin_combo:
-            finance_strategy = await db.scalar(select(Strategy).where(Strategy.combination == fin_combo))
-
-    html = build_report_html(
-        company_name=company_name,
-        user_name=user_name,
-        date_str=date_str,
-        combination=combination or "",
-        strategy=strategy,
-        method2_data=method2_data,
-        finance_result=finance_result,
-        finance_interpretation=finance_interpretation,
-        finance_strategy=finance_strategy,
-    )
+    html = await build_html_for_assessment(db, assessment, user, allow_draft=(user.role == "admin"))
 
     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
     os.close(tmp_fd)
