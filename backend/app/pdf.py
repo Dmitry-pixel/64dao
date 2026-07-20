@@ -388,17 +388,6 @@ def _lifecycle_blocks(strategy: Any, combination: str, with_lc: bool = True) -> 
 </div>"""
 
 
-def _answers_table(combination: str) -> str:
-    """Таблица ответов на 6 базовых вопросов: вопрос → выбранный вариант A/B."""
-    rows: list[tuple[str, str | None]] = []
-    for i, q in enumerate(BASE_QUESTIONS):
-        if i < len(combination) and combination[i] in ("A", "B"):
-            letter = combination[i]
-            choice = q["a"] if letter == "A" else q["b"]
-            rows.append((q["q"], f"{letter} — {choice}"))
-        else:
-            rows.append((q["q"], None))
-    return _table_rows(rows)
 
 
 def _hex_diagram_html(combination: str, scenario: dict | None) -> str:
@@ -460,23 +449,6 @@ def _hex_diagram_html(combination: str, scenario: dict | None) -> str:
     )
 
 
-def _base_hex_images(combination: str, target_hex_info: tuple | None) -> str:
-    """Картинки гексаграмм базовой части: текущая + целевая."""
-    def cell(svg: str, label: str, sub: str) -> str:
-        return (f'<div style="text-align:center;">{svg}'
-                f'<div style="font-size:10px;color:#c0392b;font-family:Arial,sans-serif;letter-spacing:1px;font-weight:600;margin-top:6px;">{e(label)}</div>'
-                f'<div style="font-size:11px;color:rgba(26,37,64,0.6);font-family:Arial,sans-serif;">{e(sub)}</div></div>')
-    cur_entry = _HEXAGRAM_BY_COMBO.get(combination)
-    cur_sub = f"№ {cur_entry[0]} · {cur_entry[1]}" if cur_entry else combination
-    cells = cell(_hexagram_svg(combination, 90), "Текущая", cur_sub) if combination else ""
-    if target_hex_info:
-        t_num, t_name, _ = target_hex_info
-        t_combo = _COMBO_BY_NUM.get(t_num)
-        if t_combo:
-            cells += ('<div style="font-size:26px;color:#c0392b;align-self:center;">→</div>'
-                      + cell(_hexagram_svg(t_combo, 90), "Целевая", f"№ {t_num} · {t_name}"))
-    return (f'<div style="display:flex;align-items:center;justify-content:center;gap:28px;'
-            f'margin:8px 0 20px;">{cells}</div>')
 
 
 _LC_CHART_Y = [192, 98, 52, 138, 78]

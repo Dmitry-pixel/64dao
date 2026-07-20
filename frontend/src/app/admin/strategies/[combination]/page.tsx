@@ -151,7 +151,6 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
   const [error, setError]             = useState('');
   const [isPublished, setIsPublished] = useState(false);
   const [lcStage, setLcStage]         = useState('');
-  const [trStage, setTrStage]         = useState('');
   // formKey — меняется ОДИН РАЗ после загрузки, чтобы форма отрисовалась с правильными defaultValue
   const [formKey, setFormKey]         = useState(0);
 
