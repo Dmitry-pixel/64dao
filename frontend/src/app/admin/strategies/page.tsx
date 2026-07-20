@@ -38,8 +38,14 @@ export default function AdminStrategiesPage() {
     init()
   }, [])
 
+  // Кириллические А (U+0410) и В (U+0412) визуально неотличимы от латинских
+  // A и B, но это разные символы. Комбинации хранятся латиницей, поэтому
+  // приводим ввод к латинице перед сравнением.
+  const toCombo = (s: string) =>
+    s.toUpperCase().replace(/\u0410/g, 'A').replace(/\u0412/g, 'B')
+
   const filtered = strategies.filter(s =>
-    (s.combination ?? '').includes(search.toUpperCase()) ||
+    (s.combination ?? '').includes(toCombo(search)) ||
     (s.title ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
