@@ -209,7 +209,6 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
           };
           setIsPublished(data.is_published || false);
           setLcStage(data.lifecycle_stage || '');
-          setTrStage(data.transition_lifecycle_stage || '');
         } else {
           formRef.current = { ...EMPTY_FORM, title: hex.name, lifecycle_stage: '', ...lc };
           setLcStage('');
