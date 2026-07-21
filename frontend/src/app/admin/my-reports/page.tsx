@@ -8,7 +8,10 @@ import { AdminNav, AdminSide, hexFor, hexNameFor } from '@/components/AdminNav'
 const API = process.env.NEXT_PUBLIC_API_URL || ''
 
 function isMethod2(a: any): boolean {
-  return !!a.method2_data && !a.method1_combination
+  // Признак метода приходит с сервера (assessments.method). Откат на содержимое
+  // method2_data — только для ответов, отданных до появления поля.
+  if (a.method) return a.method === 'method2'
+  return !!(a.method2_data && Object.keys(a.method2_data).length > 0)
 }
 
 export default function AdminMyReportsPage() {

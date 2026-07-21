@@ -808,7 +808,7 @@ def build_report_html(
 
     transition_page = (
         f'<div style="padding:40px 50px;background:#e8e4db;">{transition_html}</div>'
-        if transition_html else ""
+        if (transition_html and not is_method2) else ""
     )
 
     return f"""<!DOCTYPE html>

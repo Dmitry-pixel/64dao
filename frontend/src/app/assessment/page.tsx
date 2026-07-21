@@ -516,6 +516,12 @@ function AssessmentInner() {
             {'\u00ab\u041d\u0435 \u0437\u043d\u0430\u044e\u00bb: '}{totalUnknowns}{' \u0438\u0437 '}{unknownLimit}
             {totalUnknowns >= unknownLimit ? '\u0020\u2014\u0020\u043b\u0438\u043c\u0438\u0442 \u0438\u0441\u0447\u0435\u0440\u043f\u0430\u043d' : ''}
           </p>
+          {totalUnknowns >= unknownLimit && !complete && (
+            <p style={{ fontFamily: 'sans-serif', fontSize: 12, color: '#c0392b', marginTop: 8 }}>
+              Лимит «Не знаю» исчерпан — оцените оставшиеся пункты по шкале 1–4.
+              Если точных данных нет, выберите ближайшее приближение.
+            </p>
+          )}
           {unknowns > 1 && (
             <p style={{ fontFamily: 'sans-serif', fontSize: 12, color: '#c0392b', marginTop: 8 }}>
               В блоке допускается не более одного ответа «Не знаю». Уточните оценку.
