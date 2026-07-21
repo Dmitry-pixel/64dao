@@ -330,7 +330,7 @@ def _transition_block(strategy: Any, target_hex_info: tuple | None) -> str:
         return ""
     desc_html = (e(strategy.transition_description)
                  if strategy.transition_description
-                 else '<em style="opacity:0.4;">Описание перехода не заполнено</em>')
+                 else '<em style="opacity:0.4;">Описание перехода будет добавлено при публикации стратегии.</em>')
     return (
         '<div style="padding:16px 20px;'
         'border:1px solid rgba(192,57,43,0.2);border-radius:6px;'
@@ -569,6 +569,7 @@ def build_report_html(
     finance_interpretation: dict | None = None,
     finance_strategy: Any | None = None,
     lifecycle_stages=None,
+    is_method2: bool | None = None,
 ) -> str:
     """Собирает полный HTML отчёта (все данные уже экранированы через e()).
 
@@ -578,10 +579,11 @@ def build_report_html(
       {...} → Метод 2, данные заполнены
     """
 
-    # Метод 2 определяется по наличию поля method2_data (даже пустого)
-    # И по заглушке-комбинации 'AAAAAA' (или пустой строке в тестах).
-    # Для настоящего Метода 1 с AAAAAA (все ответы A) method2_data = None.
-    is_method2 = method2_data is not None and (not combination or combination == 'AAAAAA')
+    # Метод определяется вызывающей стороной (build_html_for_assessment).
+    # Fallback для прямых вызовов: пустой method2_data = НЕ Метод 2, иначе
+    # диагностика Метода 1 с комбинацией AAAAAA теряет разделы 01 и финблок.
+    if is_method2 is None:
+        is_method2 = bool(method2_data) and (not combination or combination == 'AAAAAA')
 
     # Нормализуем для рендеринга
     method2_data = method2_data or {}

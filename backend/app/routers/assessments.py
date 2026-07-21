@@ -374,7 +374,12 @@ async def build_html_for_assessment(db, assessment, user, allow_draft: bool = Fa
         for s in stages_rows
     ]
 
+    is_method2 = bool(assessment.method2_data) or (
+        not assessment.method1_answers and not assessment.method1_combination
+    )
+
     return build_report_html(
+        is_method2=is_method2,
         lifecycle_stages=lifecycle_stages,
         company_name=company_name,
         user_name=user_name,

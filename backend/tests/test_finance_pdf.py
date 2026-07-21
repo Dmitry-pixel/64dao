@@ -104,6 +104,7 @@ def test_method2_ignores_finance_section():
         company_name="Co", user_name="", date_str="d",
         combination="AAAAAA", strategy=None, method2_data={},
         finance_result=result, finance_interpretation=interp,
+        is_method2=True,
     )
     assert "Финансовая функция" not in html
 
@@ -119,3 +120,34 @@ def test_no_moving_lines_stable_config_text():
     )
     assert "Финансовая функция" in html
     assert "конфигурация стабильна" in html
+
+
+def test_method1_aaaaaa_keeps_finance_section():
+    """Хотфикс H: Метод 1 с комбинацией AAAAAA и пустым method2_data
+    не должен определяться как Метод 2. Проверяется fallback-детект
+    внутри build_report_html, без явного параметра."""
+    result = compute_finance_result(control_answers())
+    interp = build_interpretation(result, control_content())
+    html = build_report_html(
+        company_name="Co", user_name="", date_str="d",
+        combination="AAAAAA", strategy=None, method2_data={},
+        finance_result=result, finance_interpretation=interp,
+    )
+    assert "Финансовая функция" in html
+    assert "Текущее состояние" in html
+    assert "Отчёт по стратегической диагностике" in html
+
+
+def test_method2_with_real_data_detected_without_flag():
+    """Обратная сторона: непустой method2_data по-прежнему даёт Метод 2
+    даже без явного параметра."""
+    result = compute_finance_result(control_answers())
+    interp = build_interpretation(result, control_content())
+    html = build_report_html(
+        company_name="Co", user_name="", date_str="d",
+        combination="AAAAAA", strategy=None,
+        method2_data={"Ценностное предложение": {"score": 3, "text": "x"}},
+        finance_result=result, finance_interpretation=interp,
+    )
+    assert "Финансовая функция" not in html
+    assert "Отчёт по бизнес-модели" in html
