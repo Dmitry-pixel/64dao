@@ -19,7 +19,12 @@ from app.routers.payments import calculate_credits
 from app.finance_service import resolve_submission_finance, FinanceRequiredError
 from app.finance_scoring import InvalidAnswersError, BlockUnderfilledError
 from app.finance_interpret import load_content, build_interpretation
-from app.schemas import AssessmentCreate, AssessmentOut, ReportOut, StrategyOut
+from app.schemas import (
+    AssessmentCreate, AssessmentOut, ContourBrief, ContourSubmit, ReportOut, StrategyOut,
+)
+from app.contours import CONTOURS, get_spec
+from app.contour_settings import is_contour_enabled
+from app.contour_scoring import compute_contour_result
 
 settings = get_settings()
 router = APIRouter(prefix="/api/assessments", tags=["assessments"])
@@ -157,11 +162,25 @@ async def list_assessments(
         )
         strategies_map = {row.combination: row.image_url for row in strat_result}
 
+    # Пройденные контуры — одним запросом на всю выдачу (как со стратегиями)
+    contours_map: dict = {}
+    if assessments:
+        rows = (await db.execute(
+            select(AssessmentContour).where(
+                AssessmentContour.assessment_id.in_([a.id for a in assessments])
+            )
+        )).scalars().all()
+        for r in rows:
+            contours_map.setdefault(r.assessment_id, []).append(r)
+
     out = []
     for a in assessments:
         item = AssessmentOut.model_validate(a)
         if a.method1_combination and a.method1_combination in strategies_map:
             item.strategy_image_url = strategies_map[a.method1_combination]
+        item.passed_contours = [
+            ContourBrief.model_validate(r) for r in contours_map.get(a.id, [])
+        ]
         out.append(item)
     return out
 
@@ -185,7 +204,14 @@ async def get_assessment(
     if assessment.user_id != user.id and user.role != "admin":
         raise HTTPException(status_code=403, detail="Нет доступа")
 
-    return assessment
+    item = AssessmentOut.model_validate(assessment)
+    rows = (await db.execute(
+        select(AssessmentContour).where(
+            AssessmentContour.assessment_id == assessment.id
+        )
+    )).scalars().all()
+    item.passed_contours = [ContourBrief.model_validate(r) for r in rows]
+    return item
 
 
 @router.delete("/{assessment_id}", status_code=204)
@@ -371,6 +397,69 @@ async def get_finance_interpretation(
         "finance_result": fin_result,
         "finance_combination": fin_combo,
         "interpretation": interp,
+    }
+
+
+@router.post("/{assessment_id}/contours/{contour}")
+async def submit_contour(
+    assessment_id: str,
+    contour: str,
+    body: ContourSubmit,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Прохождение дополнительного контура из кабинета. Скоринг только на сервере.
+    Повторное прохождение запрещено (§0.8): исправление — через админский сброс."""
+    if contour not in CONTOURS or not is_contour_enabled(contour):
+        raise HTTPException(status_code=404, detail="Контур недоступен")
+
+    assessment = await db.scalar(
+        select(Assessment).where(Assessment.id == assessment_id)
+    )
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Диагностика не найдена")
+    if assessment.user_id != user.id and user.role != "admin":
+        raise HTTPException(status_code=403, detail="Нет доступа")
+    if assessment.method != "method1":
+        raise HTTPException(
+            status_code=400,
+            detail="Контуры применимы только к диагностике Метода 1.",
+        )
+    if assessment.status not in ("completed", "paid"):
+        raise HTTPException(
+            status_code=400,
+            detail="Контур доступен после завершения диагностики.",
+        )
+
+    existing = await db.scalar(
+        select(AssessmentContour).where(
+            AssessmentContour.assessment_id == assessment.id,
+            AssessmentContour.contour == contour,
+        )
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Этот контур уже пройден.")
+
+    try:
+        result = compute_contour_result(body.answers, get_spec(contour))
+    except (InvalidAnswersError, BlockUnderfilledError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    row = AssessmentContour(
+        assessment_id=assessment.id,
+        contour=contour,
+        answers=body.answers,
+        result=result,
+        combination=result["combination_current"],
+    )
+    db.add(row)
+    await db.flush()
+
+    return {
+        "contour": contour,
+        "title": get_spec(contour).title,
+        "combination": row.combination,
+        "result": result,
     }
 
 

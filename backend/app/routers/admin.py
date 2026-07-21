@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import require_admin, get_current_user, hash_password, create_impersonation_token, create_token, decode_token, set_auth_cookie
 from app.config import get_settings
 from app.db import get_db
-from app.models import User, Assessment, Report, Strategy, Order, LifecycleStage
+from app.models import User, Assessment, AssessmentContour, Report, Strategy, Order, LifecycleStage
 from app.schemas import (
     AdminSetupRequest, AdminStats, LogEntry,
     StrategyCreate, StrategyUpdate, StrategyOut, StrategyListItem,
@@ -771,3 +771,61 @@ async def admin_update_lifecycle_stages(
         stage.description = item.description
     await db.flush()
     return {"ok": True}
+
+
+# ── Контуры диагностики Метода 1 ─────────────────────────────────────────────
+
+class ContourFlagUpdate(BaseModel):
+    enabled: bool
+
+
+@router.get("/contours")
+async def admin_list_contours(admin: User = Depends(require_admin)):
+    """Состояние per-contour флагов. Хранятся в runtime-конфиге (Поправка П2)."""
+    from app.contours import CONTOURS, CONTOUR_ORDER
+    from app.contour_settings import get_contour_settings
+    flags = get_contour_settings()
+    return {"contours": [
+        {"contour": k, "title": CONTOURS[k].title, "enabled": bool(flags.get(k, False))}
+        for k in CONTOUR_ORDER
+    ]}
+
+
+@router.put("/contours/{contour}")
+async def admin_set_contour(
+    contour: str,
+    body: ContourFlagUpdate,
+    admin: User = Depends(require_admin),
+):
+    """Включение и выключение контура без пересборки образа."""
+    from app.contour_settings import set_contour_enabled
+    try:
+        return {"contours": set_contour_enabled(contour, body.enabled)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.delete("/assessments/{assessment_id}/contours/{contour}", status_code=204)
+async def admin_reset_contour(
+    assessment_id: str,
+    contour: str,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Сброс ошибочно пройденного контура (Поправка П10): пользователь сможет
+    пройти его заново. Отчёт пересобирается при следующем скачивании."""
+    if contour == "finance":
+        raise HTTPException(
+            status_code=400,
+            detail="Финансовый контур — часть обязательной анкеты Метода 1, сбросить его отдельно нельзя.",
+        )
+    row = await db.scalar(
+        select(AssessmentContour).where(
+            AssessmentContour.assessment_id == assessment_id,
+            AssessmentContour.contour == contour,
+        )
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Контур не пройден")
+    await db.delete(row)
+

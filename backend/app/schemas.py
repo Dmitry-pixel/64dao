@@ -91,6 +91,20 @@ class AssessmentCreate(BaseModel):
         return v
 
 
+class ContourSubmit(BaseModel):
+    """Сабмит анкеты контура: 24 ответа, значения 1..4 или null («не знаю»).
+    Полнота набора и лимит пропусков проверяются скорингом на сервере."""
+    answers: dict[str, int | None]
+
+    @field_validator("answers")
+    @classmethod
+    def validate_contour_answers(cls, v: dict) -> dict:
+        for key, val in v.items():
+            if val is not None and val not in (1, 2, 3, 4):
+                raise ValueError(f"ответ {key} должен быть 1..4 или null")
+        return v
+
+
 class ReportOut(BaseModel):
     model_config = {"from_attributes": True}
 
@@ -98,6 +112,14 @@ class ReportOut(BaseModel):
     pdf_filename: str | None
     generated_at: datetime | None
     created_at:   datetime
+
+
+class ContourBrief(BaseModel):
+    model_config = {"from_attributes": True}
+
+    contour:     str
+    combination: str
+    created_at:  datetime
 
 
 class AssessmentOut(BaseModel):
@@ -113,6 +135,9 @@ class AssessmentOut(BaseModel):
     created_at:          datetime
     reports:             list[ReportOut] = []
     strategy_image_url:  str | None = None
+    # Имя отличается от relationship Assessment.contours намеренно: иначе Pydantic
+    # полез бы читать связь с ORM-объекта и уронил бы ленивую подгрузку в async.
+    passed_contours:     list[ContourBrief] = []
     finance_combination: str | None = None
     finance_result:      dict[str, Any] | None = None
 
