@@ -61,11 +61,12 @@ def tonality_key(maturity_index: int) -> str:
 
 
 # ── Сборка интерпретации ──────────────────────────────────────────────────────
-def build_interpretation(result: dict, content: dict) -> dict:
+def build_interpretation(result: dict, content: dict, blocks: dict | None = None) -> dict:
     """
     Детерминированная сборка структуры интерпретации из результата скоринга
     (Этап 2) и контента. LLM не участвует (план §8.3 — v2).
     """
+    blocks = blocks or BLOCKS
     lines = result["lines"]
 
     def c(kind: str, key: str) -> dict | None:
@@ -109,8 +110,25 @@ def build_interpretation(result: dict, content: dict) -> dict:
             continue
         tensions.append({"id": rid, "text": p.get("text", PLACEHOLDER)})
 
+    # Вето (Поправка П6): линия со сработавшим вето — отдельный блок ДО приоритетов.
+    # Из приоритетов и плановых шагов она исключается, чтобы не дублироваться.
+    veto_line = next((l for l in lines if "VETO_APPLIED" in l.get("flags", [])), None)
+    veto_block = None
+    if veto_line:
+        _n = veto_line["line"]
+        _pkg = c("action_package", f"line{_n}_yin")
+        veto_block = {
+            "line": _n,
+            "block_title": blocks[_n]["title"],
+            "score": veto_line["score"],
+            "state": veto_line["state"],
+            "package_title": (_pkg or {}).get("title"),
+            "package_text": (_pkg or {}).get("text", PLACEHOLDER),
+        }
+    _veto_n = veto_line["line"] if veto_line else None
+
     # E — приоритеты (подвижные): старый Инь раньше старого Яна (§5.6)
-    moving = [l for l in lines if l["moving"]]
+    moving = [l for l in lines if l["moving"] and l["line"] != _veto_n]
     moving.sort(key=lambda l: (0 if l["state"] == "old_yin" else 1, l["line"]))
     priorities = []
     for l in moving:
@@ -119,7 +137,7 @@ def build_interpretation(result: dict, content: dict) -> dict:
         pkg = c("action_package", pkg_key)
         priorities.append({
             "line": n,
-            "block_title": BLOCKS[n]["title"],
+            "block_title": blocks[n]["title"],
             "state": l["state"],
             "package_title": (pkg or {}).get("title"),
             "package_text": (pkg or {}).get("text", PLACEHOLDER),
@@ -139,11 +157,12 @@ def build_interpretation(result: dict, content: dict) -> dict:
         trajectory = None
 
     # Оговорки по данным
-    caveats = _build_caveats(result)
+    caveats = _build_caveats(result, blocks)
 
     # Следующие шаги — детерминированно из пакетов подвижных линий (план §3.4 п.9)
     # Плановые шаги: иньские линии без подвижности, от слабейшей к сильнейшей
-    planned = [l for l in lines if l["symbol"] == "B" and not l["moving"]]
+    planned = [l for l in lines
+               if l["symbol"] == "B" and not l["moving"] and l["line"] != _veto_n]
     planned.sort(key=lambda l: (l["score"], l["line"]))
     planned_steps = []
     for l in planned:
@@ -151,17 +170,19 @@ def build_interpretation(result: dict, content: dict) -> dict:
         pkg = c("action_package", f"line{n}_yin")
         planned_steps.append({
             "line": n,
-            "block_title": BLOCKS[n]["title"],
+            "block_title": blocks[n]["title"],
             "state": l["state"],
             "package_title": (pkg or {}).get("title"),
             "package_text": (pkg or {}).get("text", PLACEHOLDER),
         })
 
-    next_steps = [p["package_text"] for p in (priorities + planned_steps)
+    _ordered = ([veto_block] if veto_block else []) + priorities + planned_steps
+    next_steps = [p["package_text"] for p in _ordered
                   if p["package_text"] != PLACEHOLDER]
 
     return {
         "tonality": tonality,
+        "veto_block": veto_block,
         "quadrant": quadrant,
         "trigrams": trigrams,
         "pattern_current": pattern_current,
@@ -174,14 +195,15 @@ def build_interpretation(result: dict, content: dict) -> dict:
     }
 
 
-def _build_caveats(result: dict) -> list[str]:
+def _build_caveats(result: dict, blocks: dict | None = None) -> list[str]:
+    blocks = blocks or BLOCKS
     out: list[str] = []
     if "STRAIGHTLINING" in result.get("quality_flags", []):
         out.append("Анкета помечена как недостоверная: ≥20 из 24 ответов одинаковы (straightlining).")
     if "LOW_DATA_COMPLETENESS" in result.get("quality_flags", []):
         out.append("Низкая полнота данных: три и более ответов «не знаю» — выводы по затронутым линиям носят предварительный характер, рекомендуется дозаполнение или интервью.")
     for l in result["lines"]:
-        title = BLOCKS[l["line"]]["title"]
+        title = blocks[l["line"]]["title"]
         for f in l["flags"]:
             txt = _LINE_FLAG_TEXT.get(f)
             if txt:
@@ -190,7 +212,7 @@ def _build_caveats(result: dict) -> list[str]:
 
 
 # ── Загрузка контента из БД (используется PDF/API на Этапах 4–5) ───────────────
-async def load_content(session) -> dict:
+async def load_content(session, contour: str = "finance") -> dict:
     """
     Собирает mapping контента из БД. Берёт только is_active=true строки fin_content
     (неактивные правила/блоки в отчёт не попадают) и fin_pattern_* из strategies.
@@ -203,9 +225,14 @@ async def load_content(session) -> dict:
         "tension_rule": {}, "action_package": {}, "fin_pattern": {},
     }
     rows = (await session.execute(
-        select(FinContent).where(FinContent.is_active.is_(True))
+        select(FinContent).where(
+            FinContent.is_active.is_(True),
+            FinContent.contour.in_([contour, "common"]),
+        )
     )).scalars().all()
-    for fc in rows:
+    # Резолюция по Поправке П1: общий слой 'common' кладётся первым,
+    # контурное переопределение перезаписывает его поверх.
+    for fc in sorted(rows, key=lambda r: 0 if r.contour == "common" else 1):
         content.setdefault(fc.kind, {})[fc.key] = fc.payload
 
     strows = (await session.execute(

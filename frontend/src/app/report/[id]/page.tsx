@@ -413,6 +413,14 @@ export default function ReportPage() {
                     </div>
                   )}
 
+                  {it.veto_block && (
+                    <div style={{ marginTop: 16 }}>{capLabel('Условие, блокирующее трансформацию')}
+                      <div style={{ fontFamily: 'sans-serif', fontSize: 13, color: '#c0392b' }}>
+                        <strong>{it.veto_block.block_title}</strong> — балл {it.veto_block.score}, линия переопределена в Инь по правилу вето: первое лицо не обозначило развитие этой функции как приоритет.
+                      </div>
+                      <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)', marginTop: 6 }}>{it.veto_block.package_text}</div>
+                    </div>
+                  )}
                   {it.priorities?.length > 0 && (
                     <div style={{ marginTop: 16 }}>{capLabel('Приоритеты вмешательства')}
                       {it.priorities.map((pr: any, i: number) => (
@@ -438,11 +446,12 @@ export default function ReportPage() {
                     {capLabel('Траектория')}
                       {(() => {
                         const curCombo = fr.combination_current || ''
+                        // Карта TARGET_HEX относится только к базовой паре ЖЦ и к контурам
+                        // не применяется (план контуров §0.1): у контура целевая гексаграмма
+                        // строится инверсией подвижных линий, а без них цели нет.
                         const moving = !!it.trajectory
-                        const tgt = moving ? null : getTargetHex(curCombo)
-                        const rightCombo = moving ? (fr.combination_resulting || '') : (tgt?.combo || '')
-                        const rightNum = moving ? it.trajectory.resulting?.number : tgt?.n
-                        const rightLabel = moving ? 'результирующая' : 'целевая'
+                        const rightCombo = fr.combination_resulting || ''
+                        const rightNum = it.trajectory?.resulting?.number
                         return (
                           <>
                             <div style={S.transitionCard}>
@@ -450,21 +459,23 @@ export default function ReportPage() {
                                 <HexLines combo={curCombo} />
                                 <div style={{ ...S.faint, marginTop: 6 }}>сейчас · №{hc.number}</div>
                               </div>
-                              <div style={{ flex: 1, borderTop: '1px dashed rgba(26,37,64,0.2)' }} />
-                              <div style={{ textAlign: 'center' as const }}>
-                                <HexLines combo={rightCombo} />
-                                <div style={{ ...S.faint, marginTop: 6 }}>{rightLabel}{rightNum ? ` · №${rightNum}` : ''}</div>
-                              </div>
+                              {moving && (<>
+                                <div style={{ flex: 1, borderTop: '1px dashed rgba(26,37,64,0.2)' }} />
+                                <div style={{ textAlign: 'center' as const }}>
+                                  <HexLines combo={rightCombo} />
+                                  <div style={{ ...S.faint, marginTop: 6 }}>результирующая{rightNum ? ` · №${rightNum}` : ''}</div>
+                                </div>
+                              </>)}
                             </div>
                             <div style={{ ...S.faint, marginTop: 8 }}>
                               {moving
                                 ? 'Переход определён подвижными линиями финансовой гексаграммы.'
-                                : 'Подвижных линий нет, переход определён таблицей соответствия гексаграмм.'}
+                                : 'Подвижных линий нет — конфигурация устойчива.'}
                             </div>
                             <p style={{ ...S.reportText, marginTop: 10 }}>
                               {moving
                                 ? <>{it.trajectory.essence} <span style={{ color: '#c0392b' }}>Предостережение:</span> {it.trajectory.mistake}</>
-                                : 'Конфигурация стабильна.'}
+                                : 'Подвижных линий нет — конфигурация стабильна, направленной трансформации не требуется.'}
                             </p>
                           </>
                         )

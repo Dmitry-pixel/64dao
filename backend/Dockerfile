@@ -12,6 +12,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 RUN playwright install --with-deps chromium
 
+COPY requirements-test.txt .
+RUN pip install --no-cache-dir --root-user-action=ignore -r requirements-test.txt
 COPY . .
 
 EXPOSE 8000

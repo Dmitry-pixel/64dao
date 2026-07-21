@@ -166,3 +166,48 @@ def test_low_data_caveat_in_report():
     result = compute_finance_result(a)
     interp = build_interpretation(result, control_content())
     assert any("полнота данных" in c for c in interp["caveats"])
+
+
+# ── Вето: отдельный блок до приоритетов (Поправка П6) ─────────────────────────
+def veto_answers() -> dict:
+    """Все блоки нейтральны (3), блок 4 сильный, но 4.1 = 1 -> вето сработало.
+    Блок 4: сырые [1, 4, 4, 1], после инверсии 4.4 -> [1, 4, 4, 4], среднее 3.25.
+    По §3.3 линия переопределяется в Инь, подвижной не становится."""
+    a = {f"{b}.{p}": 3 for b in range(1, 7) for p in range(1, 5)}
+    for p, v in enumerate([1, 4, 4, 1], 1):
+        a[f"4.{p}"] = v
+    return a
+
+
+def test_veto_block_present_and_line_excluded():
+    r = compute_finance_result(veto_answers())
+    l4 = next(l for l in r["lines"] if l["line"] == 4)
+    assert "VETO_APPLIED" in l4["flags"]
+    assert l4["symbol"] == "B" and l4["moving"] is False
+
+    interp = build_interpretation(r, control_content())
+
+    vb = interp["veto_block"]
+    assert vb is not None
+    assert vb["line"] == 4
+    assert vb["score"] == l4["score"]
+
+    # Линия 4 не дублируется ни в приоритетах, ни в плановых шагах
+    assert all(p["line"] != 4 for p in interp["priorities"])
+    assert all(p["line"] != 4 for p in interp["planned_steps"])
+
+
+def test_veto_first_in_next_steps():
+    r = compute_finance_result(veto_answers())
+    interp = build_interpretation(r, control_content())
+    vb = interp["veto_block"]
+    if vb["package_text"] != PLACEHOLDER:
+        assert interp["next_steps"][0] == vb["package_text"]
+
+
+def test_no_veto_block_without_veto():
+    r = compute_finance_result(control_answers())
+    interp = build_interpretation(r, control_content())
+    assert interp["veto_block"] is None
+    # Контрольный кейс: линия 6 остаётся приоритетом
+    assert interp["priorities"][0]["line"] == 6

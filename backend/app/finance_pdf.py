@@ -160,6 +160,36 @@ def finance_section_html(finance_result: dict, interp: dict, company_name: str, 
     else:
         priorities_html = card('<div style="font-size:13px;color:rgba(26,37,64,0.5);font-family:Arial,sans-serif;">Подвижных линий нет — приоритетных зон вмешательства не выделено.</div>')
 
+    # 6b — вето: условие, блокирующее трансформацию (Поправка П6)
+    vb = interp.get("veto_block")
+    if vb:
+        veto_html = card(
+            f'<div style="font-size:13px;color:{ink};font-family:Arial,sans-serif;line-height:1.7;">'
+            f'<b>{e(vb.get("block_title") or "")}</b> — балл {vb.get("score")}, '
+            f'линия переопределена в Инь по правилу вето: первое лицо не обозначило '
+            f'развитие этой функции как приоритет.<br><br>'
+            f'{e(vb.get("package_text") or "")}'
+            '</div>')
+    else:
+        veto_html = ""
+
+    # 6c — плановые шаги (иньские линии без подвижности)
+    pl = interp.get("planned_steps") or []
+    if pl:
+        _items = ""
+        for p in pl:
+            _items += (
+                '<div style="margin-bottom:10px;">'
+                f'<div style="font-size:13px;color:{ink};font-family:Arial,sans-serif;">'
+                f'<b>{e(p.get("block_title") or "")}</b></div>'
+                f'<div style="font-size:12px;color:rgba(26,37,64,0.7);font-family:Arial,sans-serif;'
+                f'margin-top:2px;">{e(p.get("package_text") or "")}</div>'
+                '</div>')
+        planned_html = card(_items)
+    else:
+        planned_html = card('<div style="font-size:13px;color:rgba(26,37,64,0.5);'
+                            'font-family:Arial,sans-serif;">Плановых шагов не выделено.</div>')
+
     # 7 — траектория
     traj = interp.get("trajectory")
     if traj:
@@ -205,7 +235,9 @@ def finance_section_html(finance_result: dict, interp: dict, company_name: str, 
         f'{h2("02","Профиль линий")}{card(profile)}'
         f'{h2("03","Ресурс и направление")}{quadrant}'
         f'{h2("04","Ключевые напряжения")}{tensions_html}'
-        f'{h2("05","Приоритеты вмешательства")}{priorities_html}'
+        + (f'{h2("05","Условие, блокирующее трансформацию")}{veto_html}' if vb else "")
+        + f'{h2("06","Приоритеты вмешательства")}{priorities_html}'
+        + f'{h2("07","Плановые шаги")}{planned_html}'
         f'{h2("06","Траектория")}{trajectory_html}'
         f'{h2("07","Оговорки по данным")}{caveats_html}'
         f'{h2("08","Следующие шаги")}{steps_html}'
