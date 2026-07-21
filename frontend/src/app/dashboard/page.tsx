@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getMe, listAssessments, deleteAssessment, logout, listContours, type AuthUser, type Assessment, type ContourInfo } from '@/lib/api'
+import { getMe, listAssessments, deleteAssessment, logout, listContours, isMethod2, type AuthUser, type Assessment, type ContourInfo } from '@/lib/api'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
 
 const finChar = (c?: string | null) =>
@@ -218,7 +218,7 @@ export default function DashboardPage() {
                     </div>
                     <div style={S.cardTitle}>
                       {a.status === 'completed' || a.status === 'paid'
-                        ? (a.method === 'method2'
+                        ? (isMethod2(a)
                             ? `Бизнес-модель · ${a.company_name || user?.company_name || '—'}`
                             : `Стратегическая диагностика · ${a.company_name || user?.company_name || '—'}`)
                         : 'Незавершённая диагностика'}
@@ -244,7 +244,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                     )}
-                    {(a.status === 'completed' || a.status === 'paid') && a.method === 'method1' && contours.some(c => c.enabled && c.contour !== 'finance') && (
+                    {(a.status === 'completed' || a.status === 'paid') && !isMethod2(a) && contours.some(c => c.enabled && c.contour !== 'finance') && (
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(26,37,64,0.08)' }}>
                         <div style={{ fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.4)', fontWeight: 700, marginBottom: 6 }}>
                           Контуры диагностики

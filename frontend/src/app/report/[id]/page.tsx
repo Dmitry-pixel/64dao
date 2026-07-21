@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { getMe, getAssessment, reportDownloadUrl, listContours, type AuthUser, type Assessment, type ContourInfo } from '@/lib/api'
+import { getMe, getAssessment, reportDownloadUrl, listContours, isMethod2, type AuthUser, type Assessment, type ContourInfo } from '@/lib/api'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
 import HexDiagram, { HexLines } from '@/components/HexDiagram'
 import LifecycleChart from '@/components/LifecycleChart'
@@ -100,9 +100,7 @@ export default function ReportPage() {
       .then(([u, a]) => {
         setUser(u)
         setAssessment(a)
-        const isMethod2Only = a.method
-          ? a.method === 'method2'
-          : !!(a.method2_data && Object.keys(a.method2_data).length > 0)
+        const isMethod2Only = isMethod2(a)
         if (a.method1_combination && !isMethod2Only) {
           fetch(`${API}/api/strategies/${a.method1_combination}`, { credentials: 'include' })
             .then(r => r.ok ? r.json() : null)
@@ -141,9 +139,7 @@ export default function ReportPage() {
   const combo = assessment.method1_combination || '??????'
   const hasReport = assessment.reports.length > 0
   const method2 = assessment.method2_data
-  const isMethod2Only = assessment.method
-    ? assessment.method === 'method2'
-    : !!(method2 && Object.keys(method2).length > 0)
+  const isMethod2Only = isMethod2(assessment)
   const companyName = assessment.company_name || user?.company_name || 'Компания'
 
   const hexChar = comboToChar(combo)

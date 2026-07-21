@@ -167,6 +167,18 @@ export interface ContourSubmitResult {
   result: Record<string, unknown>
 }
 
+/**
+ * Метод диагностики. Признак приходит с сервера (assessments.method);
+ * откат на содержимое method2_data — только для ответов, отданных до
+ * появления поля. Единственное место, где это решается: раньше проверка
+ * была скопирована в четыре файла и разъезжалась.
+ */
+export function isMethod2(a: { method?: string | null; method2_data?: unknown }): boolean {
+  if (a.method) return a.method === 'method2'
+  const d = a.method2_data as Record<string, unknown> | null | undefined
+  return !!(d && Object.keys(d).length > 0)
+}
+
 export async function listContours() {
   return request<{ contours: ContourInfo[] }>('/api/method1/contours')
 }
