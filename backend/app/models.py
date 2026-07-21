@@ -132,6 +132,7 @@ class FinContent(Base):
     id:         Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
     kind:       Mapped[str]       = mapped_column(String(20), nullable=False, index=True)
     key:        Mapped[str]       = mapped_column(String(40), nullable=False)
+    contour:    Mapped[str]       = mapped_column(String(20), nullable=False, server_default="common")
     payload:    Mapped[dict]      = mapped_column(JSONB, nullable=False)
     sort:       Mapped[int]       = mapped_column(Integer, nullable=False, default=0, server_default="0")
     is_active:  Mapped[bool]      = mapped_column(Boolean, nullable=False, default=True, server_default="true")
@@ -139,7 +140,11 @@ class FinContent(Base):
     updated_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (
-        UniqueConstraint("kind", "key", name="uq_fin_content_kind_key"),
+        UniqueConstraint("kind", "key", "contour", name="uq_fin_content_kind_key_contour"),
+        CheckConstraint(
+            "contour IN ('common','finance','product','market','process')",
+            name="chk_fin_content_contour",
+        ),
         CheckConstraint(
             "kind IN ('tonality','quadrant','trigram','tension_rule','action_package')",
             name="chk_fin_content_kind",
@@ -156,6 +161,7 @@ class Assessment(Base):
     method1_answers:     Mapped[dict | None]= mapped_column(JSONB)
     method1_combination: Mapped[str | None]= mapped_column(String(6))
     method2_data:        Mapped[dict | None]= mapped_column(JSONB)
+    method:              Mapped[str]       = mapped_column(String(10), nullable=False, server_default="method1")
     finance_answers:     Mapped[dict | None]= mapped_column(JSONB)   # {"1.1": 3, "1.2": null, ...}; NULL только для legacy
     finance_result:      Mapped[dict | None]= mapped_column(JSONB)   # снимок скоринга (воспроизводимость отчёта)
     finance_combination: Mapped[str | None]= mapped_column(String(6))
@@ -166,13 +172,39 @@ class Assessment(Base):
 
     __table_args__ = (
         CheckConstraint("status IN ('draft','completed','paid')", name="chk_assessment_status"),
+        CheckConstraint("method IN ('method1','method2')", name="assessments_method_check"),
         CheckConstraint(r"method1_combination IS NULL OR method1_combination ~ '^[AB]{6}$'", name="chk_assessment_combination"),
         CheckConstraint(r"finance_combination IS NULL OR finance_combination ~ '^[AB]{6}$'", name="chk_assessment_finance_combination"),
     )
 
     user:    Mapped["User"]          = relationship(back_populates="assessments")
     reports: Mapped[list["Report"]]  = relationship(back_populates="assessment", cascade="all, delete-orphan")
+    contours: Mapped[list["AssessmentContour"]] = relationship(back_populates="assessment", cascade="all, delete-orphan")
     orders:  Mapped[list["Order"]]   = relationship(back_populates="assessment", cascade="all, delete-orphan")
+
+
+# ── Assessment contours (мультиконтурная диагностика Метода 1) ───────────────
+class AssessmentContour(Base):
+    __tablename__ = "assessment_contours"
+
+    id:            Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    assessment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False, index=True)
+    contour:       Mapped[str]       = mapped_column(String(20), nullable=False)
+    answers:       Mapped[dict]      = mapped_column(JSONB, nullable=False)
+    result:        Mapped[dict]      = mapped_column(JSONB, nullable=False)
+    combination:   Mapped[str]       = mapped_column(String(6), nullable=False)
+    created_at:    Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at:    Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("assessment_id", "contour", name="uq_contour_per_assessment"),
+        CheckConstraint("contour IN ('finance','product','market','process')", name="chk_contour_name"),
+        CheckConstraint(r"combination ~ '^[AB]{6}$'", name="chk_contour_combination"),
+        CheckConstraint("jsonb_typeof(answers) = 'object'", name="chk_contour_answers_obj"),
+        CheckConstraint("jsonb_typeof(result) = 'object'", name="chk_contour_result_obj"),
+    )
+
+    assessment: Mapped["Assessment"] = relationship(back_populates="contours")
 
 
 # ── Reports ───────────────────────────────────────────────────────────────────

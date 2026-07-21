@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.auth import get_current_user
 from app.config import get_settings
 from app.db import get_db
-from app.models import Assessment, Report, Strategy, User
+from app.models import Assessment, AssessmentContour, Report, Strategy, User
 from app.pdf import generate_pdf, build_report_html
 from app.routers.payments import calculate_credits
 from app.finance_service import resolve_submission_finance, FinanceRequiredError
@@ -52,6 +52,22 @@ def _date_ru(dt: datetime) -> str:
     return s
 
 
+async def _load_contour(db, assessment, contour: str):
+    """Читает контур из assessment_contours. Для finance падает обратно на
+    колонки finance_* — они остаются rollback-окном до миграции 010."""
+    row = await db.scalar(
+        select(AssessmentContour).where(
+            AssessmentContour.assessment_id == assessment.id,
+            AssessmentContour.contour == contour,
+        )
+    )
+    if row:
+        return row.result, row.combination
+    if contour == "finance":
+        return assessment.finance_result, assessment.finance_combination
+    return None, None
+
+
 @router.post("", response_model=AssessmentOut)
 async def create_assessment(
     body: AssessmentCreate,
@@ -67,7 +83,7 @@ async def create_assessment(
             )
 
     # Финансовый блок Метода 1: скоринг считает сервер (не доверяем фронту).
-    is_method1 = body.method2_data is None
+    is_method1 = not body.method2_data
     try:
         finance_result, finance_combination = resolve_submission_finance(
             body.finance_answers,
@@ -78,11 +94,17 @@ async def create_assessment(
     except (FinanceRequiredError, InvalidAnswersError, BlockUnderfilledError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
+    method2_payload = (
+        {k: v.model_dump() for k, v in body.method2_data.items()}
+        if body.method2_data else None
+    )
+
     assessment = Assessment(
         user_id=user.id,
         method1_answers=body.method1_answers,
         method1_combination=body.method1_combination,
-        method2_data={k: v.model_dump() for k, v in (body.method2_data or {}).items()},
+        method2_data=method2_payload,
+        method="method2" if method2_payload else "method1",
         company_name=body.company_name or user.company_name,
         status=body.status,
         finance_answers=body.finance_answers,
@@ -91,6 +113,18 @@ async def create_assessment(
     )
     db.add(assessment)
     await db.flush()
+
+    # Двойная запись финансового контура: assessment_contours — основное хранилище,
+    # колонки finance_* остаются rollback-окном до миграции 010.
+    if finance_result and finance_combination and body.finance_answers:
+        db.add(AssessmentContour(
+            assessment_id=assessment.id,
+            contour="finance",
+            answers=body.finance_answers,
+            result=finance_result,
+            combination=finance_combination,
+        ))
+        await db.flush()
 
     result = await db.execute(
         select(Assessment)
@@ -327,14 +361,15 @@ async def get_finance_interpretation(
         raise HTTPException(status_code=403, detail="Нет доступа")
     _ensure_result_access(assessment, user)
 
-    if not assessment.finance_result:
+    fin_result, fin_combo = await _load_contour(db, assessment, "finance")
+    if not fin_result:
         return {"has_finance": False}
     content = await load_content(db)
-    interp = build_interpretation(assessment.finance_result, content)
+    interp = build_interpretation(fin_result, content)
     return {
         "has_finance": True,
-        "finance_result": assessment.finance_result,
-        "finance_combination": assessment.finance_combination,
+        "finance_result": fin_result,
+        "finance_combination": fin_combo,
         "interpretation": interp,
     }
 
@@ -353,13 +388,13 @@ async def build_html_for_assessment(db, assessment, user, allow_draft: bool = Fa
             q = q.where(Strategy.is_published == True)
         strategy = await db.scalar(q)
 
-    finance_result = assessment.finance_result
+    finance_result, finance_combination = await _load_contour(db, assessment, "finance")
     finance_interpretation = None
     finance_strategy = None
     if finance_result:
         finance_content = await load_content(db)
         finance_interpretation = build_interpretation(finance_result, finance_content)
-        fin_combo = assessment.finance_combination or finance_result.get("combination_current")
+        fin_combo = finance_combination or finance_result.get("combination_current")
         if fin_combo:
             finance_strategy = await db.scalar(
                 select(Strategy).where(Strategy.combination == fin_combo)
@@ -374,9 +409,7 @@ async def build_html_for_assessment(db, assessment, user, allow_draft: bool = Fa
         for s in stages_rows
     ]
 
-    is_method2 = bool(assessment.method2_data) or (
-        not assessment.method1_answers and not assessment.method1_combination
-    )
+    is_method2 = assessment.method == "method2"
 
     return build_report_html(
         is_method2=is_method2,

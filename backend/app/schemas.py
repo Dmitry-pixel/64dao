@@ -107,6 +107,7 @@ class AssessmentOut(BaseModel):
     user_id:             uuid.UUID
     method1_combination: str | None
     method2_data:        dict[str, Any] | None
+    method:              str = "method1"
     company_name:        str | None
     status:              str
     created_at:          datetime
