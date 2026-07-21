@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getMe, listAssessments, deleteAssessment, logout, type AuthUser, type Assessment } from '@/lib/api'
+import { getMe, listAssessments, deleteAssessment, logout, listContours, type AuthUser, type Assessment, type ContourInfo } from '@/lib/api'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
 
 const finChar = (c?: string | null) =>
@@ -79,6 +79,11 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [credits, setCredits] = useState<number>(0)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [contours, setContours] = useState<ContourInfo[]>([])
+
+  useEffect(() => {
+    listContours().then(r => setContours(r.contours)).catch(() => setContours([]))
+  }, [])
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -213,7 +218,7 @@ export default function DashboardPage() {
                     </div>
                     <div style={S.cardTitle}>
                       {a.status === 'completed' || a.status === 'paid'
-                        ? (a.method2_data && Object.keys(a.method2_data).length > 0 && a.method1_combination === 'AAAAAA'
+                        ? (a.method === 'method2'
                             ? `Бизнес-модель · ${a.company_name || user?.company_name || '—'}`
                             : `Стратегическая диагностика · ${a.company_name || user?.company_name || '—'}`)
                         : 'Незавершённая диагностика'}
@@ -237,6 +242,31 @@ export default function DashboardPage() {
                             </span>
                           </>
                         )}
+                      </div>
+                    )}
+                    {(a.status === 'completed' || a.status === 'paid') && a.method === 'method1' && contours.some(c => c.enabled && c.contour !== 'finance') && (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(26,37,64,0.08)' }}>
+                        <div style={{ fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.4)', fontWeight: 700, marginBottom: 6 }}>
+                          Контуры диагностики
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, alignItems: 'center' }}>
+                          {contours.filter(c => c.enabled && c.contour !== 'finance').map(c => {
+                            const passed = (a.passed_contours || []).find(p => p.contour === c.contour)
+                            return passed ? (
+                              <span key={c.contour} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.6)', border: '1px solid rgba(26,37,64,0.12)', borderRadius: 4, padding: '3px 8px' }}>
+                                {c.title}
+                                <span style={{ fontFamily: 'serif', fontSize: 16, color: '#1e3a8a', lineHeight: 1 }} title={`Текущая · ${passed.combination}`}>
+                                  {finChar(passed.combination)}
+                                </span>
+                              </span>
+                            ) : (
+                              <button key={c.contour} style={S.btnSoft}
+                                onClick={e => { e.stopPropagation(); router.push(`/assessment/contour/${c.contour}?assessment=${a.id}`) }}>
+                                {c.title} — пройти →
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>

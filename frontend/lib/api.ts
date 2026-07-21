@@ -135,7 +135,55 @@ export interface FinanceItemsResponse {
 }
 
 export async function getFinanceItems() {
-  return request<FinanceItemsResponse>('/api/method1/finance-items')
+  return request<ContourItemsResponse>('/api/method1/finance-items')
+}
+
+// ── Контуры диагностики Метода 1 ─────────────────────────────────────────────
+
+export interface ContourItemsResponse extends FinanceItemsResponse {
+  contour: string
+  title: string
+  intro: string
+  max_unknowns: number
+}
+
+export interface ContourInfo {
+  contour: string
+  title: string
+  intro: string
+  enabled: boolean
+}
+
+export interface PassedContour {
+  contour: string
+  combination: string
+  created_at: string
+}
+
+export interface ContourSubmitResult {
+  contour: string
+  title: string
+  combination: string
+  result: Record<string, unknown>
+}
+
+export async function listContours() {
+  return request<{ contours: ContourInfo[] }>('/api/method1/contours')
+}
+
+export async function getContourItems(contour: string) {
+  return request<ContourItemsResponse>(`/api/method1/contour-items/${contour}`)
+}
+
+export async function submitContour(
+  assessmentId: string,
+  contour: string,
+  answers: Record<string, number | null>,
+) {
+  return request<ContourSubmitResult>(
+    `/api/assessments/${assessmentId}/contours/${contour}`,
+    { method: 'POST', body: JSON.stringify({ answers }) },
+  )
 }
 
 export async function listAssessments() {
@@ -330,6 +378,7 @@ export interface Assessment {
   company_name: string | null
   status: 'draft' | 'completed' | 'paid'
   created_at: string
+  passed_contours?: PassedContour[]
   reports: ReportOut[]
   strategy_image_url: string | null
   finance_combination?: string | null

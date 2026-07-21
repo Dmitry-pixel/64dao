@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getMe, getFinanceItems, type AuthUser, type FinanceBlock } from '@/lib/api'
+import ContourSurvey from '@/components/ContourSurvey'
 
 const QUESTIONS = [
   {
@@ -81,10 +82,9 @@ function AssessmentInner() {
   const [bmcTexts, setBmcTexts] = useState<Record<number, string>>({})
   const [activeBlock, setActiveBlock] = useState(0)
   const [submitting, setSubmitting] = useState(false)
-  const [financeAnswers, setFinanceAnswers] = useState<Record<string, number | null>>({})
-  const [finBlockIdx, setFinBlockIdx] = useState(0)
   const [finItems, setFinItems] = useState<FinanceBlock[] | null>(null)
   const [finScale, setFinScale] = useState<Record<string, string>>({})
+  const [finMaxUnknowns, setFinMaxUnknowns] = useState(3)
   const [finLoading, setFinLoading] = useState(false)
 
   useEffect(() => {
@@ -122,38 +122,17 @@ function AssessmentInner() {
       try {
         const data = await getFinanceItems()
         setFinItems(data.blocks); setFinScale(data.scale_labels)
+        setFinMaxUnknowns(data.max_unknowns ?? 3)
       } catch { alert('Не удалось загрузить вопросы финансового блока. Попробуйте ещё раз.') }
       finally { setFinLoading(false) }
     }
-  }
-
-  function setFinAnswer(itemId: string, value: number | null) {
-    setFinanceAnswers(prev => ({ ...prev, [itemId]: value }))
-  }
-  function finBlockUnknowns(items: { item_id: string }[]) {
-    return items.filter(it => financeAnswers[it.item_id] === null).length
-  }
-  function finBlockComplete(items: { item_id: string }[]) {
-    const answered = items.every(it => it.item_id in financeAnswers)
-    return answered && finBlockUnknowns(items) <= 1
-  }
-  function finNext() {
-    if (!finItems) return
-    const block = finItems[finBlockIdx]
-    if (!finBlockComplete(block.items)) return
-    if (finBlockIdx < 5) setFinBlockIdx(i => i + 1)
-    else submitMethod1()
-  }
-  function finPrev() {
-    if (finBlockIdx > 0) setFinBlockIdx(i => i - 1)
-    else setMode('finance_intro')
   }
 
   function prevStep() {
     if (step > 0) setStep(s => s - 1)
   }
 
-  async function submitMethod1() {
+  async function submitMethod1(financeAnswers: Record<string, number | null>) {
     setSubmitting(true)
     const answersMap: Record<string, string> = {}
     const combo = Object.values(answers).map(v => v).join('')
@@ -178,7 +157,10 @@ function AssessmentInner() {
           method: 'POST',
           credentials: 'include',
         }).catch(() => {})
-        setMode('waiting')
+        // Цепочка контуров: после финблока предлагаем продолжить, а не уводим
+        // в кабинет. Развилка сама решит, что показать (Метод 2 не затрагивается).
+        router.push(`/assessment/continue?assessment=${assessment.id}`)
+        return
       } else {
         const errText = await res.text().catch(() => '')
         alert(`Save failed (${res.status}). ${errText}`)
@@ -463,84 +445,30 @@ function AssessmentInner() {
   // ── Финансовый блок — степпер 6 блоков × 4 утверждения ────────────────────
   if (mode === 'finance') {
     if (!finItems) return (
-      <div style={{ minHeight: '100vh', background: '#e8e4db' }}><NavBar />
-        <div style={S.qStage}><p style={{ fontFamily: 'sans-serif', color: 'rgba(26,37,64,0.6)' }}>Загрузка…</p></div>
-      </div>
-    )
-    const block = finItems[finBlockIdx]
-    const unknowns = finBlockUnknowns(block.items)
-    const unknownLimit = 3
-    const totalUnknowns = Object.values(financeAnswers).filter(v => v === null).length
-    const complete = finBlockComplete(block.items)
-    return (
       <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
         <NavBar />
         <div style={S.qStage}>
-          <div style={S.qProgress}>
-            <span style={{ fontFamily: 'sans-serif', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.4)' }}>Метод 01 · Часть 2 · Финансовая функция</span>
-            <div style={S.qProgressBar}><div style={{ ...S.qProgressFill, width: `${(finBlockIdx / 6) * 100}%` }} /></div>
-            <span style={{ fontFamily: 'Georgia,serif', fontSize: 14, color: '#1a2540' }}>Блок {finBlockIdx + 1} / 6</span>
-          </div>
-
-          <div style={S.finHead}>
-            <div style={S.qEyebrow}>Блок {block.block} из 6</div>
-            <h2 style={{ ...S.qQuestion, fontSize: 26 }}>{block.title}</h2>
-            <p style={S.finLegend}>{[1, 2, 3, 4].map(n => `${n} — ${finScale[String(n)] || ''}`).join('   ·   ')}</p>
-            <p style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.55)', lineHeight: 1.6, marginTop: 10, maxWidth: 620 }}>
-              «Не знаю» снижает точность: балл по линии будет рассчитан по трём пунктам, а сама линия помечается в отчёте как неполная. Выбирайте, только если данных действительно нет.
-            </p>
-          </div>
-
-          <div style={{ maxWidth: 760 }}>
-            {block.items.map(it => {
-              const val = it.item_id in financeAnswers ? financeAnswers[it.item_id] : undefined
-              return (
-                <div key={it.item_id} style={S.finItem}>
-                  <div style={S.finItemText}>{it.text}</div>
-                  <div style={S.finScaleRow}>
-                    {[1, 2, 3, 4].map(n => (
-                      <button key={n} title={finScale[String(n)] || ''}
-                        style={{ ...S.finScaleBtn, ...(val === n ? S.finScaleBtnOn : {}) }}
-                        onClick={() => setFinAnswer(it.item_id, n)}>{n}</button>
-                    ))}
-                    <button disabled={val !== null && totalUnknowns >= unknownLimit}
-                      style={{ ...S.finScaleBtn, marginLeft: 18, opacity: (val !== null && totalUnknowns >= unknownLimit) ? 0.35 : 1, ...(val === null ? S.finUnknownOn : {}) }}
-                      onClick={() => setFinAnswer(it.item_id, null)}>Не знаю</button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          <p style={{ fontFamily: 'sans-serif', fontSize: 12, marginTop: 10, color: totalUnknowns >= unknownLimit ? '#c0392b' : 'rgba(26,37,64,0.5)' }}>
-            {'\u00ab\u041d\u0435 \u0437\u043d\u0430\u044e\u00bb: '}{totalUnknowns}{' \u0438\u0437 '}{unknownLimit}
-            {totalUnknowns >= unknownLimit ? '\u0020\u2014\u0020\u043b\u0438\u043c\u0438\u0442 \u0438\u0441\u0447\u0435\u0440\u043f\u0430\u043d' : ''}
-          </p>
-          {totalUnknowns >= unknownLimit && !complete && (
-            <p style={{ fontFamily: 'sans-serif', fontSize: 12, color: '#c0392b', marginTop: 8 }}>
-              Лимит «Не знаю» исчерпан — оцените оставшиеся пункты по шкале 1–4.
-              Если точных данных нет, выберите ближайшее приближение.
-            </p>
-          )}
-          {unknowns > 1 && (
-            <p style={{ fontFamily: 'sans-serif', fontSize: 12, color: '#c0392b', marginTop: 8 }}>
-              В блоке допускается не более одного ответа «Не знаю». Уточните оценку.
-            </p>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 28, maxWidth: 760 }}>
-            <button style={S.btnGhost} onClick={finPrev}>← Назад</button>
-            <button style={{ ...S.btnPrimary, opacity: (!complete || unknowns > 1 || submitting) ? 0.4 : 1, minWidth: 150, justifyContent: 'center' }}
-              disabled={!complete || unknowns > 1 || submitting} onClick={finNext}>
-              {finBlockIdx === 5 ? (submitting ? 'Отправка…' : 'Завершить →') : 'Далее →'}
-            </button>
-          </div>
+          <p style={{ fontFamily: 'sans-serif', color: 'rgba(26,37,64,0.6)' }}>Загрузка…</p>
         </div>
+      </div>
+    )
+    return (
+      <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
+        <NavBar />
+        <ContourSurvey
+          title="Метод 01 · Часть 2 · Финансовая функция"
+          blocks={finItems}
+          scaleLabels={finScale}
+          maxUnknowns={finMaxUnknowns}
+          submitting={submitting}
+          onSubmit={(a) => submitMethod1(a)}
+          onCancel={() => setMode('finance_intro')}
+        />
       </div>
     )
   }
 
-  // ── Метод 2 — BMC ─────────────────────────────────────────────────────────
+
   if (mode === 'method2') {
     const block = BMC_BLOCKS[activeBlock]
     const score = bmcScores[activeBlock] || 0

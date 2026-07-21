@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getMe, listAssessments, deleteAssessment } from '@/lib/api'
+import { getMe, listAssessments, deleteAssessment, listContours, type ContourInfo } from '@/lib/api'
 import { AdminNav, AdminSide, hexFor, hexNameFor } from '@/components/AdminNav'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
@@ -21,6 +21,11 @@ export default function AdminMyReportsPage() {
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [contours, setContours] = useState<ContourInfo[]>([])
+
+  useEffect(() => {
+    listContours().then(r => setContours(r.contours)).catch(() => setContours([]))
+  }, [])
 
   useEffect(() => {
     const init = async () => {
@@ -122,6 +127,34 @@ export default function AdminMyReportsPage() {
                         : 'Диагностика в процессе'}
                     </div>
                     <div className="dash-detail">{a.status === 'draft' ? 'Черновик' : 'Завершено'}</div>
+                    {!isMethod2(a) && a.status !== 'draft' && (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(26,37,64,0.08)' }}>
+                        <div style={{ fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.4)', fontWeight: 700, marginBottom: 6 }}>
+                          Состав диагностики
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, alignItems: 'center' }}>
+                          {contours.filter(c => c.enabled).map(c => {
+                            const passed = (a.passed_contours || []).find((p: any) => p.contour === c.contour)
+                            if (passed) return (
+                              <span key={c.contour} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.65)', border: '1px solid rgba(26,37,64,0.12)', borderRadius: 4, padding: '3px 8px' }}>
+                                {c.title}
+                                <span style={{ fontFamily: 'serif', fontSize: 16, color: '#1e3a8a', lineHeight: 1 }} title={`${hexNameFor(passed.combination)} · ${passed.combination}`}>
+                                  {hexFor(passed.combination)}
+                                </span>
+                              </span>
+                            )
+                            if (c.contour === 'finance') return null
+                            return (
+                              <button key={c.contour}
+                                style={{ fontFamily: 'sans-serif', fontSize: 11, color: '#1a2540', background: 'none', border: '1px dashed rgba(26,37,64,0.3)', borderRadius: 4, padding: '3px 10px', cursor: 'pointer' }}
+                                onClick={e => { e.stopPropagation(); router.push(`/assessment/contour/${c.contour}?assessment=${a.id}`) }}>
+                                {c.title} — пройти →
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="dash-actions">
                     <span className={`pill pill-${a.status}`}>

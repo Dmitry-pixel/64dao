@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { getMe, getAssessment, reportDownloadUrl, type AuthUser, type Assessment } from '@/lib/api'
+import { getMe, getAssessment, reportDownloadUrl, listContours, type AuthUser, type Assessment, type ContourInfo } from '@/lib/api'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
 import HexDiagram, { HexLines } from '@/components/HexDiagram'
 import LifecycleChart from '@/components/LifecycleChart'
@@ -84,6 +84,11 @@ export default function ReportPage() {
   const assessmentId = params.id as string
   const [user, setUser] = useState<AuthUser | null>(null)
   const [assessment, setAssessment] = useState<Assessment | null>(null)
+  const [contours, setContours] = useState<ContourInfo[]>([])
+
+  useEffect(() => {
+    listContours().then(r => setContours(r.contours)).catch(() => setContours([]))
+  }, [])
   const [strategy, setStrategy] = useState<any>(null)
   const [finReport, setFinReport] = useState<any>(null)
   const [finStrategy, setFinStrategy] = useState<any>(null)
@@ -496,6 +501,44 @@ export default function ReportPage() {
                 </div>
               )
             })()}
+            {/* Дополнение диагностики контурами */}
+            {!isMethod2Only && (() => {
+              const passed = new Set((assessment.passed_contours || []).map(p => p.contour))
+              const avail = contours.filter(c => c.enabled && c.contour !== 'finance' && !passed.has(c.contour))
+              if (avail.length === 0) return null
+              const passedExtra = contours.filter(c => c.contour !== 'finance' && passed.has(c.contour)).length
+              return (
+                <div style={S.section}>
+                  <span style={S.labelRed}>Дополнение диагностики</span>
+                  <h2 style={{ fontFamily: 'Georgia,serif', fontSize: 24, fontWeight: 400, color: '#1a2540', margin: '10px 0 12px' }}>
+                    Диагностика может быть дополнена
+                  </h2>
+                  <p style={{ ...S.reportText, marginBottom: 12 }}>
+                    Этот отчёт описывает зрелость финансовой функции. Остальные контуры не повторяют
+                    её, а достраивают картину: каждый оценивает свою функцию по той же шкале и даёт
+                    собственную гексаграмму с приоритетами.
+                  </p>
+                  <p style={{ ...S.reportText, marginBottom: 16 }}>
+                    {passedExtra === 0
+                      ? 'Со второго пройденного контура в отчёте появится сводная карта — сравнение зрелости функций между собой и указание на то, какая из них сдерживает остальные.'
+                      : 'Каждый следующий контур уточняет сводную карту и делает вывод о системном ограничении устойчивее.'}
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 10 }}>
+                    {avail.map(c => (
+                      <button key={c.contour}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: '#1a2540', color: '#fff', border: 'none', borderRadius: 6, fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer' }}
+                        onClick={() => router.push(`/assessment/contour/${c.contour}?assessment=${assessment.id}`)}>
+                        {c.title} →
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ ...S.faint, marginTop: 12 }}>
+                    24 утверждения, около 10 минут на контур. Дополнительная оплата не требуется.
+                  </p>
+                </div>
+              )
+            })()}
+
             {/* Секция 03 — Целевой сценарий */}
             <div style={S.section} id="s4">
               <h2 style={S.sectionH2}><span style={S.num}>03</span>Целевой сценарий</h2>
