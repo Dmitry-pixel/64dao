@@ -224,6 +224,22 @@ export function assessmentPdfUrl(assessmentId: string) {
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
+export interface Company {
+  id: string
+  name: string
+  assessment_count: number
+  latest_at: string | null
+}
+
+export function getCompanies() {
+  return request<Company[]>('/api/companies')
+}
+
+export function getCompanyDynamics(id: string, compare: 'previous' | 'first' = 'previous') {
+  return request<any>(`/api/companies/${id}/dynamics?compare=${compare}`)
+}
+
+
 export const adminApi = {
   stats:          () => request('/api/admin/stats'),
   users:          () => request('/api/admin/users'),
