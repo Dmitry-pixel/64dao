@@ -636,9 +636,7 @@ def build_report_html(
           </div>
         </div>"""
 
-    # Блок "Предположения" — строим до page2, чтобы вставить простой переменной
-    assumptions_html = _assumptions_block(strategy)
-    # Блок "Целевой сценарий" — строим до page2, чтобы вставить простой переменной
+    # Блок "Целевой сценарий" — строим заранее, чтобы вставить простой переменной
     transition_html = _transition_block(strategy, target_hex_info)
 
     # ── Обложка ──────────────────────────────────────────────────────────────
@@ -670,13 +668,6 @@ def build_report_html(
     # ── Страница 1 (только для Method 1): Жизненный цикл + Таблица ──────
     page1 = ""
     if not is_method2:
-        lifecycle_badge_html = (
-            f'<div style="display:inline-block;padding:4px 14px;border-radius:4px;font-size:13px;'
-            f'font-family:Arial,sans-serif;background:rgba(192,57,43,0.08);'
-            f'border:1px solid rgba(192,57,43,0.2);color:#c0392b;margin-bottom:20px;">'
-            f'{e(strategy.lifecycle_stage or "")}</div>'
-        ) if strategy and strategy.lifecycle_stage else ""
-
         current_state_html = f"""
 <div style="background:rgba(26,37,64,0.03);border-radius:6px;padding:14px 18px;margin-bottom:18px;">
   <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#c0392b;font-weight:600;font-family:Arial,sans-serif;">Стратагема</div>
@@ -701,42 +692,6 @@ def build_report_html(
     <span>64dao.ru</span><span>© 2024 64DAO — Конфиденциально</span>
   </div>
 </div>"""
-
-    # ── Страница 2: Сценарий + Маркетинг + Управление + Предположения + Переход ──
-    page2 = ""
-    if False:  # база облегчена: сценарий/маркетинг/управление/предположения → раздел «Финансовая функция»
-        def _text_block(text: str | None) -> str:
-            val = (e(text) if text else '<em style="opacity:0.4;">Не заполнено</em>')
-            return (
-                '<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:20px;'
-                'background:rgba(255,255,255,0.4);margin-bottom:20px;">'
-                f'<p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;margin:0;font-family:Arial,sans-serif;">{val}</p>'
-                '</div>'
-            )
-
-        page2 = f"""
-        <div style="padding:40px 50px;page-break-after:always;background:#e8e4db;min-height:297mm;">
-          <div style="display:flex;justify-content:space-between;align-items:center;
-                      padding-bottom:14px;border-bottom:1px solid rgba(26,37,64,0.12);margin-bottom:28px;">
-            <span style="font-size:11px;font-weight:700;color:#c0392b;font-family:Arial,sans-serif;letter-spacing:2px;">64DAO</span>
-            <span style="font-size:10px;color:rgba(26,37,64,0.3);font-family:Arial,sans-serif;">
-              {e(company_name)} · стр. 2
-            </span>
-          </div>
-          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 12px;"><span style="font-size:11px;color:#c0392b;margin-right:8px;">02</span>Сценарий развития</h2>
-          {_text_block(strategy.scenario_text)}
-          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 12px;">Маркетинг</h2>
-          {_text_block(strategy.marketing_text)}
-          <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 12px;">Управление</h2>
-          {_text_block(strategy.management_text)}
-          {assumptions_html}
-          {transition_html}
-          <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);
-                      display:flex;justify-content:space-between;font-family:Arial,sans-serif;
-                      font-size:10px;color:rgba(26,37,64,0.3);">
-            <span>64dao.ru</span><span>© 2024 64DAO — Конфиденциально</span>
-          </div>
-        </div>"""
 
     # Номер страницы BMC
     if is_method2:
