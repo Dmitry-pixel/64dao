@@ -162,9 +162,6 @@ class Assessment(Base):
     method1_combination: Mapped[str | None]= mapped_column(String(6))
     method2_data:        Mapped[dict | None]= mapped_column(JSONB)
     method:              Mapped[str]       = mapped_column(String(10), nullable=False, server_default="method1")
-    finance_answers:     Mapped[dict | None]= mapped_column(JSONB)   # {"1.1": 3, "1.2": null, ...}; NULL только для legacy
-    finance_result:      Mapped[dict | None]= mapped_column(JSONB)   # снимок скоринга (воспроизводимость отчёта)
-    finance_combination: Mapped[str | None]= mapped_column(String(6))
     company_name:        Mapped[str | None]= mapped_column(String(255), nullable=True)
     status:              Mapped[str]       = mapped_column(String(20), nullable=False, default="draft")
     created_at:          Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -174,7 +171,6 @@ class Assessment(Base):
         CheckConstraint("status IN ('draft','completed','paid')", name="chk_assessment_status"),
         CheckConstraint("method IN ('method1','method2')", name="assessments_method_check"),
         CheckConstraint(r"method1_combination IS NULL OR method1_combination ~ '^[AB]{6}$'", name="chk_assessment_combination"),
-        CheckConstraint(r"finance_combination IS NULL OR finance_combination ~ '^[AB]{6}$'", name="chk_assessment_finance_combination"),
     )
 
     user:    Mapped["User"]          = relationship(back_populates="assessments")

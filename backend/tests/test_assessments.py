@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock
 import pytest
 from sqlalchemy import select
 
-from app.models import Assessment, Report, Strategy
+from app.models import Assessment, AssessmentContour, Report, Strategy
 
 
 VALID_COMBINATION = "AABABA"  # 6 символов A/B — проходит regex-валидацию схемы
@@ -338,11 +338,14 @@ async def test_create_assessment_three_unknowns_accepted_and_flagged(auth_client
     ))
     assert resp.status_code == 200
 
-    saved = await db_session.scalar(
-        select(Assessment).where(Assessment.id == resp.json()["id"])
+    fin = await db_session.scalar(
+        select(AssessmentContour).where(
+            AssessmentContour.assessment_id == resp.json()["id"],
+            AssessmentContour.contour == "finance",
+        )
     )
-    assert saved.finance_result is not None
-    assert "LOW_DATA_COMPLETENESS" in saved.finance_result["quality_flags"]
+    assert fin is not None
+    assert "LOW_DATA_COMPLETENESS" in fin.result["quality_flags"]
 
-    partial = [ln for ln in saved.finance_result["lines"] if "PARTIAL_BLOCK" in ln["flags"]]
+    partial = [ln for ln in fin.result["lines"] if "PARTIAL_BLOCK" in ln["flags"]]
     assert len(partial) == 3

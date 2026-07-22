@@ -59,8 +59,8 @@ def _date_ru(dt: datetime) -> str:
 
 
 async def _load_contour(db, assessment, contour: str):
-    """Читает контур из assessment_contours. Для finance падает обратно на
-    колонки finance_* — они остаются rollback-окном до миграции 010."""
+    """Читает контур из assessment_contours — единственное хранилище финансового
+    контура после миграции 011."""
     row = await db.scalar(
         select(AssessmentContour).where(
             AssessmentContour.assessment_id == assessment.id,
@@ -69,8 +69,6 @@ async def _load_contour(db, assessment, contour: str):
     )
     if row:
         return row.result, row.combination
-    if contour == "finance":
-        return assessment.finance_result, assessment.finance_combination
     return None, None
 
 
@@ -113,15 +111,11 @@ async def create_assessment(
         method="method2" if method2_payload else "method1",
         company_name=body.company_name or user.company_name,
         status=body.status,
-        finance_answers=body.finance_answers,
-        finance_result=finance_result,
-        finance_combination=finance_combination,
     )
     db.add(assessment)
     await db.flush()
 
-    # Двойная запись финансового контура: assessment_contours — основное хранилище,
-    # колонки finance_* остаются rollback-окном до миграции 010.
+    # Финансовый контур хранится только в assessment_contours (после миграции 011).
     if finance_result and finance_combination and body.finance_answers:
         db.add(AssessmentContour(
             assessment_id=assessment.id,
@@ -132,12 +126,16 @@ async def create_assessment(
         ))
         await db.flush()
 
-    result = await db.execute(
+    assessment = (await db.execute(
         select(Assessment)
         .where(Assessment.id == assessment.id)
         .options(selectinload(Assessment.reports))
-    )
-    return result.scalar_one()
+    )).scalar_one()
+    item = AssessmentOut.model_validate(assessment)
+    if finance_result and finance_combination:
+        item.finance_combination = finance_combination
+        item.finance_result = finance_result
+    return item
 
 
 @router.get("", response_model=list[AssessmentOut])
@@ -179,9 +177,12 @@ async def list_assessments(
         item = AssessmentOut.model_validate(a)
         if a.method1_combination and a.method1_combination in strategies_map:
             item.strategy_image_url = strategies_map[a.method1_combination]
-        item.passed_contours = [
-            ContourBrief.model_validate(r) for r in contours_map.get(a.id, [])
-        ]
+        _rows_a = contours_map.get(a.id, [])
+        item.passed_contours = [ContourBrief.model_validate(r) for r in _rows_a]
+        _fin = next((r for r in _rows_a if r.contour == "finance"), None)
+        if _fin:
+            item.finance_combination = _fin.combination
+            item.finance_result = _fin.result
         out.append(item)
     return out
 
@@ -212,6 +213,10 @@ async def get_assessment(
         )
     )).scalars().all()
     item.passed_contours = [ContourBrief.model_validate(r) for r in rows]
+    _fin = next((r for r in rows if r.contour == "finance"), None)
+    if _fin:
+        item.finance_combination = _fin.combination
+        item.finance_result = _fin.result
     return item
 
 

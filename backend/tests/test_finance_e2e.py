@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import select
 
 import app.routers.assessments as assessments_router
-from app.models import FinContent, Strategy, Assessment
+from app.models import FinContent, Strategy, Assessment, AssessmentContour
 from app.finance_interpret import load_content, build_interpretation
 from app.pdf import build_report_html
 
@@ -86,16 +86,19 @@ async def test_e2e_finance_flow(auth_client, db_session):
     assert interp["trajectory"]["resulting"]["number"] == 14
 
     assessment = await db_session.scalar(select(Assessment).where(Assessment.id == uuid.UUID(aid)))
+    fin = await db_session.scalar(select(AssessmentContour).where(
+        AssessmentContour.assessment_id == uuid.UUID(aid),
+        AssessmentContour.contour == "finance"))
     content = await load_content(db_session)
-    interpretation = build_interpretation(assessment.finance_result, content)
+    interpretation = build_interpretation(fin.result, content)
     base_strategy = await db_session.scalar(select(Strategy).where(Strategy.combination == "AAAABB"))
     fin_strategy = await db_session.scalar(
-        select(Strategy).where(Strategy.combination == assessment.finance_combination))
+        select(Strategy).where(Strategy.combination == fin.combination))
 
     html = build_report_html(
         company_name="E2E Компания", user_name="CFO", date_str="сегодня",
         combination=assessment.method1_combination, strategy=base_strategy, method2_data=None,
-        finance_result=assessment.finance_result, finance_interpretation=interpretation,
+        finance_result=fin.result, finance_interpretation=interpretation,
         finance_strategy=fin_strategy,
     )
 
