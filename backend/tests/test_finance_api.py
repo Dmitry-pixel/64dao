@@ -107,6 +107,47 @@ async def test_fin_content_forbidden_for_non_admin(auth_client):
     assert put.status_code == 403
 
 
+@pytest.mark.asyncio
+async def test_fin_content_contour_override(admin_client):
+    """Переопределение под контур — отдельная строка, общий слой не затрагивается."""
+    await admin_client.put("/api/fin-content/tonality/mature",
+                           json={"payload": {"text": "общий"}})
+    ov = await admin_client.put("/api/fin-content/tonality/mature?contour=product",
+                                json={"payload": {"text": "для продукта"}})
+    assert ov.status_code == 200, ov.text
+    assert ov.json()["contour"] == "product"
+
+    lst = (await admin_client.get("/api/fin-content?kind=tonality")).json()
+    mature = [r for r in lst if r["key"] == "mature"]
+    contours = {r["contour"] for r in mature}
+    assert {"common", "product"} <= contours
+
+    only = (await admin_client.get("/api/fin-content?kind=tonality&contour=product")).json()
+    assert all(r["contour"] == "product" for r in only)
+    assert any(r["key"] == "mature" and r["payload"]["text"] == "для продукта" for r in only)
+    # общий слой не перезаписан
+    common = (await admin_client.get("/api/fin-content?kind=tonality&contour=common")).json()
+    assert any(r["key"] == "mature" and r["payload"]["text"] == "общий" for r in common)
+
+
+@pytest.mark.asyncio
+async def test_fin_content_override_delete_reverts(admin_client):
+    await admin_client.put("/api/fin-content/tonality/crisis", json={"payload": {"text": "общий"}})
+    await admin_client.put("/api/fin-content/tonality/crisis?contour=market",
+                           json={"payload": {"text": "рынок"}})
+    d = await admin_client.delete("/api/fin-content/tonality/crisis?contour=market")
+    assert d.status_code == 204
+    only = (await admin_client.get("/api/fin-content?kind=tonality&contour=market")).json()
+    assert not any(r["key"] == "crisis" for r in only)
+
+
+@pytest.mark.asyncio
+async def test_fin_content_delete_common_forbidden_400(admin_client):
+    await admin_client.put("/api/fin-content/tonality/transitional", json={"payload": {"text": "x"}})
+    d = await admin_client.delete("/api/fin-content/tonality/transitional?contour=common")
+    assert d.status_code == 400
+
+
 # ── GET /api/method1/finance-items ────────────────────────────────────────────
 @pytest.mark.asyncio
 async def test_finance_items_endpoint(auth_client):

@@ -312,6 +312,7 @@ class FinContentOut(BaseModel):
     id:        uuid.UUID
     kind:      str
     key:       str
+    contour:   str
     payload:   dict[str, Any]
     sort:      int
     is_active: bool
