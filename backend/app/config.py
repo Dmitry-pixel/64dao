@@ -86,6 +86,7 @@ class Settings(BaseSettings):
     # По умолчанию False: старый фронт без финблока работает, финрезультат пуст.
     # Включить (FINANCE_BLOCK_REQUIRED=true) синхронно с новым фронтом (Этап 6).
     finance_block_required: bool = False
+    subscription_period_days: int = 365   # период подписки на «Динамику» (роадмап 3.1)
 
     # ── Tochka Bank API ───────────────────────────────────────────────────────
     tochka_api_base_url: str = "https://enter.tochka.com"
