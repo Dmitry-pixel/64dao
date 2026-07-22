@@ -186,7 +186,10 @@ export default function ContourSurvey({
       <div style={{ marginTop: 18 }}>
         {block.items.map(it => {
           const val = it.item_id in answers ? answers[it.item_id] : undefined
-          const unknownBlocked = val !== null && limitReached
+          // Гасим «Не знаю» и по лимиту анкеты, и по лимиту блока: второй пропуск
+          // в блоке делает линию неопределимой (§3.6), и узнавать об этом
+          // постфактум, упёршись в заблокированную кнопку «Далее», — плохо.
+          const unknownBlocked = val !== null && (limitReached || blockUnknowns >= 1)
           return (
             <div key={it.item_id} style={C.item}>
               <div style={C.itemText}>{it.text}</div>

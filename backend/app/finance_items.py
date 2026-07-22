@@ -102,3 +102,16 @@ ITEMS_BY_ID: dict[str, FinanceItem] = {i["item_id"]: i for i in FINANCE_ITEMS}
 ITEMS_BY_BLOCK: dict[int, list[FinanceItem]] = {
     b: [i for i in FINANCE_ITEMS if i["block"] == b] for b in BLOCKS
 }
+
+
+# ── Спецификация контура для обобщённого скоринга (этап 2 плана контуров) ─────
+from app.contour_scoring import ContourSpec
+
+FINANCE_SPEC = ContourSpec(
+    key="finance",
+    title="Финансовая функция",
+    blocks=BLOCKS,
+    items=list(FINANCE_ITEMS),
+    reverse_items=REVERSE_ITEMS,
+    veto_items=VETO_ITEMS,
+)
