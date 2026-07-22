@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 from app.auth import get_current_user
 from app.config import get_settings
 from app.db import get_db
-from app.models import Assessment, AssessmentContour, Report, Strategy, User
+from app.models import Assessment, AssessmentContour, Company, Report, Strategy, User
 from app.pdf import generate_pdf, build_report_html
 from app.routers.payments import calculate_credits
 from app.finance_service import resolve_submission_finance, FinanceRequiredError
@@ -103,13 +103,29 @@ async def create_assessment(
         if body.method2_data else None
     )
 
+    # Компания: явный company_id (свой) либо find-or-create по имени (роадмап 3.1).
+    if body.company_id:
+        company = await db.scalar(select(Company).where(
+            Company.id == body.company_id, Company.user_id == user.id))
+        if not company:
+            raise HTTPException(status_code=404, detail="Компания не найдена")
+    else:
+        cname = (body.company_name or user.company_name or "").strip() or "Без названия"
+        company = await db.scalar(select(Company).where(
+            Company.user_id == user.id, Company.name == cname))
+        if not company:
+            company = Company(user_id=user.id, name=cname)
+            db.add(company)
+            await db.flush()
+
     assessment = Assessment(
         user_id=user.id,
         method1_answers=body.method1_answers,
         method1_combination=body.method1_combination,
         method2_data=method2_payload,
         method="method2" if method2_payload else "method1",
-        company_name=body.company_name or user.company_name,
+        company_name=company.name,
+        company_id=company.id,
         status=body.status,
     )
     db.add(assessment)

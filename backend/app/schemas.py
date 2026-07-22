@@ -54,6 +54,7 @@ class AssessmentCreate(BaseModel):
     method2_data:        dict[str, Method2Block] | None = None
     finance_answers:     dict[str, int | None] | None = None
     company_name:        str | None = None
+    company_id:          uuid.UUID | None = None
     status:              str = Field(default="completed")
 
     @field_validator("method1_combination")
@@ -322,6 +323,13 @@ class FinContentUpsert(BaseModel):
     payload:   dict[str, Any]
     sort:      int = 0
     is_active: bool = True
+
+
+class CompanyOut(BaseModel):
+    id:               uuid.UUID
+    name:             str
+    assessment_count: int = 0
+    latest_at:        datetime | None = None
 
 
 class SubscriptionOut(BaseModel):

@@ -36,6 +36,7 @@ class User(Base):
     reports:     Mapped[list["Report"]]     = relationship(back_populates="user", cascade="all, delete-orphan")
     orders:      Mapped[list["Order"]]      = relationship(back_populates="user", cascade="all, delete-orphan")
     subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    companies:   Mapped[list["Company"]]    = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 # ── OTP codes ─────────────────────────────────────────────────────────────────
@@ -164,6 +165,7 @@ class Assessment(Base):
     method2_data:        Mapped[dict | None]= mapped_column(JSONB)
     method:              Mapped[str]       = mapped_column(String(10), nullable=False, server_default="method1")
     company_name:        Mapped[str | None]= mapped_column(String(255), nullable=True)
+    company_id:          Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
     status:              Mapped[str]       = mapped_column(String(20), nullable=False, default="draft")
     created_at:          Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:          Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -177,6 +179,7 @@ class Assessment(Base):
     user:    Mapped["User"]          = relationship(back_populates="assessments")
     reports: Mapped[list["Report"]]  = relationship(back_populates="assessment", cascade="all, delete-orphan")
     contours: Mapped[list["AssessmentContour"]] = relationship(back_populates="assessment", cascade="all, delete-orphan")
+    company:  Mapped["Company | None"] = relationship(back_populates="assessments")
     orders:  Mapped[list["Order"]]   = relationship(back_populates="assessment", cascade="all, delete-orphan")
 
 
@@ -292,3 +295,20 @@ class Subscription(Base):
     )
 
     user: Mapped["User"] = relationship(back_populates="subscriptions")
+
+
+# ── Companies (группировка диагностик компании, роадмап 3.1) ──────────────────
+class Company(Base):
+    __tablename__ = "companies"
+
+    id:         Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id:    Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name:       Mapped[str]       = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_company_user_name"),
+    )
+
+    user:        Mapped["User"]              = relationship(back_populates="companies")
+    assessments: Mapped[list["Assessment"]]  = relationship(back_populates="company")
