@@ -203,20 +203,40 @@ def contour_section_html(
         planned_html = card('<div style="font-size:13px;color:rgba(26,37,64,0.5);'
                             'font-family:Arial,sans-serif;">Плановых шагов не выделено.</div>')
 
-    # 7 — траектория
-    traj = interp.get("trajectory")
-    if traj:
-        cur_n = str((traj.get("current") or {}).get("number", ""))
-        res_n = str((traj.get("resulting") or {}).get("number", ""))
-        trajectory_html = card(
-            '<div style="display:flex;align-items:center;gap:16px;">'
-            f'<div style="text-align:center;">{_finance_hexagram_svg(cur_code, moving_lines, 70)}<div style="font-size:11px;color:rgba(26,37,64,0.6);font-family:Arial,sans-serif;">№ {e(cur_n)}</div></div>'
-            f'<div style="font-size:22px;color:{accent};">→</div>'
-            f'<div style="text-align:center;">{_finance_hexagram_svg(res_code, [], 70)}<div style="font-size:11px;color:rgba(26,37,64,0.6);font-family:Arial,sans-serif;">№ {e(res_n)}</div></div>'
-            f'<div style="font-size:13px;color:{ink};font-family:Arial,sans-serif;line-height:1.6;">{e(traj.get("essence") or "")} <span style="color:{accent};">Предостережение:</span> {e(traj.get("mistake") or "")}</div>'
-            '</div>')
+    # 7 — маршрут перехода (роадмап 2.1): цепочка гексаграмм + шаги
+    route = interp.get("route") or []
+    if route:
+        chain = (f'<div style="text-align:center;">{_finance_hexagram_svg(cur_code, moving_lines, 58)}'
+                 f'<div style="font-size:10px;color:rgba(26,37,64,0.6);font-family:Arial,sans-serif;">№ {e(str(hc.get("number","")))}</div></div>')
+        for st in route:
+            ha = st.get("hexagram_after") or {}
+            chain += (f'<div style="font-size:18px;color:{accent};align-self:center;">→</div>'
+                      f'<div style="text-align:center;">{_finance_hexagram_svg(ha.get("code",""), [], 58)}'
+                      f'<div style="font-size:10px;color:rgba(26,37,64,0.6);font-family:Arial,sans-serif;">№ {e(str(ha.get("number","")))}</div></div>')
+        chain_html = card(f'<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">{chain}</div>')
+        caveat = ('<p style="font-size:12px;color:rgba(26,37,64,0.6);font-family:Arial,sans-serif;'
+                  'line-height:1.6;margin:0 0 12px;">Последовательность — рекомендуемая логика проработки, '
+                  'а не жёсткое предписание: темп и параллельность шагов определяются ресурсами компании.</p>')
+        steps_cards = ""
+        for st in route:
+            param = blocks[st["line"]]["title"].split(". ", 1)[-1]
+            direction = "укрепить слабую позицию" if st.get("from_state") == "old_yin" else "стабилизировать перегрев"
+            veto_note = (f' <span style="color:{accent};font-size:11px;">— снятие блокирующего условия</span>'
+                         if st.get("is_veto") else "")
+            mistake_html = (f'<div style="font-size:12px;color:{ink};font-family:Arial,sans-serif;margin-top:6px;">'
+                            f'<span style="color:{accent};">Предостережение:</span> {e(st.get("mistake") or "")}</div>'
+                            if st.get("is_last") and st.get("mistake") else "")
+            steps_cards += (
+                '<div style="border:1px solid rgba(26,37,64,0.1);border-radius:6px;padding:12px 16px;'
+                'background:rgba(255,255,255,0.45);margin-bottom:10px;page-break-inside:avoid;">'
+                f'<div style="font-size:13px;color:{ink};font-family:Arial,sans-serif;"><b>Шаг {st.get("order")}. Линия {st.get("line")} — {e(param)}</b> <span style="color:rgba(26,37,64,0.6);">({e(direction)})</span>{veto_note}</div>'
+                f'<div style="font-size:12px;color:rgba(26,37,64,0.75);font-family:Arial,sans-serif;margin-top:5px;">{e(st.get("action_text") or "")}</div>'
+                f'<div style="font-size:12px;color:rgba(26,37,64,0.55);font-family:Arial,sans-serif;margin-top:4px;">Состояние после шага: {e(st.get("after_essence") or "")}</div>'
+                f'{mistake_html}'
+                '</div>')
+        route_html = chain_html + caveat + steps_cards
     else:
-        trajectory_html = card('<div style="font-size:13px;color:rgba(26,37,64,0.6);font-family:Arial,sans-serif;">Подвижных линий нет — конфигурация стабильна, направленной трансформации не требуется.</div>')
+        route_html = card('<div style="font-size:13px;color:rgba(26,37,64,0.6);font-family:Arial,sans-serif;">Подвижных линий нет — конфигурация стабильна, направленной трансформации не требуется.</div>')
 
     # 8 — оговорки
     caveats = interp.get("caveats") or []
@@ -251,7 +271,7 @@ def contour_section_html(
         + (f'{h2("05","Условие, блокирующее трансформацию")}{veto_html}' if vb else "")
         + f'{h2("06","Приоритеты вмешательства")}{priorities_html}'
         + f'{h2("07","Плановые шаги")}{planned_html}'
-        f'{h2("06","Траектория")}{trajectory_html}'
+        f'{h2("06","Маршрут перехода")}{route_html}'
         f'{h2("07","Оговорки по данным")}{caveats_html}'
         f'{h2("08","Следующие шаги")}{steps_html}'
         '<div style="margin-top:24px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:10px;color:rgba(26,37,64,0.3);">'
@@ -363,6 +383,43 @@ def summary_card_html(summary: dict, company_name: str, section_no: str = "04") 
             'Конфигурация устойчива, направленной трансформации не требуется.</p>'
         )
 
+    # Сводный маршрут компании (роадмап 2.1)
+    sr = summary.get("route") or {}
+    summary_route_html = ""
+    _stages = sr.get("stages") or []
+    if _stages:
+        _title_of = {r["contour"]: r["title"] for r in rows}
+        _items = ""
+        for st in _stages:
+            cur = st.get("hexagram_current") or {}
+            res = st.get("hexagram_resulting") or {}
+            _title = _title_of.get(st["contour"], st["contour"])
+            _items += (
+                '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;'
+                'border-top:1px solid rgba(26,37,64,0.08);page-break-inside:avoid;">'
+                f'<div style="font-size:12px;color:{accent};font-family:Arial,sans-serif;font-weight:700;min-width:58px;">Этап {st.get("stage")}</div>'
+                f'<div style="flex:1;font-size:13px;color:{ink};font-family:Arial,sans-serif;">{e(_title)}'
+                f'<div style="font-size:11px;color:rgba(26,37,64,0.55);">{st.get("route_len")} шаг(ов) · точка входа: линия {e(str(st.get("entry_line")))}</div></div>'
+                f'<div style="display:flex;align-items:center;gap:6px;">{_finance_hexagram_svg(cur.get("code",""), [], 42)}'
+                f'<span style="color:{accent};">→</span>{_finance_hexagram_svg(res.get("code",""), [], 42)}</div>'
+                '</div>')
+        _stable_route = ""
+        if sr.get("stable"):
+            _names2 = ", ".join(e(_title_of.get(k, k)) for k in sr["stable"])
+            _stable_route = (f'<p style="font-size:12px;color:rgba(26,37,64,0.6);font-family:Arial,sans-serif;'
+                             f'margin:10px 0 0;">Стабильные контуры (без маршрута): {_names2}.</p>')
+        _focus_route = ""
+        if sr.get("focus_first"):
+            _focus_route = (f'<p style="font-size:12px;color:{accent};font-family:Arial,sans-serif;margin:8px 0 0;">'
+                            'Рекомендуется сфокусировать ресурсы на этапе 1; остальные контуры — в поддерживающем режиме.</p>')
+        summary_route_html = (
+            '<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:14px 18px;'
+            'background:rgba(255,255,255,0.45);margin-top:16px;page-break-inside:avoid;">'
+            f'<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:{accent};'
+            'font-weight:600;font-family:Arial,sans-serif;margin-bottom:6px;">Сводный маршрут компании</div>'
+            + _items + _stable_route + _focus_route +
+            '</div>')
+
     return (
         '<div style="padding:40px 50px;background:#e8e4db;page-break-before:always;">'
         '<div style="display:flex;justify-content:space-between;align-items:center;'
@@ -385,6 +442,7 @@ def summary_card_html(summary: dict, company_name: str, section_no: str = "04") 
         f'<p style="font-size:13px;color:{ink};font-family:Arial,sans-serif;line-height:1.7;margin:0;">{verdict}</p>'
         + stable_html +
         '</div>'
+        + summary_route_html +
         '<div style="margin-top:24px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);'
         'display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:10px;color:rgba(26,37,64,0.3);">'
         '<span>64dao.ru</span><span>© 2024 64DAO — Конфиденциально</span>'

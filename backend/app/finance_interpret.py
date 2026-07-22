@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 from app.finance_items import BLOCKS
+from app.contour_route import build_route
 
 PLACEHOLDER = "Не заполнено"
 
@@ -180,6 +181,20 @@ def build_interpretation(result: dict, content: dict, blocks: dict | None = None
     next_steps = [p["package_text"] for p in _ordered
                   if p["package_text"] != PLACEHOLDER]
 
+    # Маршрут перехода (роадмап 2.1): шаги по подвижным линиям, текст из контента.
+    route = build_route(result["lines"], result["combination_current"])
+    _lines_by_num = {l["line"]: l for l in result["lines"]}
+    for i, step in enumerate(route):
+        ha = step["hexagram_after"]
+        pkg = content.get("action_package", {}).get(step["action_key"])
+        step["action_text"] = (pkg or {}).get("text") or PLACEHOLDER
+        fp = content.get("fin_pattern", {}).get(ha.get("code"))
+        step["after_essence"] = (fp or {}).get("essence") or PLACEHOLDER
+        step["is_last"] = i == len(route) - 1
+        step["mistake"] = ((fp or {}).get("mistake") or PLACEHOLDER) if step["is_last"] else None
+        _ln = _lines_by_num.get(step["line"], {})
+        step["is_veto"] = "VETO_APPLIED" in (_ln.get("flags") or [])
+
     return {
         "tonality": tonality,
         "veto_block": veto_block,
@@ -190,6 +205,7 @@ def build_interpretation(result: dict, content: dict, blocks: dict | None = None
         "priorities": priorities,
         "planned_steps": planned_steps,
         "trajectory": trajectory,
+        "route": route,
         "caveats": caveats,
         "next_steps": next_steps,
     }

@@ -505,7 +505,11 @@ async def load_report_contours(db, assessment, finance_result):
     for key, row in by_key.items():
         all_results[key] = row.result
 
-    return extra, build_summary(all_results)
+    summary = build_summary(all_results)
+    if summary is not None:
+        from app.contour_route import build_summary_route
+        summary["route"] = build_summary_route(all_results)
+    return extra, summary
 
 
 async def build_html_for_assessment(db, assessment, user, allow_draft: bool = False) -> str:
