@@ -14,7 +14,7 @@ from app.models import User, Assessment, AssessmentContour, Report, Strategy, Or
 from app.schemas import (
     AdminSetupRequest, AdminStats, LogEntry,
     StrategyCreate, StrategyUpdate, StrategyOut, StrategyListItem,
-    UserOut, AssessmentOut, ImpersonateStatus, SuccessResponse,
+    UserOut, AssessmentOut, ImpersonateStatus, SuccessResponse, ContourBrief,
 )
 
 settings = get_settings()
@@ -411,7 +411,28 @@ async def list_all_assessments(
         .order_by(Assessment.created_at.desc())
         .limit(100)
     )
-    return result.scalars().all()
+    assessments = result.scalars().all()
+
+    # Пройденные контуры — одним запросом на всю выдачу (как в списке диагностик
+    # пользователя), чтобы админка показывала, что можно сбросить.
+    contours_map: dict = {}
+    if assessments:
+        rows = (await db.execute(
+            select(AssessmentContour).where(
+                AssessmentContour.assessment_id.in_([a.id for a in assessments])
+            )
+        )).scalars().all()
+        for r in rows:
+            contours_map.setdefault(r.assessment_id, []).append(r)
+
+    out = []
+    for a in assessments:
+        item = AssessmentOut.model_validate(a)
+        item.passed_contours = [
+            ContourBrief.model_validate(r) for r in contours_map.get(a.id, [])
+        ]
+        out.append(item)
+    return out
 
 
 # ── Impersonation ─────────────────────────────────────────────────────────────

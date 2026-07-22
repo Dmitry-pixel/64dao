@@ -233,6 +233,8 @@ export const adminApi = {
   updateStrategy: (id: string, d: unknown) => request(`/api/admin/strategies/${id}`, { method: 'PUT', body: JSON.stringify(d) }),
   deleteStrategy: (id: string) => request(`/api/admin/strategies/${id}`, { method: 'DELETE' }),
   reports:        () => request('/api/admin/reports'),
+  resetContour:   (assessmentId: string, contour: string) =>
+    request<void>(`/api/admin/assessments/${assessmentId}/contours/${contour}`, { method: 'DELETE' }),
   logs:           () => request<LogEntry[]>('/api/admin/logs'),
   emailTemplates:     () => request<Record<string, EmailTemplate>>('/api/admin/email-templates'),
   saveEmailTemplates: (d: Record<string, EmailTemplate>) => request('/api/admin/email-templates', { method: 'PUT', body: JSON.stringify(d) }),

@@ -10,6 +10,8 @@ export default function AdminUserPage() {
   const [userData, setUserData] = useState<any>(null)
   const [assessments, setAssessments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [resetting, setResetting] = useState<string | null>(null)
+  const [msg, setMsg] = useState('')
 
   useEffect(() => {
     getMe()
@@ -28,6 +30,27 @@ export default function AdminUserPage() {
       .catch(() => router.push('/login'))
       .finally(() => setLoading(false))
   }, [router, userId])
+
+  const CONTOUR_TITLE: Record<string, string> = {
+    finance: 'Финансовая функция', product: 'Продукт/Сервис',
+    process: 'Операционные процессы', market: 'Рынок и продажи',
+  }
+
+  async function resetContour(aid: string, contour: string, title: string) {
+    if (!window.confirm(`Сбросить контур «${title}»? Пользователь сможет пройти его заново. Отменить нельзя.`)) return
+    setResetting(`${aid}:${contour}`); setMsg('')
+    try {
+      await adminApi.resetContour(aid, contour)
+      setAssessments(prev => prev.map(a => a.id === aid
+        ? { ...a, passed_contours: (a.passed_contours || []).filter((c: any) => c.contour !== contour) }
+        : a))
+      setMsg(`Контур «${title}» сброшен. Отчёт пересоберётся при следующем скачивании.`)
+    } catch (e: any) {
+      setMsg(`Не удалось сбросить «${title}»: ${e?.message || 'ошибка'}`)
+    } finally {
+      setResetting(null)
+    }
+  }
 
   if (loading) return (
     <div style={S.center}><p style={{ color: '#666', fontFamily: 'sans-serif' }}>Загрузка...</p></div>
@@ -63,6 +86,10 @@ export default function AdminUserPage() {
           </div>
         </div>
 
+        {msg && (
+          <div style={{ background: 'rgba(46,125,50,0.08)', border: '1px solid rgba(46,125,50,0.25)', borderRadius: 8, padding: '10px 14px', fontFamily: 'sans-serif', fontSize: 13, color: '#166534', marginBottom: 16 }}>{msg}</div>
+        )}
+
         {/* Диагностики пользователя */}
         <div style={S.card}>
           <h2 style={S.h2}>Диагностики ({assessments.length})</h2>
@@ -71,7 +98,7 @@ export default function AdminUserPage() {
           ) : (
             <table style={S.table}>
               <thead>
-                <tr>{['Комбинация', 'Статус', 'Отчётов', 'Дата', ''].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
+                <tr>{['Комбинация', 'Статус', 'Отчётов', 'Дата', 'Контуры', ''].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {assessments.map((a: any) => (
@@ -80,6 +107,18 @@ export default function AdminUserPage() {
                     <td style={S.td}>{a.status}</td>
                     <td style={S.td}>{a.reports.length}</td>
                     <td style={S.td}>{new Date(a.created_at).toLocaleDateString('ru-RU')}</td>
+                    <td style={S.td}>
+                      {((a.passed_contours || []).filter((c: any) => c.contour !== 'finance')).length === 0
+                        ? <span style={{ color: '#bbb' }}>—</span>
+                        : (a.passed_contours || []).filter((c: any) => c.contour !== 'finance').map((c: any) => (
+                          <span key={c.contour} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f1f5f9', borderRadius: 12, padding: '2px 8px', marginRight: 6, marginBottom: 4, fontSize: 12, color: '#475569' }}>
+                            {CONTOUR_TITLE[c.contour] || c.contour}
+                            <button onClick={() => resetContour(a.id, c.contour, CONTOUR_TITLE[c.contour] || c.contour)}
+                              disabled={resetting === `${a.id}:${c.contour}`} title="Сбросить контур"
+                              style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, opacity: resetting === `${a.id}:${c.contour}` ? 0.4 : 1 }}>×</button>
+                          </span>
+                        ))}
+                    </td>
                     <td style={S.td}>
                       {a.reports[0] && (
                         <a href={reportDownloadUrl(a.reports[0].id)} target="_blank" rel="noreferrer"
