@@ -22,7 +22,8 @@ from app.finance_interpret import load_content, build_interpretation
 from app.schemas import (
     AssessmentCreate, AssessmentOut, ContourBrief, ContourSubmit, ReportOut, StrategyOut,
 )
-from app.contours import CONTOURS, get_spec
+from app.contours import CONTOURS, CONTOUR_ORDER, get_spec
+from app.contour_summary import build_summary
 from app.contour_settings import is_contour_enabled
 from app.contour_scoring import compute_contour_result
 
@@ -392,11 +393,17 @@ async def get_finance_interpretation(
         return {"has_finance": False}
     content = await load_content(db)
     interp = build_interpretation(fin_result, content)
+    extra, summary = await load_report_contours(db, assessment, fin_result)
+    from app.finance_items import BLOCKS as _FIN_BLOCKS
     return {
         "has_finance": True,
+        "line_titles": {str(b): _FIN_BLOCKS[b]["title"].split(". ", 1)[-1]
+                        for b in _FIN_BLOCKS},
         "finance_result": fin_result,
         "finance_combination": fin_combo,
         "interpretation": interp,
+        "contours": extra,
+        "summary": summary,
     }
 
 
@@ -463,6 +470,44 @@ async def submit_contour(
     }
 
 
+async def load_report_contours(db, assessment, finance_result):
+    """Дополнительные контуры и сводная карта. Общая сборка для PDF и для API
+    страницы отчёта — иначе две версии отчёта разъедутся по составу разделов."""
+    rows = (await db.execute(
+        select(AssessmentContour).where(
+            AssessmentContour.assessment_id == assessment.id,
+            AssessmentContour.contour != "finance",
+        )
+    )).scalars().all()
+    by_key = {r.contour: r for r in rows}
+
+    extra = []
+    no = 5
+    for key in CONTOUR_ORDER:
+        if key == "finance" or key not in by_key:
+            continue
+        spec = get_spec(key)
+        content = await load_content(db, key)
+        extra.append({
+            "contour": key,
+            "title": spec.title,
+            "result": by_key[key].result,
+            "combination": by_key[key].combination,
+            "interp": build_interpretation(by_key[key].result, content, spec.blocks),
+            "section_no": f"{no:02d}",
+            # Названия линий — с сервера: во фронте они были бы копией реестра
+            "line_titles": {str(b): spec.blocks[b]["title"].split(". ", 1)[-1]
+                            for b in spec.blocks},
+        })
+        no += 1
+
+    all_results = {"finance": finance_result} if finance_result else {}
+    for key, row in by_key.items():
+        all_results[key] = row.result
+
+    return extra, build_summary(all_results)
+
+
 async def build_html_for_assessment(db, assessment, user, allow_draft: bool = False) -> str:
     """Единая сборка HTML отчёта: создание, предпросмотр и скачивание."""
     combination = assessment.method1_combination
@@ -489,6 +534,8 @@ async def build_html_for_assessment(db, assessment, user, allow_draft: bool = Fa
                 select(Strategy).where(Strategy.combination == fin_combo)
             )
 
+    extra_contours, summary = await load_report_contours(db, assessment, finance_result)
+
     from app.models import LifecycleStage
     stages_rows = (await db.execute(
         select(LifecycleStage).order_by(LifecycleStage.sort_order)
@@ -512,4 +559,6 @@ async def build_html_for_assessment(db, assessment, user, allow_draft: bool = Fa
         finance_result=finance_result,
         finance_interpretation=finance_interpretation,
         finance_strategy=finance_strategy,
+        extra_contours=extra_contours,
+        summary=summary,
     )

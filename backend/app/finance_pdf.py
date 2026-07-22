@@ -58,8 +58,21 @@ def _finance_hexagram_svg(combination: str, moving_lines, size: int = 96) -> str
             + "".join(rects) + "</svg>")
 
 
-def finance_section_html(finance_result: dict, interp: dict, company_name: str, description_html: str = "") -> str:
-    """Раздел «Финансовая функция» — 9 подразделов (Спецификация §5.8)."""
+def contour_section_html(
+    finance_result: dict,
+    interp: dict,
+    company_name: str,
+    *,
+    blocks: dict,
+    title: str,
+    section_no: str,
+    description_html: str = "",
+) -> str:
+    """Раздел контура — подразделы Спецификации §5.8.
+
+    Структура одна для всех контуров: меняются только набор заголовков блоков,
+    название и номер раздела. Полный профиль стратегии (description_html)
+    остаётся только у финансового контура — Поправка П8."""
     ink, accent = _FIN_INK, _FIN_ACCENT
     lines = finance_result.get("lines", [])
     lines_by_num = {l["line"]: l for l in lines}
@@ -84,7 +97,7 @@ def finance_section_html(finance_result: dict, interp: dict, company_name: str, 
         '<div style="display:flex;align-items:center;gap:20px;page-break-inside:avoid;">'
         f'{_finance_hexagram_svg(cur_code, moving_lines, 96)}'
         '<div>'
-        f'<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:{accent};font-weight:600;font-family:Arial,sans-serif;">Финансовая функция</div>'
+        f'<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:{accent};font-weight:600;font-family:Arial,sans-serif;">{e(title)}</div>'
         f'<div style="font-size:24px;color:{ink};margin-top:4px;">№ {e(str(hc.get("number","")))} «{e(hc.get("name",""))}»</div>'
         f'<div style="font-size:12px;color:rgba(26,37,64,0.5);font-family:monospace;letter-spacing:2px;margin-top:4px;">{e(cur_code)}</div>'
         f'<div style="font-size:11px;color:{accent};font-family:Arial,sans-serif;margin-top:6px;">{e(moving_note)}</div>'
@@ -107,7 +120,7 @@ def finance_section_html(finance_result: dict, interp: dict, company_name: str, 
         l = lines_by_num.get(n)
         if not l:
             continue
-        param = _FIN_BLOCKS[n]["title"].split(". ", 1)[-1]
+        param = blocks[n]["title"].split(". ", 1)[-1]
         state_ru = _FIN_STATE_RU.get(l["state"], l["state"])
         flags = " · ".join(_FIN_FLAG_RU.get(f, f) for f in l.get("flags", []))
         flag_html = f'<span style="color:{accent};font-size:11px;"> ⚠ {e(flags)}</span>' if flags else ""
@@ -225,10 +238,10 @@ def finance_section_html(finance_result: dict, interp: dict, company_name: str, 
         '<div style="padding:40px 50px;background:#e8e4db;page-break-before:always;">'
         '<div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;border-bottom:1px solid rgba(26,37,64,0.12);margin-bottom:24px;">'
         f'<span style="font-size:11px;font-weight:700;color:{accent};font-family:Arial,sans-serif;letter-spacing:2px;">64DAO</span>'
-        f'<span style="font-size:10px;color:rgba(26,37,64,0.3);font-family:Arial,sans-serif;">{e(company_name)} · финансовая функция</span>'
+        f'<span style="font-size:10px;color:rgba(26,37,64,0.3);font-family:Arial,sans-serif;">{e(company_name)} · {e(title.lower())}</span>'
         '</div>'
         f'<h2 style="font-size:22px;font-weight:400;color:{ink};margin:0 0 18px;">'
-        f'<span style="font-size:11px;color:{accent};margin-right:10px;">02</span>Финансовая функция</h2>'
+        f'<span style="font-size:11px;color:{accent};margin-right:10px;">{e(section_no)}</span>{e(title)}</h2>'
         f'{header}'
         f'{h2("01","Диагноз")}{diagnosis}'
         f'{description_html}'
@@ -242,6 +255,138 @@ def finance_section_html(finance_result: dict, interp: dict, company_name: str, 
         f'{h2("07","Оговорки по данным")}{caveats_html}'
         f'{h2("08","Следующие шаги")}{steps_html}'
         '<div style="margin-top:24px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:10px;color:rgba(26,37,64,0.3);">'
+        '<span>64dao.ru</span><span>© 2024 64DAO — Конфиденциально</span>'
+        '</div></div>'
+    )
+
+
+def finance_section_html(
+    finance_result: dict, interp: dict, company_name: str, description_html: str = "",
+    section_no: str = "03",
+) -> str:
+    """Финансовая функция — обёртка над общим рендером контура.
+
+    Номер раздела по умолчанию 03: после переноса «Целевого сценария» на
+    позицию 02 (Поправка П7) финансовая функция сдвинулась с 02 на 03.
+    """
+    from app.finance_items import BLOCKS
+    return contour_section_html(
+        finance_result, interp, company_name,
+        blocks=BLOCKS, title="Финансовая функция", section_no=section_no,
+        description_html=description_html,
+    )
+
+
+
+def summary_card_html(summary: dict, company_name: str, section_no: str = "04") -> str:
+    """Сводная карта контуров (§2.4, Поправки П5 и П9).
+
+    Выводится с двух пройденных контуров: сравнивать нечего, пока он один.
+    """
+    ink, accent = _FIN_INK, _FIN_ACCENT
+    rows = summary.get("rows") or []
+
+    th = ('<th style="text-align:left;padding:7px 8px;font-size:10px;text-transform:uppercase;'
+          'letter-spacing:1px;color:rgba(26,37,64,0.4);font-family:Arial,sans-serif;'
+          'font-weight:400;">')
+
+    body = ""
+    for r in rows:
+        cur = r.get("hexagram_current") or {}
+        res = r.get("hexagram_resulting") or {}
+        mark = r.get("is_constraint")
+        bg = "background:rgba(192,57,43,0.06);" if mark else ""
+        color = accent if mark else ink
+        note = ('<span style="font-size:10px;"> — вероятная зона ограничения</span>'
+                if mark else "")
+        body += (
+            f'<tr style="{bg}">'
+            f'<td style="padding:9px 8px;font-size:13px;color:{color};">'
+            f'{e(r.get("title") or "")}{note}</td>'
+            f'<td style="padding:9px 8px;text-align:center;font-size:12px;color:{color};">'
+            f'№{e(str(cur.get("number", "")))} {e(cur.get("name", ""))}</td>'
+            f'<td style="padding:9px 8px;text-align:center;font-size:12px;color:{color};">'
+            + (f'№{e(str(res.get("number", "")))} {e(res.get("name", ""))}' if res else "—")
+            + '</td>'
+            f'<td style="padding:9px 8px;text-align:center;font-family:monospace;font-size:13px;color:{color};">'
+            f'{e(str(r.get("maturity_index")))}/6</td>'
+            f'<td style="padding:9px 8px;text-align:center;font-family:monospace;font-size:13px;color:{color};">'
+            f'{e(str(r.get("moving_count")))}</td>'
+            '</tr>'
+        )
+
+    table = (
+        '<table style="width:100%;border-collapse:collapse;">'
+        '<thead><tr style="border-bottom:1px solid rgba(26,37,64,0.15);">'
+        f'{th}Контур</th>{th}Сейчас</th>{th}Результирующая</th>'
+        f'{th}Зрелость</th>{th}Подвижных</th></tr></thead>'
+        f'<tbody>{body}</tbody></table>'
+    )
+
+    # Вывод о системном ограничении
+    if summary.get("constraint"):
+        name = next((r["title"] for r in rows if r["contour"] == summary["constraint"]), "")
+        if summary.get("gap_significant"):
+            verdict = (
+                f'<b>{e(name)}</b> — наиболее вероятная зона системного ограничения по данным '
+                f'диагностики. Отрыв от ближайшего контура — {e(str(summary.get("gap")))} балла '
+                'зрелости, поэтому ресурсы рекомендуется сфокусировать здесь, а остальные '
+                'контуры вести в поддерживающем режиме.'
+            )
+        else:
+            verdict = (
+                f'<b>{e(name)}</b> — наиболее вероятная зона системного ограничения по данным '
+                'диагностики. Отрыв от остальных контуров невелик, поэтому работать с ними '
+                'можно параллельно.'
+            )
+    else:
+        tied = ", ".join(
+            e(next((r["title"] for r in rows if r["contour"] == k), k))
+            for k in (summary.get("tied") or [])
+        )
+        verdict = (
+            'Контуры сопоставимы по зрелости'
+            + (f' ({tied})' if tied else '')
+            + ' — по данным диагностики одна функция не выделяется как ограничение. '
+            'Выбор фокуса здесь остаётся управленческим решением, а не следствием расчёта.'
+        )
+
+    stable = summary.get("stable") or []
+    stable_html = ""
+    if stable:
+        names = ", ".join(
+            e(next((r["title"] for r in rows if r["contour"] == k), k)) for k in stable
+        )
+        stable_html = (
+            '<p style="font-size:12px;color:rgba(26,37,64,0.6);font-family:Arial,sans-serif;'
+            f'line-height:1.6;margin:10px 0 0;">Без подвижных линий: {names}. '
+            'Конфигурация устойчива, направленной трансформации не требуется.</p>'
+        )
+
+    return (
+        '<div style="padding:40px 50px;background:#e8e4db;page-break-before:always;">'
+        '<div style="display:flex;justify-content:space-between;align-items:center;'
+        'padding-bottom:14px;border-bottom:1px solid rgba(26,37,64,0.12);margin-bottom:24px;">'
+        f'<span style="font-size:11px;font-weight:700;color:{accent};font-family:Arial,sans-serif;letter-spacing:2px;">64DAO</span>'
+        f'<span style="font-size:10px;color:rgba(26,37,64,0.3);font-family:Arial,sans-serif;">{e(company_name)} · сводная карта</span>'
+        '</div>'
+        f'<h2 style="font-size:22px;font-weight:400;color:{ink};margin:0 0 8px;">'
+        f'<span style="font-size:11px;color:{accent};margin-right:10px;">{e(section_no)}</span>Сводная карта контуров</h2>'
+        '<p style="font-size:12px;color:rgba(26,37,64,0.55);font-family:Arial,sans-serif;'
+        'line-height:1.6;margin:0 0 18px;">Контуры оценены по одной шкале, поэтому их зрелость '
+        'сравнима между собой. Гексаграммы контуров описывают зрелость функции и не связаны '
+        'с гексаграммой раздела 01: там линии означают тип бизнеса, здесь — уровень зрелости.</p>'
+        '<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:12px 16px;'
+        'background:rgba(255,255,255,0.45);page-break-inside:avoid;">'
+        + table +
+        '</div>'
+        '<div style="border:1px solid rgba(192,57,43,0.2);border-radius:6px;padding:16px 20px;'
+        'background:rgba(192,57,43,0.04);margin-top:16px;page-break-inside:avoid;">'
+        f'<p style="font-size:13px;color:{ink};font-family:Arial,sans-serif;line-height:1.7;margin:0;">{verdict}</p>'
+        + stable_html +
+        '</div>'
+        '<div style="margin-top:24px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);'
+        'display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:10px;color:rgba(26,37,64,0.3);">'
         '<span>64dao.ru</span><span>© 2024 64DAO — Конфиденциально</span>'
         '</div></div>'
     )

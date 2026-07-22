@@ -5,6 +5,8 @@ import { getMe, getAssessment, reportDownloadUrl, listContours, isMethod2, type 
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
 import HexDiagram, { HexLines } from '@/components/HexDiagram'
 import LifecycleChart from '@/components/LifecycleChart'
+import ContourReportSection from '@/components/ContourReportSection'
+import ContourSummaryCard from '@/components/ContourSummaryCard'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
 
@@ -190,8 +192,10 @@ export default function ReportPage() {
     ? ['01 — Бизнес-модель (9 блоков)']
     : [
         '01 — Текущее состояние',
-        '02 — Финансовая функция',
-        '03 — Целевой сценарий',
+        '02 — Целевой сценарий',
+        ...(finReport?.has_finance ? ['03 — Финансовая функция'] : []),
+        ...(finReport?.summary ? ['04 — Сводная карта контуров'] : []),
+        ...((finReport?.contours || []).map((c: any) => `${c.section_no} — ${c.title}`)),
       ]
 
   // Дата с временем
@@ -334,169 +338,76 @@ export default function ReportPage() {
             </div>
 
 
-            {/* ── Финансовая функция ── */}
-            {finReport?.has_finance && (() => {
-              const fr = finReport.finance_result
-              const it = finReport.interpretation
-              const hc = fr.hexagram_current || {}
-              const linesByNum: Record<number, any> = {}
-              ;(fr.lines || []).forEach((l: any) => { linesByNum[l.line] = l })
-              const capLabel = (t: string) => (
-                <div style={{ fontSize: 10, color: '#c0392b', letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'sans-serif', fontWeight: 700, marginBottom: 8 }}>{t}</div>
-              )
-              return (
-                <div style={S.section} id="sf">
-                  <h2 style={S.sectionH2}><span style={S.num}>02</span>Финансовая функция</h2>
-                  <div style={S.stateGrid}>
-                    <div style={S.stateCell}><span style={S.labelRed}>Гексаграмма</span><div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 6 }}><HexLines combo={fr.combination_current || ''} /><div style={{ ...S.stateVal, marginTop: 0 }}>№ {hc.number} · {hc.name}</div></div></div>
-                    <div style={S.stateCell}><span style={S.labelRed}>Комбинация</span><div style={{ ...S.stateVal, fontFamily: 'monospace', letterSpacing: 3 }}>{fr.combination_current}</div></div>
-                  </div>
+            {/* Секция 02 — Целевой сценарий */}
+            <div style={S.section} id="s4">
+              <h2 style={S.sectionH2}><span style={S.num}>02</span>Целевой сценарий</h2>
 
-                  <div style={{ marginTop: 16 }}>
-                    {capLabel('Диагноз')}
-                    <div style={S.reportText}>
-                      <p style={{ marginBottom: 10 }}><strong>{it.tonality?.title}</strong> (индекс зрелости {fr.maturity_index}/6). {it.tonality?.text}</p>
-                      <p>{it.pattern_current?.essence} <span style={{ color: '#c0392b' }}>Типичная ошибка:</span> {it.pattern_current?.mistake}</p>
-                    </div>
-                  </div>
-
-                  {finStrategy && (<>
-                      {finStrategy.lifecycle_stage_index && (
-                        <LifecycleChart index={finStrategy.lifecycle_stage_index} />
-                      )}
-                    {finStrategy.stratagema_title && (
-                      <div style={{ marginTop: 12, padding: '12px 16px', borderRadius: 6, background: 'rgba(30,58,138,0.08)', border: '1px solid rgba(30,58,138,0.2)', color: '#1e3a8a', fontFamily: 'sans-serif', fontSize: 13, lineHeight: 1.6 }}>{finStrategy.stratagema_title}</div>
-                    )}
-                    <div style={{ marginTop: 16 }}>
-                      {capLabel('Сценарий развития')}
-                      <div style={S.reportText}>{finStrategy.scenario_text ? finStrategy.scenario_text.split('\n').map((pp: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{pp}</p>) : <em style={{ opacity: 0.4 }}>Не заполнено</em>}</div>
-                    </div>
-                    <div style={{ marginTop: 14 }}>{capLabel('Маркетинг')}<div style={{ border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '14px 16px', background: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.7)', lineHeight: 1.7 }}>{finStrategy.marketing_text || <em style={{ opacity: 0.4 }}>Не заполнено</em>}</div></div>
-                    <div style={{ marginTop: 14 }}>{capLabel('Управление')}<div style={{ border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '14px 16px', background: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.7)', lineHeight: 1.7 }}>{finStrategy.management_text || <em style={{ opacity: 0.4 }}>Не заполнено</em>}</div></div>
-                    <div style={{ marginTop: 16 }}>
-                      {capLabel('Предположения. Связи с будущим')}
-                      {ASSM_LABELS.map(([field, label]) => (
-                        <div key={field} style={{ marginBottom: 8 }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: '#c0392b', fontFamily: 'sans-serif', marginBottom: 4 }}>{label}</div>
-                          <p style={{ fontSize: 13, color: 'rgba(26,37,64,0.7)', lineHeight: 1.7, margin: 0, fontFamily: 'sans-serif' }}>{finStrategy[field] || <em style={{ opacity: 0.4 }}>Не заполнено</em>}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </>)}
-
-                  <div style={{ marginTop: 18 }}>
-                    {capLabel('Профиль линий')}
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'sans-serif', fontSize: 13 }}>
-                      <thead><tr><th style={S.th}>Линия</th><th style={S.th}>Параметр</th><th style={S.th}>Балл</th><th style={S.th}>Состояние</th></tr></thead>
-                      <tbody>
-                        {[6, 5, 4, 3, 2, 1].map(n => {
-                          const l = linesByNum[n]
-                          if (!l) return null
-                          const warn = Array.isArray(l.flags) && l.flags.includes('INCONSISTENT_BLOCK') ? ' ⚠' : ''
-                          return (<tr key={n}><td style={S.td}>{n}</td><td style={S.td}>{FIN_LINE_TITLES[n]}</td><td style={S.td}>{l.score.toFixed(2)}</td><td style={S.td}>{(FIN_STATE_RU[l.state] || l.state) + warn}</td></tr>)
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div style={{ marginTop: 16 }}>
-                    {capLabel('Ресурс и направление')}
-                    <div style={{ border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '14px 16px', background: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.72)', lineHeight: 1.7 }}>
-                      <p style={{ marginBottom: 8 }}><strong>Квадрант: {it.quadrant?.title}</strong>. {it.quadrant?.text}</p>
-                      <p style={{ marginBottom: 6 }}><strong>Нижняя ({it.trigrams?.lower?.title}):</strong> {it.trigrams?.lower?.text}</p>
-                      <p><strong>Верхняя ({it.trigrams?.upper?.title}):</strong> {it.trigrams?.upper?.text}</p>
-                    </div>
-                  </div>
-
-                  {it.tensions?.length > 0 && (
-                    <div style={{ marginTop: 16 }}>{capLabel('Ключевые напряжения')}
-                      <ul style={{ margin: 0, paddingLeft: 18, fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.72)', lineHeight: 1.6 }}>{it.tensions.map((t: any) => <li key={t.id} style={{ marginBottom: 6 }}>{t.text}</li>)}</ul>
-                    </div>
-                  )}
-
-                  {it.veto_block && (
-                    <div style={{ marginTop: 16 }}>{capLabel('Условие, блокирующее трансформацию')}
-                      <div style={{ fontFamily: 'sans-serif', fontSize: 13, color: '#c0392b' }}>
-                        <strong>{it.veto_block.block_title}</strong> — балл {it.veto_block.score}, линия переопределена в Инь по правилу вето: первое лицо не обозначило развитие этой функции как приоритет.
-                      </div>
-                      <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)', marginTop: 6 }}>{it.veto_block.package_text}</div>
-                    </div>
-                  )}
-                  {it.priorities?.length > 0 && (
-                    <div style={{ marginTop: 16 }}>{capLabel('Приоритеты вмешательства')}
-                      {it.priorities.map((pr: any, i: number) => (
-                        <div key={i} style={{ marginBottom: 10 }}>
-                          <div style={{ fontFamily: 'sans-serif', fontSize: 13, color: '#1a2540' }}><strong>{pr.block_title}</strong> — {FIN_STATE_RU[pr.state] || pr.state}</div>
-                          <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)', marginTop: 2 }}>{pr.package_text}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {it.planned_steps?.length > 0 && (
-                    <div style={{ marginTop: 16 }}>{capLabel('Плановые шаги')}
-                      {it.planned_steps.map((pr: any, i: number) => (
-                        <div key={i} style={{ marginBottom: 10 }}>
-                          <div style={{ fontFamily: 'sans-serif', fontSize: 13, color: '#1a2540' }}><strong>{pr.block_title}</strong></div>
-                          <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)', marginTop: 2 }}>{pr.package_text}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div style={{ marginTop: 16 }}>
-                    {capLabel('Траектория')}
-                      {(() => {
-                        const curCombo = fr.combination_current || ''
-                        // Карта TARGET_HEX относится только к базовой паре ЖЦ и к контурам
-                        // не применяется (план контуров §0.1): у контура целевая гексаграмма
-                        // строится инверсией подвижных линий, а без них цели нет.
-                        const moving = !!it.trajectory
-                        const rightCombo = fr.combination_resulting || ''
-                        const rightNum = it.trajectory?.resulting?.number
-                        return (
-                          <>
-                            <div style={S.transitionCard}>
-                              <div style={{ textAlign: 'center' as const }}>
-                                <HexLines combo={curCombo} />
-                                <div style={{ ...S.faint, marginTop: 6 }}>сейчас · №{hc.number}</div>
-                              </div>
-                              {moving && (<>
-                                <div style={{ flex: 1, borderTop: '1px dashed rgba(26,37,64,0.2)' }} />
-                                <div style={{ textAlign: 'center' as const }}>
-                                  <HexLines combo={rightCombo} />
-                                  <div style={{ ...S.faint, marginTop: 6 }}>результирующая{rightNum ? ` · №${rightNum}` : ''}</div>
-                                </div>
-                              </>)}
-                            </div>
-                            <div style={{ ...S.faint, marginTop: 8 }}>
-                              {moving
-                                ? 'Переход определён подвижными линиями финансовой гексаграммы.'
-                                : 'Подвижных линий нет — конфигурация устойчива.'}
-                            </div>
-                            <p style={{ ...S.reportText, marginTop: 10 }}>
-                              {moving
-                                ? <>{it.trajectory.essence} <span style={{ color: '#c0392b' }}>Предостережение:</span> {it.trajectory.mistake}</>
-                                : 'Подвижных линий нет — конфигурация стабильна, направленной трансформации не требуется.'}
-                            </p>
-                          </>
-                        )
-                      })()}
-                  </div>
-
-                  {it.caveats?.length > 0 && (
-                    <div style={{ marginTop: 16 }}>{capLabel('Оговорки по данным')}
-                      <ul style={{ margin: 0, paddingLeft: 18, fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)', lineHeight: 1.5 }}>{it.caveats.map((c: string, i: number) => <li key={i} style={{ marginBottom: 6 }}>{c}</li>)}</ul>
-                    </div>
-                  )}
-
-                  {it.next_steps?.length > 0 && (
-                    <div style={{ marginTop: 16 }}>{capLabel('Следующие шаги')}
-                      <ol style={{ margin: 0, paddingLeft: 18, fontFamily: 'sans-serif', fontSize: 13, color: '#1a2540', lineHeight: 1.6 }}>{it.next_steps.map((sN: string, i: number) => <li key={i} style={{ marginBottom: 6 }}>{sN}</li>)}</ol>
-                    </div>
-                  )}
+              {/* Описание перехода */}
+              <div style={{ marginBottom: 20 }}>
+                <span style={S.labelRed}>Описание перехода</span>
+                <div style={{ ...S.reportText, marginTop: 8 }}>
+                  {strategy?.transition_description
+                    ? strategy.transition_description.split('\n').map((p: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{p}</p>)
+                    : <p style={S.muted}>Описание перехода будет добавлено при публикации стратегии.</p>}
                 </div>
-              )
-            })()}
+              </div>
+
+            </div>
+
+            {/* ── Финансовая функция, сводная карта, контуры ── */}
+            {finReport?.has_finance && (
+              <ContourReportSection
+                sectionNo="03"
+                title="Финансовая функция"
+                anchorId="sf"
+                result={finReport.finance_result}
+                interp={finReport.interpretation}
+                lineTitles={finReport.line_titles}
+                styles={S}
+              >
+                {finStrategy && (<>
+                  {finStrategy.lifecycle_stage_index && (
+                    <LifecycleChart index={finStrategy.lifecycle_stage_index} />
+                  )}
+                  {finStrategy.stratagema_title && (
+                    <div style={{ marginTop: 12, padding: '12px 16px', borderRadius: 6, background: 'rgba(30,58,138,0.08)', border: '1px solid rgba(30,58,138,0.2)', color: '#1e3a8a', fontFamily: 'sans-serif', fontSize: 13, lineHeight: 1.6 }}>{finStrategy.stratagema_title}</div>
+                  )}
+                  <div style={{ marginTop: 16 }}>
+                    <div style={{ fontSize: 10, color: '#c0392b', letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'sans-serif', fontWeight: 700, marginBottom: 8 }}>Сценарий развития</div>
+                    <div style={S.reportText}>{finStrategy.scenario_text ? finStrategy.scenario_text.split('\n').map((pp: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{pp}</p>) : <em style={{ opacity: 0.4 }}>Не заполнено</em>}</div>
+                  </div>
+                  <div style={{ marginTop: 14 }}><div style={{ fontSize: 10, color: '#c0392b', letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'sans-serif', fontWeight: 700, marginBottom: 8 }}>Маркетинг</div><div style={{ border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '14px 16px', background: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.7)', lineHeight: 1.7 }}>{finStrategy.marketing_text || <em style={{ opacity: 0.4 }}>Не заполнено</em>}</div></div>
+                  <div style={{ marginTop: 14 }}><div style={{ fontSize: 10, color: '#c0392b', letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'sans-serif', fontWeight: 700, marginBottom: 8 }}>Управление</div><div style={{ border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '14px 16px', background: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.7)', lineHeight: 1.7 }}>{finStrategy.management_text || <em style={{ opacity: 0.4 }}>Не заполнено</em>}</div></div>
+                  <div style={{ marginTop: 16 }}>
+                    <div style={{ fontSize: 10, color: '#c0392b', letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'sans-serif', fontWeight: 700, marginBottom: 8 }}>Предположения. Связи с будущим</div>
+                    {ASSM_LABELS.map(([field, label]) => (
+                      <div key={field} style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: '#c0392b', fontFamily: 'sans-serif', marginBottom: 4 }}>{label}</div>
+                        <p style={{ fontSize: 13, color: 'rgba(26,37,64,0.7)', lineHeight: 1.7, margin: 0, fontFamily: 'sans-serif' }}>{finStrategy[field] || <em style={{ opacity: 0.4 }}>Не заполнено</em>}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>)}
+              </ContourReportSection>
+            )}
+
+            {finReport?.summary && (
+              <ContourSummaryCard sectionNo="04" summary={finReport.summary} styles={S} />
+            )}
+
+            {(finReport?.contours || []).map((c: any) => (
+              <ContourReportSection
+                key={c.contour}
+                sectionNo={c.section_no}
+                title={c.title}
+                anchorId={`s-${c.contour}`}
+                result={c.result}
+                interp={c.interp}
+                lineTitles={c.line_titles}
+                styles={S}
+              />
+            ))}
+
             {/* Дополнение диагностики контурами */}
             {!isMethod2Only && (() => {
               const passed = new Set((assessment.passed_contours || []).map(p => p.contour))
@@ -535,21 +446,6 @@ export default function ReportPage() {
               )
             })()}
 
-            {/* Секция 03 — Целевой сценарий */}
-            <div style={S.section} id="s4">
-              <h2 style={S.sectionH2}><span style={S.num}>03</span>Целевой сценарий</h2>
-
-              {/* Описание перехода */}
-              <div style={{ marginBottom: 20 }}>
-                <span style={S.labelRed}>Описание перехода</span>
-                <div style={{ ...S.reportText, marginTop: 8 }}>
-                  {strategy?.transition_description
-                    ? strategy.transition_description.split('\n').map((p: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{p}</p>)
-                    : <p style={S.muted}>Описание перехода будет добавлено при публикации стратегии.</p>}
-                </div>
-              </div>
-
-            </div>
 
           </>)}
         </div>

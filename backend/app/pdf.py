@@ -9,7 +9,7 @@ import html as html_lib
 from pathlib import Path
 from typing import Any
 
-from app.finance_pdf import finance_section_html
+from app.finance_pdf import finance_section_html, contour_section_html, summary_card_html
 from app.method1_questions import BASE_QUESTIONS
 
 from playwright.async_api import async_playwright, Browser, Playwright
@@ -337,7 +337,7 @@ def _transition_block(strategy: Any, target_hex_info: tuple | None) -> str:
         'background:rgba(192,57,43,0.04);">'
         '<div style="font-size:10px;color:#c0392b;letter-spacing:2px;'
         'text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:12px;">'
-        '<span style="margin-right:8px;">03</span>Целевой сценарий'
+        '<span style="margin-right:8px;">02</span>Целевой сценарий'
         '</div>'
         '<div style="font-size:10px;color:rgba(26,37,64,0.45);text-transform:uppercase;'
         'letter-spacing:1px;font-family:Arial,sans-serif;margin-bottom:6px;">Описание перехода</div>'
@@ -570,6 +570,8 @@ def build_report_html(
     finance_strategy: Any | None = None,
     lifecycle_stages=None,
     is_method2: bool | None = None,
+    extra_contours: list | None = None,
+    summary: dict | None = None,
 ) -> str:
     """Собирает полный HTML отчёта (все данные уже экранированы через e()).
 
@@ -811,6 +813,24 @@ def build_report_html(
         if (transition_html and not is_method2) else ""
     )
 
+    # Сводная карта и секции дополнительных контуров (Поправки П7 и П8).
+    # Полный профиль стратегии остаётся только у финансового контура, поэтому
+    # description_html здесь пустой.
+    summary_section = ""
+    contour_sections = ""
+    if not is_method2:
+        if summary:
+            summary_section = summary_card_html(summary, company_name)
+        if extra_contours:
+            from app.contours import get_spec as _spec_of
+            for _c in extra_contours:
+                contour_sections += contour_section_html(
+                    _c["result"], _c["interp"], company_name,
+                    blocks=_spec_of(_c["contour"]).blocks,
+                    title=_c["title"],
+                    section_no=_c["section_no"],
+                )
+
     return f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -868,11 +888,13 @@ def build_report_html(
 
 {page1}
 
-{page2}
+{transition_page}
 
 {finance_section}
 
-{transition_page}
+{summary_section}
+
+{contour_sections}
 
 {bmc_section}
 
