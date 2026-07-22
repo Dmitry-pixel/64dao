@@ -139,40 +139,48 @@ export default function ContourReportSection({
       </div>
 
       <div style={{ marginTop: 16 }}>
-        {cap('Траектория')}
-        {(() => {
-          // Карта _TARGET_HEXAGRAM к контурам не применяется (план §0.1):
-          // целевая гексаграмма строится инверсией подвижных линий, без них цели нет.
-          const moving = !!it?.trajectory
-          const rightNum = it?.trajectory?.resulting?.number
-          return (
-            <>
-              <div style={S.transitionCard}>
-                <div style={{ textAlign: 'center' as const }}>
-                  <HexLines combo={fr?.combination_current || ''} />
-                  <div style={{ ...S.faint, marginTop: 6 }}>сейчас · №{hc.number}</div>
-                </div>
-                {moving && (<>
-                  <div style={{ flex: 1, borderTop: '1px dashed rgba(26,37,64,0.2)' }} />
+        {cap('Маршрут перехода')}
+        {(it?.route?.length > 0) ? (
+          <>
+            <div style={{ ...S.transitionCard, flexWrap: 'wrap' as const }}>
+              <div style={{ textAlign: 'center' as const }}>
+                <HexLines combo={fr?.combination_current || ''} />
+                <div style={{ ...S.faint, marginTop: 6 }}>№{hc.number}</div>
+              </div>
+              {it.route.map((st: any, i: number) => (
+                <React.Fragment key={i}>
+                  <div style={{ color: '#c0392b', alignSelf: 'center' }}>→</div>
                   <div style={{ textAlign: 'center' as const }}>
-                    <HexLines combo={fr?.combination_resulting || ''} />
-                    <div style={{ ...S.faint, marginTop: 6 }}>результирующая{rightNum ? ` · №${rightNum}` : ''}</div>
+                    <HexLines combo={st?.hexagram_after?.code || ''} />
+                    <div style={{ ...S.faint, marginTop: 6 }}>№{st?.hexagram_after?.number}</div>
                   </div>
-                </>)}
+                </React.Fragment>
+              ))}
+            </div>
+            <p style={{ ...S.faint, marginTop: 10, lineHeight: 1.6 }}>
+              Последовательность — рекомендуемая логика проработки, а не жёсткое предписание:
+              темп и параллельность шагов определяются ресурсами компании.
+            </p>
+            {it.route.map((st: any, i: number) => (
+              <div key={i} style={{ border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '12px 16px', background: 'rgba(255,255,255,0.45)', marginBottom: 10 }}>
+                <div style={{ fontFamily: 'sans-serif', fontSize: 13, color: '#1a2540' }}>
+                  <b>Шаг {st.order}. Линия {st.line} — {lineTitles[String(st.line)] || ''}</b>{' '}
+                  <span style={{ color: 'rgba(26,37,64,0.6)' }}>({st.from_state === 'old_yin' ? 'укрепить слабую позицию' : 'стабилизировать перегрев'})</span>
+                  {st.is_veto && <span style={{ color: '#c0392b', fontSize: 11 }}> — снятие блокирующего условия</span>}
+                </div>
+                <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.75)', marginTop: 5 }}>{st.action_text}</div>
+                <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.55)', marginTop: 4 }}>Состояние после шага: {st.after_essence}</div>
+                {st.is_last && st.mistake && (
+                  <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: '#1a2540', marginTop: 6 }}>
+                    <span style={{ color: '#c0392b' }}>Предостережение:</span> {st.mistake}
+                  </div>
+                )}
               </div>
-              <div style={{ ...S.faint, marginTop: 8 }}>
-                {moving
-                  ? 'Переход определён подвижными линиями гексаграммы контура.'
-                  : 'Подвижных линий нет — конфигурация устойчива.'}
-              </div>
-              <p style={{ ...S.reportText, marginTop: 10 }}>
-                {moving
-                  ? <>{it.trajectory.essence} <span style={{ color: '#c0392b' }}>Предостережение:</span> {it.trajectory.mistake}</>
-                  : 'Подвижных линий нет — конфигурация стабильна, направленной трансформации не требуется.'}
-              </p>
-            </>
-          )
-        })()}
+            ))}
+          </>
+        ) : (
+          <p style={{ ...S.reportText, marginTop: 10 }}>Подвижных линий нет — конфигурация стабильна, направленной трансформации не требуется.</p>
+        )}
       </div>
 
       <div style={{ marginTop: 16 }}>

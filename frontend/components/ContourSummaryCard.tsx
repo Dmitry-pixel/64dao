@@ -85,6 +85,36 @@ export default function ContourSummaryCard({ sectionNo, summary, styles: S }: Co
           </p>
         )}
       </div>
+
+      {summary.route?.stages?.length > 0 && (
+        <div style={{ marginTop: 16, border: '1px solid rgba(26,37,64,0.12)', borderRadius: 6, padding: '14px 18px', background: 'rgba(255,255,255,0.45)' }}>
+          {cap('Сводный маршрут компании')}
+          {summary.route.stages.map((st: any) => {
+            const cur = st.hexagram_current || {}
+            const res = st.hexagram_resulting || {}
+            return (
+              <div key={st.contour} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderTop: '1px solid rgba(26,37,64,0.08)' }}>
+                <div style={{ color: '#c0392b', fontFamily: 'sans-serif', fontWeight: 700, fontSize: 12, minWidth: 58 }}>Этап {st.stage}</div>
+                <div style={{ flex: 1, fontFamily: 'sans-serif', fontSize: 13, color: '#1a2540' }}>
+                  {titleOf(st.contour)}
+                  <div style={S.faint}>{st.route_len} шаг(ов) · точка входа: линия {st.entry_line}</div>
+                </div>
+                <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.7)' }}>
+                  №{cur.number} <span style={{ color: '#c0392b' }}>→</span> №{res.number}
+                </div>
+              </div>
+            )
+          })}
+          {(summary.route.stable || []).length > 0 && (
+            <p style={{ ...S.faint, marginTop: 10 }}>Стабильные контуры (без маршрута): {(summary.route.stable || []).map(titleOf).join(', ')}.</p>
+          )}
+          {summary.route.focus_first && (
+            <p style={{ marginTop: 8, fontFamily: 'sans-serif', fontSize: 12, color: '#c0392b' }}>
+              Рекомендуется сфокусировать ресурсы на этапе 1; остальные контуры — в поддерживающем режиме.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
