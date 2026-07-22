@@ -13,7 +13,12 @@
 import json
 import os
 
-TAX_SETTINGS_PATH = "/var/www/64dao/uploads/tax_settings.json"
+# Каталог берётся из UPLOAD_DIR (тот же приём, что в contour_settings.py и
+# site_mode.py). Дефолт совпадает с прежним жёстким путём, поэтому в проде
+# файл tax_settings.json резолвится ровно туда же, а тесты (conftest ставит
+# UPLOAD_DIR на временную папку) больше не пишут флаг НДС в боевой том — F9.
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/var/www/64dao/uploads")
+TAX_SETTINGS_PATH = os.path.join(UPLOAD_DIR, "tax_settings.json")
 
 _DEFAULTS = {
     "vat_enabled": False,   # False = НДС не облагается (текущий статус)
