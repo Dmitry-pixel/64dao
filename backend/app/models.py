@@ -290,6 +290,7 @@ class Subscription(Base):
     status:     Mapped[str]              = mapped_column(String(20), nullable=False, default="active", server_default="active")
     created_at: Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+    expiry_reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     __table_args__ = (
         CheckConstraint("status IN ('active','expired','revoked')", name="chk_subscription_status"),
     )
@@ -306,6 +307,7 @@ class Company(Base):
     name:       Mapped[str]       = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
 
+    repeat_reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     __table_args__ = (
         UniqueConstraint("user_id", "name", name="uq_company_user_name"),
     )

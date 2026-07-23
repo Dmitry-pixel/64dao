@@ -87,6 +87,10 @@ class Settings(BaseSettings):
     # Включить (FINANCE_BLOCK_REQUIRED=true) синхронно с новым фронтом (Этап 6).
     finance_block_required: bool = False
     subscription_period_days: int = 365   # период подписки на «Динамику» (роадмап 3.1)
+    # ── Email-напоминания (PR6) ──
+    reminders_enabled: bool = True          # kill-switch для cron-джоба
+    expiry_reminder_days: int = 14          # за сколько дней до конца подписки
+    repeat_reminder_days: int = 90          # через сколько дней «пора повторить»
 
     # ── Tochka Bank API ───────────────────────────────────────────────────────
     tochka_api_base_url: str = "https://enter.tochka.com"

@@ -1,0 +1,118 @@
+# -*- coding: utf-8 -*-
+"""
+Email-напоминания (PR6). Запуск из host cron:
+    docker compose exec -T backend python -m app.jobs.reminders
+Идемпотентность — через колонки *_reminder_sent_at (миграция 014). Send-then-mark
+с commit по элементу: at-least-once, дубль маловероятен. Планировщика в проде нет
+(правило проекта) — триггерит host crontab, как backup/certbot.
+"""
+from __future__ import annotations
+import asyncio
+import logging
+from datetime import datetime, timezone, timedelta
+from sqlalchemy import select, func, or_
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db import AsyncSessionLocal
+from app.models import Subscription, Company, Assessment, User
+from app.config import get_settings
+from app import email as email_mod
+
+logger = logging.getLogger("reminders")
+settings = get_settings()
+
+
+async def run_expiry_reminders(session: AsyncSession) -> int:
+    """За N дней до конца подписки. Одноразово на подписку (флаг sent_at)."""
+    now = datetime.now(timezone.utc)
+    horizon = now + timedelta(days=settings.expiry_reminder_days)
+    rows = (await session.execute(
+        select(Subscription, User)
+        .join(User, User.id == Subscription.user_id)
+        .where(
+            Subscription.status == "active",
+            Subscription.ends_at > now,
+            Subscription.ends_at <= horizon,
+            Subscription.expiry_reminder_sent_at.is_(None),
+            User.is_active.is_(True),
+        )
+    )).all()
+    sent = 0
+    for sub, user in rows:
+        days_left = max(1, (sub.ends_at - now).days)
+        try:
+            await email_mod.send_subscription_expiry_email(
+                user.email, user.full_name, sub.ends_at, days_left)
+        except Exception:
+            logger.exception("expiry reminder failed: user=%s sub=%s", user.id, sub.id)
+            continue
+        sub.expiry_reminder_sent_at = now
+        await session.commit()
+        sent += 1
+    return sent
+
+
+async def run_repeat_reminders(session: AsyncSession) -> int:
+    """«Пора повторить» через N дней после последней диагностики компании.
+    Только активным подписчикам (правило гейтинга). Авто-перевзвод: при новой
+    диагностике last_at > sent_at → снова сработает."""
+    now = datetime.now(timezone.utc)
+    threshold = now - timedelta(days=settings.repeat_reminder_days)
+    latest_sq = (
+        select(
+            Assessment.company_id.label("cid"),
+            func.max(Assessment.created_at).label("last_at"),
+        )
+        .where(Assessment.status.in_(("completed", "paid")),
+               Assessment.company_id.isnot(None))
+        .group_by(Assessment.company_id)
+        .subquery()
+    )
+    active_users = (
+        select(Subscription.user_id)
+        .where(Subscription.status == "active", Subscription.ends_at > now)
+    )
+    rows = (await session.execute(
+        select(Company, User, latest_sq.c.last_at)
+        .join(latest_sq, latest_sq.c.cid == Company.id)
+        .join(User, User.id == Company.user_id)
+        .where(
+            User.id.in_(active_users),
+            User.is_active.is_(True),
+            latest_sq.c.last_at <= threshold,
+            or_(
+                Company.repeat_reminder_sent_at.is_(None),
+                Company.repeat_reminder_sent_at < latest_sq.c.last_at,
+            ),
+        )
+    )).all()
+    sent = 0
+    for company, user, last_at in rows:
+        days_since = max(1, (now - last_at).days)
+        try:
+            await email_mod.send_repeat_diagnostic_email(
+                user.email, user.full_name, company.name, days_since)
+        except Exception:
+            logger.exception("repeat reminder failed: user=%s company=%s", user.id, company.id)
+            continue
+        company.repeat_reminder_sent_at = now
+        await session.commit()
+        sent += 1
+    return sent
+
+
+async def main() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    if not settings.reminders_enabled:
+        logger.info("reminders disabled (REMINDERS_ENABLED=false) — skip")
+        return
+    async with AsyncSessionLocal() as session:
+        exp = await run_expiry_reminders(session)
+        rep = await run_repeat_reminders(session)
+    logger.info("reminders done: expiry=%d repeat=%d", exp, rep)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
