@@ -314,3 +314,20 @@ class Company(Base):
 
     user:        Mapped["User"]              = relationship(back_populates="companies")
     assessments: Mapped[list["Assessment"]]  = relationship(back_populates="company")
+
+
+# ── Route progress (фича F: чек-листы шагов маршрута перехода) ─────────────────
+class RouteProgress(Base):
+    """Отметки выполнения шагов маршрута. Наличие строки = шаг выполнен.
+    Ключ шага — (assessment_id, contour, line); сам маршрут детерминирован и
+    пересчитывается, в БД храним только прогресс."""
+    __tablename__ = "route_progress"
+    id:            Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    assessment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False, index=True)
+    contour:       Mapped[str]       = mapped_column(String(20), nullable=False)
+    line:          Mapped[int]       = mapped_column(Integer, nullable=False)
+    done_at:       Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (
+        UniqueConstraint("assessment_id", "contour", "line", name="uq_route_progress_step"),
+        CheckConstraint("contour IN ('finance','product','market','process')", name="chk_route_progress_contour"),
+    )

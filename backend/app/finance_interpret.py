@@ -258,3 +258,21 @@ async def load_content(session, contour: str = "finance") -> dict:
         if essence or mistake:
             content["fin_pattern"][combo] = {"essence": essence, "mistake": mistake}
     return content
+
+
+def enrich_route(result: dict, content: dict) -> list[dict]:
+    """Маршрут перехода с текстами действий (фича F, переиспользуется чек-листом).
+    Обогащение совпадает с блоком внутри build_interpretation — единый источник."""
+    route = build_route(result["lines"], result["combination_current"])
+    _lines_by_num = {l["line"]: l for l in result["lines"]}
+    for i, step in enumerate(route):
+        ha = step["hexagram_after"]
+        pkg = content.get("action_package", {}).get(step["action_key"])
+        step["action_text"] = (pkg or {}).get("text") or PLACEHOLDER
+        fp = content.get("fin_pattern", {}).get(ha.get("code"))
+        step["after_essence"] = (fp or {}).get("essence") or PLACEHOLDER
+        step["is_last"] = i == len(route) - 1
+        step["mistake"] = ((fp or {}).get("mistake") or PLACEHOLDER) if step["is_last"] else None
+        _ln = _lines_by_num.get(step["line"], {})
+        step["is_veto"] = "VETO_APPLIED" in (_ln.get("flags") or [])
+    return route
