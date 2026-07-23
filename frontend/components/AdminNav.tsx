@@ -95,6 +95,7 @@ export function AdminNav({ current }: AdminNavProps) {
         <Link href="/admin/users" className={current === 'users' ? 'on' : ''}>Пользователи</Link>
         <Link href="/admin/strategies" className={current === 'strategies' ? 'on' : ''}>Стратегии</Link>
         <Link href="/admin/my-reports" className={current === 'my-reports' ? 'on' : ''}>Мои отчёты</Link>
+        <Link href="/companies" className={current === 'companies' ? 'on' : ''}>Мои компании</Link>
       </div>
       <button
         type="button"
@@ -178,6 +179,9 @@ export function AdminSide({ current }: AdminSideProps) {
       <h4>Диагностики</h4>
       <Link href="/admin/my-reports" className={current === 'my-reports' ? 'on' : ''}>
         Мои отчёты <span className="num">{myReportsCount ?? '—'}</span>
+      </Link>
+      <Link href="/companies" className={current === 'companies' ? 'on' : ''}>
+        Мои компании
       </Link>
 
       <h4>Документы</h4>
