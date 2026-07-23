@@ -6,3 +6,10 @@
 
 2. **[2026-07-06] JSON-LD в Next.js App Router**
    Do instead: `<script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(data)}} />` без `<head>` — рендерится в body корректно. Компонент `frontend/components/JsonLd.tsx`, переиспользуется на всех страницах.
+
+## [2026-07-23] Session notes
+- PR4b/тест-долг (540d6bb), PR6 email-напоминания (00ec7df), PR5 гейт повтора (28aa48e) — выкачены в origin/main.
+- PR6: за 14 дней до конца подписки + «пора повторить» через 90 дней (только подписчикам); cron 06:00 UTC → deploy/scripts/reminders.sh; kill-switch REMINDERS_ENABLED=false.
+- PR5: повтор диагностики компании (≥1 завершённой) — только по активной подписке; админ — bypass.
+- Доставка патчей через FastPanel-консоль: hex + md5-гейт по ДЕКОДИРОВАННОМУ файлу
+  (переносы строк в консоли ломают хеш самого hex, но не сами данные).
