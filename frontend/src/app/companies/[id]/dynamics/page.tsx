@@ -73,6 +73,10 @@ export default function DynamicsPage() {
         Пока только {data.count} диагностик{data.count === 1 ? 'а' : ''}. Динамика появится после второй — повторите диагностику,
         чтобы увидеть изменения во времени.
       </p>
+      <Link href={`/assessment?method=1&company=${cid}`}
+        style={{ display: 'inline-block', marginTop: 16, background: 'var(--text)', color: '#fff', borderRadius: 6, padding: '10px 20px', fontFamily: 'sans-serif', fontSize: 14, textDecoration: 'none' }}>
+        Повторить диагностику →
+      </Link>
     </>
   )
 

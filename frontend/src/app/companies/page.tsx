@@ -47,16 +47,22 @@ export default function CompaniesPage() {
                   {c.assessment_count} диагностик{c.latest_at ? ` · последняя ${new Date(c.latest_at).toLocaleDateString('ru-RU')}` : ''}
                 </div>
               </div>
-              {canDynamics ? (
-                <Link href={`/companies/${c.id}/dynamics`}
-                  style={{ background: 'var(--text)', color: '#fff', borderRadius: 6, padding: '8px 16px', fontFamily: 'sans-serif', fontSize: 13, textDecoration: 'none' }}>
-                  Динамика →
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
+                {canDynamics ? (
+                  <Link href={`/companies/${c.id}/dynamics`}
+                    style={{ background: 'var(--text)', color: '#fff', borderRadius: 6, padding: '8px 16px', fontFamily: 'sans-serif', fontSize: 13, textDecoration: 'none' }}>
+                    Динамика →
+                  </Link>
+                ) : (
+                  <span style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)' }} title="Нужно ≥2 диагностик">
+                    Динамика откроется со 2-й диагностики
+                  </span>
+                )}
+                <Link href={`/assessment?method=1&company=${c.id}&company_name=${encodeURIComponent(c.name)}`}
+                  style={{ border: '1px solid rgba(26,37,64,0.2)', color: 'var(--text)', borderRadius: 6, padding: '8px 16px', fontFamily: 'sans-serif', fontSize: 13, textDecoration: 'none' }}>
+                  Повторить
                 </Link>
-              ) : (
-                <span style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)' }} title="Нужно ≥2 диагностик">
-                  Динамика откроется со 2-й диагностики
-                </span>
-              )}
+              </div>
             </div>
           )
         })}

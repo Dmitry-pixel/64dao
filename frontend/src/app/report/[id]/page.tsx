@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { getMe, getAssessment, reportDownloadUrl, listContours, isMethod2, type AuthUser, type Assessment, type ContourInfo } from '@/lib/api'
+import { getMe, getAssessment, reportDownloadUrl, listContours, getCompanies, isMethod2, type AuthUser, type Assessment, type ContourInfo, type Company } from '@/lib/api'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
 import HexDiagram, { HexLines } from '@/components/HexDiagram'
 import LifecycleChart from '@/components/LifecycleChart'
@@ -96,6 +96,7 @@ export default function ReportPage() {
   const [finStrategy, setFinStrategy] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [activeSection, setActiveSection] = useState(0)
+  const [dynCompany, setDynCompany] = useState<Company | null>(null)
 
   useEffect(() => {
     Promise.all([getMe(), getAssessment(assessmentId)])
@@ -103,6 +104,14 @@ export default function ReportPage() {
         setUser(u)
         setAssessment(a)
         const isMethod2Only = isMethod2(a)
+        if (!isMethod2Only && a.company_name) {
+          getCompanies()
+            .then(cs => {
+              const c = cs.find(x => x.name === a.company_name)
+              if (c && c.assessment_count >= 2) setDynCompany(c)
+            })
+            .catch(() => {})
+        }
         if (a.method1_combination && !isMethod2Only) {
           fetch(`${API}/api/strategies/${a.method1_combination}`, { credentials: 'include' })
             .then(r => r.ok ? r.json() : null)
@@ -237,6 +246,22 @@ export default function ReportPage() {
           </a>
         )}
       </div>
+
+      {/* Апсейл: динамика компании (≥2 диагностик) */}
+      {dynCompany && (
+        <div style={S.dynUpsell}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={S.labelRed}>Динамика</span>
+            <div style={S.dynUpsellTitle}>По компании «{dynCompany.name}» накоплено {dynCompany.assessment_count} диагностик</div>
+            <div style={S.dynUpsellText}>
+              Сравните контуры во времени — что усилилось, где просадка, куда смещается фокус. Раздел доступен по подписке.
+            </div>
+          </div>
+          <button style={S.dynUpsellBtn} onClick={() => router.push(`/companies/${dynCompany.id}/dynamics`)}>
+            Открыть «Динамику» →
+          </button>
+        </div>
+      )}
 
       {/* Основная сетка */}
       <div style={S.reportShell}>
@@ -467,6 +492,10 @@ const S: Record<string, React.CSSProperties> = {
   navEmail: { fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.55)' },
   avatar: { width: 32, height: 32, borderRadius: '50%', background: '#1a2540', color: '#e8e4db', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Georgia,serif', fontSize: 14 },
   actions: { maxWidth: 1200, margin: '0 auto', padding: '16px 60px', display: 'flex', alignItems: 'center', gap: 12 },
+  dynUpsell: { maxWidth: 1200, margin: '0 auto 8px', padding: '18px 28px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' as const, background: 'linear-gradient(135deg, #1a4a3a 0%, #1e6347 100%)', border: '1px solid rgba(52,199,89,0.35)', borderRadius: 10 },
+  dynUpsellTitle: { fontFamily: 'Georgia,serif', fontSize: 19, fontWeight: 400, color: '#fff', margin: '6px 0 6px', lineHeight: 1.25 },
+  dynUpsellText: { fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 1.55, margin: 0, maxWidth: 620 },
+  dynUpsellBtn: { background: 'rgba(52,199,89,0.15)', border: '1px solid rgba(52,199,89,0.5)', color: '#7fff9a', fontWeight: 600, padding: '11px 20px', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'sans-serif', whiteSpace: 'nowrap' as const },
   backBtn: { background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(26,37,64,0.6)', fontFamily: 'sans-serif', fontSize: 12 },
   btnPrimary: { background: '#1a2540', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', textDecoration: 'none', display: 'inline-block' },
   reportShell: { maxWidth: 1200, margin: '0 auto', padding: '0 60px 60px', display: 'grid', gridTemplateColumns: '200px 1fr', gap: 32 },

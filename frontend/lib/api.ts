@@ -112,6 +112,7 @@ export async function createAssessment(data: {
   method2_data?: Record<string, { score: number; text: string }>
   finance_answers?: Record<string, number | null>
   company_name?: string | null
+  company_id?: string | null
   status?: string
 }) {
   return request<Assessment>('/api/assessments', {
@@ -237,6 +238,18 @@ export function getCompanies() {
 
 export function getCompanyDynamics(id: string, compare: 'previous' | 'first' = 'previous') {
   return request<any>(`/api/companies/${id}/dynamics?compare=${compare}`)
+}
+
+// ── Subscription (user) ───────────────────────────────────────────────────────
+
+export interface SubscriptionStatus {
+  active:    boolean
+  starts_at: string | null
+  ends_at:   string | null
+}
+
+export function getSubscriptionStatus() {
+  return request<SubscriptionStatus>('/api/subscription/status')
 }
 
 

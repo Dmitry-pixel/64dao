@@ -66,15 +66,19 @@ function AssessmentInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const methodParam = searchParams.get('method')
+  const companyIdParam = searchParams.get('company')
+  const companyNameParam = searchParams.get('company_name')
 
   const [user, setUser] = useState<AuthUser | null>(null)
   const [mode, setMode] = useState<'choose' | 'company' | 'method1' | 'method2' | 'finance_intro' | 'finance' | 'waiting'>(
-    methodParam === '1' ? 'company' : methodParam === '2' ? 'company' : 'choose'
+    companyIdParam && methodParam === '2' ? 'method2'
+    : companyIdParam && methodParam ? 'method1'
+    : methodParam === '1' ? 'company' : methodParam === '2' ? 'company' : 'choose'
   )
   const [pendingMethod, setPendingMethod] = useState<'method1' | 'method2'>(
     methodParam === '2' ? 'method2' : 'method1'
   )
-  const [companyName, setCompanyName] = useState('')
+  const [companyName, setCompanyName] = useState(companyNameParam || '')
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Record<number, 'A' | 'B'>>({})
   const [selected, setSelected] = useState<'A' | 'B' | null>(null)
@@ -148,6 +152,7 @@ function AssessmentInner() {
           method1_combination: combo,
           finance_answers: financeAnswers,
           company_name: companyName.trim() || undefined,
+          company_id: companyIdParam || undefined,
           status: 'completed',
         }),
       })
@@ -189,6 +194,7 @@ function AssessmentInner() {
           method1_combination: 'AAAAAA',
           method2_data,
           company_name: companyName.trim() || undefined,
+          company_id: companyIdParam || undefined,
           status: 'completed',
         }),
       })
