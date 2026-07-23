@@ -240,6 +240,9 @@ export default function ReportPage() {
       <div style={S.actions}>
         <button style={S.backBtn} onClick={() => router.push(user?.role === 'admin' ? '/admin/my-reports' : '/dashboard')}>← Все отчёты</button>
         <div style={{ flex: 1 }} />
+        <button style={{ ...S.btnPrimary, background: 'transparent', color: '#1a2540', border: '1px solid rgba(26,37,64,0.25)', marginRight: 10 }} onClick={() => router.push(`/report/${assessmentId}/checklist`)}>
+          Чек-лист действий
+        </button>
         {hasReport && (
           <a href={reportDownloadUrl(assessment.reports[0].id)} target="_blank" rel="noreferrer" style={S.btnPrimary}>
             ↓ Скачать PDF
