@@ -78,3 +78,46 @@ async def test_admin_grant_status_revoke(admin_client, db_session):
 async def test_admin_grant_unknown_user_404(admin_client):
     r = await admin_client.post(f"/api/admin/users/{uuid.uuid4()}/subscription", json={})
     assert r.status_code == 404
+
+# ── GET /api/subscription/status (PR4b, фича E) ──────────────────────────────
+# Пользовательский read-only статус подписки для профиля. Сервисный слой уже
+# покрыт выше; здесь — именно HTTP-контракт эндпоинта и гейт авторизации.
+
+@pytest.mark.asyncio
+async def test_status_requires_auth(client):
+    # Без auth-token cookie — get_current_user отдаёт 401 (auth.py).
+    r = await client.get("/api/subscription/status")
+    assert r.status_code == 401, r.text
+
+
+@pytest.mark.asyncio
+async def test_status_inactive_without_subscription(auth_client):
+    r = await auth_client.get("/api/subscription/status")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["active"] is False
+    assert body["starts_at"] is None
+    assert body["ends_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_status_active_with_subscription(auth_client, test_user, db_session):
+    # auth_client аутентифицирован как test_user — выдаём подписку этому же юзеру.
+    await subs.grant(db_session, test_user.id, days=30)
+    r = await auth_client.get("/api/subscription/status")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["active"] is True
+    assert body["starts_at"] is not None
+    assert body["ends_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_status_reflects_lazy_expiry(auth_client, test_user, db_session):
+    # Просроченная подписка через ленивое протухание должна отдавать active=False.
+    sub = await subs.grant(db_session, test_user.id, days=30)
+    sub.ends_at = datetime.now(timezone.utc) - timedelta(days=1)
+    await db_session.flush()
+    r = await auth_client.get("/api/subscription/status")
+    assert r.status_code == 200, r.text
+    assert r.json()["active"] is False
