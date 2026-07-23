@@ -118,6 +118,22 @@ async def create_assessment(
             db.add(company)
             await db.flush()
 
+    # PR5: повтор диагностики компании (у неё уже есть ≥1 завершённой) —
+    # только активным подписчикам или админу. Разовый покупатель повтор
+    # запустить не может (правило гейтинга).
+    if user.role != "admin":
+        from sqlalchemy import func as _func
+        from app import subscription_service as _subs
+        _prior = await db.scalar(select(_func.count(Assessment.id)).where(
+            Assessment.company_id == company.id,
+            Assessment.status.in_(("completed", "paid")),
+        ))
+        if _prior and not await _subs.is_active(db, user.id):
+            raise HTTPException(
+                status_code=403,
+                detail="Повторная диагностика доступна по подписке. "
+                       "Оформите подписку, чтобы отслеживать динамику компании.",
+            )
     assessment = Assessment(
         user_id=user.id,
         method1_answers=body.method1_answers,
