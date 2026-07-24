@@ -4,9 +4,9 @@ import { useRouter, useParams } from 'next/navigation'
 import { getMe, getAssessment, reportDownloadUrl, listContours, getCompanies, isMethod2, type AuthUser, type Assessment, type ContourInfo, type Company } from '@/lib/api'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
 import HexDiagram, { HexLines } from '@/components/HexDiagram'
-import LifecycleChart from '@/components/LifecycleChart'
 import ContourReportSection from '@/components/ContourReportSection'
 import ContourSummaryCard from '@/components/ContourSummaryCard'
+import CompanyLifecycleSection from '@/components/CompanyLifecycleSection'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
 
@@ -197,14 +197,20 @@ export default function ReportPage() {
     ['assm_success',      'Источники удачи'],
   ]
 
+  const lc = finReport?.summary?.company_lifecycle
+  const hasLc = !!lc
+  const finNo = hasLc ? '04' : '03'
+  const sumNo = hasLc ? '05' : '04'
+
   const sections = isMethod2Only
     ? ['01 — Бизнес-модель (9 блоков)']
     : [
         '01 — Текущее состояние',
         '02 — Целевой сценарий',
-        ...(finReport?.has_finance ? ['03 — Финансовая функция'] : []),
-        ...(finReport?.summary ? ['04 — Сводная карта контуров'] : []),
-        ...((finReport?.contours || []).map((c: any) => `${c.section_no} — ${c.title}`)),
+        ...(hasLc ? ['03 — Жизненный цикл компании'] : []),
+        ...(finReport?.has_finance ? [`${finNo} — Финансовая функция`] : []),
+        ...(finReport?.summary ? [`${sumNo} — Сводная карта контуров`] : []),
+        ...((finReport?.contours || []).map((c: any, ci: number) => `${String((hasLc ? 6 : 5) + ci).padStart(2, '0')} — ${c.title}`)),
       ]
 
   // Дата с временем
@@ -382,10 +388,15 @@ export default function ReportPage() {
 
             </div>
 
+            {/* ── Жизненный цикл компании (раздел 03, перед финансами) ── */}
+            {hasLc && (
+              <CompanyLifecycleSection sectionNo="03" lc={lc} summary={finReport.summary} styles={S} />
+            )}
+
             {/* ── Финансовая функция, сводная карта, контуры ── */}
             {finReport?.has_finance && (
               <ContourReportSection
-                sectionNo="03"
+                sectionNo={finNo}
                 title="Финансовая функция"
                 anchorId="sf"
                 result={finReport.finance_result}
@@ -394,9 +405,6 @@ export default function ReportPage() {
                 styles={S}
               >
                 {finStrategy && (<>
-                  {finStrategy.lifecycle_stage_index && (
-                    <LifecycleChart index={finStrategy.lifecycle_stage_index} />
-                  )}
                   {finStrategy.stratagema_title && (
                     <div style={{ marginTop: 12, padding: '12px 16px', borderRadius: 6, background: 'rgba(30,58,138,0.08)', border: '1px solid rgba(30,58,138,0.2)', color: '#1e3a8a', fontFamily: 'sans-serif', fontSize: 13, lineHeight: 1.6 }}>{finStrategy.stratagema_title}</div>
                   )}
@@ -420,13 +428,13 @@ export default function ReportPage() {
             )}
 
             {finReport?.summary && (
-              <ContourSummaryCard sectionNo="04" summary={finReport.summary} styles={S} />
+              <ContourSummaryCard sectionNo={sumNo} summary={finReport.summary} styles={S} />
             )}
 
-            {(finReport?.contours || []).map((c: any) => (
+            {(finReport?.contours || []).map((c: any, ci: number) => (
               <ContourReportSection
                 key={c.contour}
-                sectionNo={c.section_no}
+                sectionNo={String((hasLc ? 6 : 5) + ci).padStart(2, '0')}
                 title={c.title}
                 anchorId={`s-${c.contour}`}
                 result={c.result}
