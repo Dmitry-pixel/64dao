@@ -538,17 +538,12 @@ def _finance_description_html(finance_strategy: Any | None, lifecycle_stages=Non
                 'background:rgba(255,255,255,0.4);page-break-inside:avoid;">'
                 f'<p style="font-size:13px;color:rgba(26,37,64,0.72);line-height:1.7;margin:0;font-family:Arial,sans-serif;">{body}</p></div>')
 
-    stage = getattr(fs, "lifecycle_stage", None)
-    stage_badge = (f'<div style="display:inline-block;padding:4px 14px;border-radius:4px;font-size:13px;'
-                   f'font-family:Arial,sans-serif;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.2);'
-                   f'color:#c0392b;margin:6px 0 14px;">Стадия жизненного цикла: {e(stage)}</div>') if stage else ""
-
+    # Стадия ЖЦ и график намеренно НЕ выводятся здесь: жизненный цикл --
+    # свойство компании (контур-ограничение), а не финансовой функции.
     combo = getattr(fs, "combination", "") or ""
     parts = [
         '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:22px 0 12px;">'
         '<span style="font-size:11px;color:#c0392b;margin-right:8px;">Описание</span>Стратегический профиль финансовой гексаграммы</h2>',
-        stage_badge,
-        _lifecycle_chart_html(lifecycle_stages, getattr(fs, "lifecycle_stage_index", None)),
         _lifecycle_blocks(fs, combo, with_lc=False),
         txt_block("Сценарий развития", getattr(fs, "scenario_text", None)),
         txt_block("Маркетинг", getattr(fs, "marketing_text", None)),
@@ -556,6 +551,123 @@ def _finance_description_html(finance_strategy: Any | None, lifecycle_stages=Non
         _assumptions_block(fs),
     ]
     return "".join(parts)
+
+
+_CL_FLAG_LABELS = {
+    "CONSTRAINT_TIED": "Несколько контуров делят минимальную зрелость — ограничение неустойчиво, стадия не фиксируется.",
+    "CONSTRAINT_STABLE": "Контур-ограничение без подвижных линий: внутреннего запроса на изменение нет, работа начинается со стратегической сессии.",
+    "GAP_NOT_SIGNIFICANT": "Отрыв ограничения от остальных контуров незначим — точка условна, опирайтесь на вектор.",
+    "STAGE_UNKNOWN": "Для части гексаграмм стадия жизненного цикла не заполнена в базе стратегий.",
+    "ARCHETYPE_AMBIGUOUS": "Якорные стадии и во фронте, и в бэке: типовой сценарий неприменим.",
+    "HIGH_TURBULENCE": "Высокая доля подвижных линий: система в фазе широкой трансформации.",
+    "NO_INTERNAL_PRESSURE": "Подвижных линий нет ни в одном контуре: конфигурация стабильна (в т.ч. возможен стабильный упадок).",
+    "RENEWAL_PRESSURE": "Выраженное давление роста: назревшие слабости преобладают над перегревом.",
+    "OVERHEAT_RISK": "Выраженный риск перегрева: подвижные сильные позиции преобладают.",
+}
+
+_CL_LINE_TITLES = {
+    "processes": "Процессы", "systems": "Технологии и системы", "team": "Команда",
+    "leadership": "Поддержка руководства", "environment": "Внешняя среда",
+    "strategy": "Видение и стратегия",
+}
+
+
+def company_lifecycle_html(lc: dict, lifecycle_stages=None) -> str:
+    """Раздел «Жизненный цикл компании»: точка (стадия ограничения), архетип
+    с рамкой линий 5-6, тактика из маршрута ограничения, вектор по контурам."""
+    from app.contours import CONTOURS
+    ink = "#1a2540"
+
+    def _title(key):
+        return CONTOURS[key].title if key in CONTOURS else (key or "")
+
+    # Точка: график стадий с отметкой стадии контура-ограничения
+    stage = lc.get("stage")
+    chart = ""
+    if stage and lifecycle_stages:
+        idx = next((st.get("sort_order") for st in lifecycle_stages
+                    if (st.get("name") or "").strip().lower() == stage), None)
+        chart = _lifecycle_chart_html(lifecycle_stages, idx)
+    constraint = lc.get("constraint")
+    if constraint:
+        point = (f'<p style="font-size:13px;color:rgba(26,37,64,0.72);line-height:1.7;margin:0 0 12px;font-family:Arial,sans-serif;">'
+                 f'Стадия определяется по контуру-ограничению — <b>{e(_title(constraint))}</b>: '
+                 'система движется со скоростью узкого места.</p>')
+    else:
+        tied = ", ".join(_title(t) for t in (lc.get("tied") or []))
+        point = (f'<p style="font-size:13px;color:rgba(26,37,64,0.72);line-height:1.7;margin:0 0 12px;font-family:Arial,sans-serif;">'
+                 f'Стадия не фиксируется: минимальную зрелость делят контуры — {e(tied)}. '
+                 'Требуется дообследование или стратегическая сессия.</p>')
+
+    # Архетип и рамка (семантика линий 5-6)
+    frame = lc.get("playbook", {}).get("frame") or {}
+    arch = (f'<div style="display:inline-block;padding:4px 14px;border-radius:4px;font-size:13px;'
+            f'font-family:Arial,sans-serif;background:rgba(30,58,138,0.08);border:1px solid rgba(30,58,138,0.2);'
+            f'color:#1e3a8a;margin:2px 0 12px;">Архетип: {e(lc.get("archetype_title") or "")}</div>')
+    frame_html = ""
+    for fkey, flabel in (("environment", "Линия 5 — Внешняя среда"),
+                         ("strategy", "Линия 6 — Видение и стратегия")):
+        if frame.get(fkey):
+            frame_html += (
+                '<div style="background:rgba(255,255,255,0.5);border:1px solid rgba(26,37,64,0.1);'
+                'border-radius:6px;padding:12px 14px;margin-bottom:8px;page-break-inside:avoid;">'
+                f'<div style="font-size:9px;font-family:Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;'
+                f'color:rgba(26,37,64,0.45);font-weight:600;margin-bottom:6px;">{flabel} — стратегическая рамка</div>'
+                f'<p style="font-size:12px;color:{ink};line-height:1.6;margin:0;font-family:Arial,sans-serif;">{e(frame[fkey])}</p></div>')
+
+    # Тактика: шаги маршрута контура-ограничения (детали — в его разделе)
+    tactics = lc.get("playbook", {}).get("tactics") or []
+    steps_html = ""
+    for st in tactics:
+        param = _CL_LINE_TITLES.get(st.get("line_key"), st.get("line_key") or "")
+        direction = ("укрепить слабую позицию" if st.get("from_state") == "old_yin"
+                     else "стабилизировать перегрев")
+        steps_html += (f'<li style="margin-bottom:6px;">Шаг {st.get("order")}. Линия {st.get("line")} — '
+                       f'{e(param)} <span style="color:rgba(26,37,64,0.6);">({e(direction)})</span></li>')
+    if steps_html:
+        tactics_html = (
+            f'<p style="font-size:12px;color:rgba(26,37,64,0.6);font-family:Arial,sans-serif;margin:0 0 8px;">'
+            f'Тактика — фактические подвижные линии контура «{e(_title(constraint))}» '
+            '(детальные действия — в разделе этого контура):</p>'
+            f'<ul style="margin:0 0 12px;padding-left:18px;font-size:12px;color:{ink};'
+            f'font-family:Arial,sans-serif;line-height:1.5;">{steps_html}</ul>')
+    else:
+        tactics_html = ""
+
+    # Вектор: переход стадий по контурам
+    vec = lc.get("vector") or {}
+    vrows = ""
+    for key, v in vec.items():
+        to = v.get("to")
+        vrows += (f'<tr><td style="padding:7px 8px;font-size:12px;color:{ink};font-family:Arial,sans-serif;">{e(_title(key))}</td>'
+                  f'<td style="padding:7px 8px;text-align:center;font-size:12px;color:{ink};font-family:Arial,sans-serif;">{e(v.get("from") or "—")}</td>'
+                  f'<td style="padding:7px 8px;text-align:center;font-size:12px;color:{ink};font-family:Arial,sans-serif;">'
+                  + (e(to) if to else '<span style="opacity:0.45;">без перехода</span>') + '</td>'
+                  f'<td style="padding:7px 8px;text-align:center;font-family:monospace;font-size:12px;color:{ink};">{e(str(v.get("moving_count", 0)))}</td></tr>')
+    th = ('<th style="text-align:left;padding:7px 8px;font-size:10px;text-transform:uppercase;'
+          'letter-spacing:1px;color:rgba(26,37,64,0.4);font-family:Arial,sans-serif;font-weight:400;">')
+    vector_html = (
+        '<table style="width:100%;border-collapse:collapse;margin-bottom:12px;">'
+        f'<thead><tr style="border-bottom:1px solid rgba(26,37,64,0.15);">{th}Контур</th>'
+        f'{th.replace("text-align:left","text-align:center")}Стадия сейчас</th>'
+        f'{th.replace("text-align:left","text-align:center")}Стадия после перехода</th>'
+        f'{th.replace("text-align:left","text-align:center")}Подвижных линий</th></tr></thead>'
+        f'<tbody>{vrows}</tbody></table>') if vrows else ""
+
+    # Флаги качества
+    notes = [(_CL_FLAG_LABELS.get(f) or f) for f in (lc.get("quality_flags") or [])]
+    notes_html = ""
+    if notes:
+        items = "".join(f'<li style="margin-bottom:5px;">{e(n)}</li>' for n in notes)
+        notes_html = (f'<ul style="margin:0;padding-left:18px;font-size:11px;color:rgba(26,37,64,0.6);'
+                      f'font-family:Arial,sans-serif;line-height:1.5;">{items}</ul>')
+
+    return (
+        '<div style="margin-top:26px;page-break-inside:avoid;">'
+        '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 12px;">'
+        '<span style="font-size:11px;color:#c0392b;margin-right:8px;">Диагноз</span>Жизненный цикл компании</h2>'
+        + point + chart + arch + frame_html + tactics_html + vector_html + notes_html +
+        '</div>')
 
 
 def build_report_html(
@@ -776,6 +888,9 @@ def build_report_html(
     if not is_method2:
         if summary:
             summary_section = summary_card_html(summary, company_name)
+            lc = summary.get("company_lifecycle")
+            if lc:
+                summary_section += company_lifecycle_html(lc, lifecycle_stages)
         if extra_contours:
             from app.contours import get_spec as _spec_of
             for _c in extra_contours:

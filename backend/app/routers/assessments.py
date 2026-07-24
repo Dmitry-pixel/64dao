@@ -26,6 +26,7 @@ from app.contours import CONTOURS, CONTOUR_ORDER, get_spec
 from app.contour_summary import build_summary
 from app.contour_settings import is_contour_enabled
 from app.contour_scoring import compute_contour_result
+from app.company_lifecycle import build_company_lifecycle
 
 settings = get_settings()
 router = APIRouter(prefix="/api/assessments", tags=["assessments"])
@@ -507,6 +508,33 @@ async def submit_contour(
     }
 
 
+
+async def enrich_with_stages(db, results: dict[str, dict]) -> dict[str, dict]:
+    """Обогащение снимков контуров стадиями ЖЦ из strategies (JOIN по
+    combination_current и combination_resulting). Сам company_lifecycle —
+    чистый модуль и в БД не ходит; стадии подставляются здесь."""
+    combos = set()
+    for r in results.values():
+        for f in ("combination_current", "combination_resulting"):
+            if r.get(f):
+                combos.add(r[f])
+    if not combos:
+        return results
+    rows = (await db.execute(
+        select(Strategy.combination, Strategy.lifecycle_stage)
+        .where(Strategy.combination.in_(combos))
+    )).all()
+    stage_by_combo = {c: st for c, st in rows}
+    return {
+        key: {
+            **r,
+            "lifecycle_stage": stage_by_combo.get(r.get("combination_current")),
+            "transition_lifecycle_stage": stage_by_combo.get(r.get("combination_resulting")),
+        }
+        for key, r in results.items()
+    }
+
+
 async def load_report_contours(db, assessment, finance_result):
     """Дополнительные контуры и сводная карта. Общая сборка для PDF и для API
     страницы отчёта — иначе две версии отчёта разъедутся по составу разделов."""
@@ -546,6 +574,9 @@ async def load_report_contours(db, assessment, finance_result):
     if summary is not None:
         from app.contour_route import build_summary_route
         summary["route"] = build_summary_route(all_results)
+        # Жизненный цикл компании: по контуру-ограничению, а не по финансам.
+        enriched = await enrich_with_stages(db, all_results)
+        summary["company_lifecycle"] = build_company_lifecycle(enriched, summary)
     return extra, summary
 
 
