@@ -572,9 +572,12 @@ _CL_LINE_TITLES = {
 }
 
 
-def company_lifecycle_html(lc: dict, lifecycle_stages=None) -> str:
+def company_lifecycle_html(lc: dict, lifecycle_stages=None,
+                           section_no: str = "03", company_name: str = "") -> str:
     """Раздел «Жизненный цикл компании»: точка (стадия ограничения), архетип
-    с рамкой линий 5-6, тактика из маршрута ограничения, вектор по контурам."""
+    с рамкой линий 5-6, тактика из маршрута ограничения, вектор по контурам.
+    Самостоятельный раздел-страница ПЕРЕД финансовой функцией: цикл — свойство
+    компании (контур-ограничение), а не финансового блока."""
     from app.contours import CONTOURS
     ink = "#1a2540"
 
@@ -662,12 +665,21 @@ def company_lifecycle_html(lc: dict, lifecycle_stages=None) -> str:
         notes_html = (f'<ul style="margin:0;padding-left:18px;font-size:11px;color:rgba(26,37,64,0.6);'
                       f'font-family:Arial,sans-serif;line-height:1.5;">{items}</ul>')
 
+    accent = "#c0392b"
     return (
-        '<div style="margin-top:26px;page-break-inside:avoid;">'
-        '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 12px;">'
-        '<span style="font-size:11px;color:#c0392b;margin-right:8px;">Диагноз</span>Жизненный цикл компании</h2>'
+        '<div style="padding:40px 50px;background:#e8e4db;page-break-before:always;">'
+        '<div style="display:flex;justify-content:space-between;align-items:center;'
+        'padding-bottom:14px;border-bottom:1px solid rgba(26,37,64,0.12);margin-bottom:24px;">'
+        f'<span style="font-size:11px;font-weight:700;color:{accent};font-family:Arial,sans-serif;letter-spacing:2px;">64DAO</span>'
+        f'<span style="font-size:10px;color:rgba(26,37,64,0.3);font-family:Arial,sans-serif;">{e(company_name)} · жизненный цикл</span>'
+        '</div>'
+        f'<h2 style="font-size:22px;font-weight:400;color:{ink};margin:0 0 12px;">'
+        f'<span style="font-size:11px;color:{accent};margin-right:10px;">{e(section_no)}</span>Жизненный цикл компании</h2>'
         + point + chart + arch + frame_html + tactics_html + vector_html + notes_html +
-        '</div>')
+        '<div style="margin-top:24px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);'
+        'display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:10px;color:rgba(26,37,64,0.3);">'
+        '<span>64dao.ru</span><span>© 2024 64DAO — Конфиденциально</span>'
+        '</div></div>')
 
 
 def build_report_html(
@@ -867,12 +879,25 @@ def build_report_html(
   </div>
 </div>"""
 
+    # ── Жизненный цикл компании: раздел 03 ПЕРЕД финансовой функцией ──
+    # Цикл — свойство компании (контур-ограничение), поэтому это отдельный
+    # раздел, а не часть финансового блока. Его наличие сдвигает нумерацию
+    # финансов/сводной/контуров на +1.
+    lc = summary.get("company_lifecycle") if summary else None
+    lifecycle_page = ""
+    _shift = 0
+    if (not is_method2) and lc:
+        lifecycle_page = company_lifecycle_html(
+            lc, lifecycle_stages, section_no="03", company_name=company_name)
+        _shift = 1
+
     # ── Финансовая функция (Метод 1, только при наличии результата скоринга) ──
     finance_section = ""
     if (not is_method2) and finance_result and finance_interpretation:
         finance_section = finance_section_html(
             finance_result, finance_interpretation, company_name,
             _finance_description_html(finance_strategy, lifecycle_stages),
+            section_no=f"{3 + _shift:02d}",
         )
 
     transition_page = (
@@ -887,19 +912,19 @@ def build_report_html(
     contour_sections = ""
     if not is_method2:
         if summary:
-            summary_section = summary_card_html(summary, company_name)
-            lc = summary.get("company_lifecycle")
-            if lc:
-                summary_section += company_lifecycle_html(lc, lifecycle_stages)
+            summary_section = summary_card_html(
+                summary, company_name, section_no=f"{4 + _shift:02d}")
         if extra_contours:
             from app.contours import get_spec as _spec_of
+            _cno = 5 + _shift
             for _c in extra_contours:
                 contour_sections += contour_section_html(
                     _c["result"], _c["interp"], company_name,
                     blocks=_spec_of(_c["contour"]).blocks,
                     title=_c["title"],
-                    section_no=_c["section_no"],
+                    section_no=f"{_cno:02d}",
                 )
+                _cno += 1
 
     return f"""<!DOCTYPE html>
 <html lang="ru">
@@ -959,6 +984,8 @@ def build_report_html(
 {page1}
 
 {transition_page}
+
+{lifecycle_page}
 
 {finance_section}
 
