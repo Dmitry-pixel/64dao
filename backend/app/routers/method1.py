@@ -9,6 +9,7 @@ from app.auth import get_current_user
 from app.contours import CONTOURS, CONTOUR_ORDER, INTRO_TEXTS, get_spec
 from app.contour_settings import get_contour_settings, is_contour_enabled
 from app.finance_items import SCALE_LABELS
+from app.method1_questions import BASE_QUESTIONS
 from app.models import User
 
 router = APIRouter(prefix="/api/method1", tags=["method1"])
@@ -32,6 +33,12 @@ def _items_payload(contour: str) -> dict:
         "scale_labels": SCALE_LABELS,
         "blocks": blocks,
     }
+
+
+@router.get("/base-questions")
+async def get_base_questions(user: User = Depends(get_current_user)):
+    """6 базовых вопросов Метода 1 — единый источник для анкеты, отчёта и админки."""
+    return {"questions": BASE_QUESTIONS}
 
 
 @router.get("/finance-items")

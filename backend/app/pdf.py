@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from app.finance_pdf import finance_section_html, contour_section_html, summary_card_html
-from app.method1_questions import BASE_QUESTIONS
+from app.method1_questions import BASE_QUESTIONS, LC_LABELS
 
 from playwright.async_api import async_playwright, Browser, Playwright
 
@@ -349,14 +349,8 @@ def _transition_block(strategy: Any, target_hex_info: tuple | None) -> str:
     )
 
 
-_LC_LABELS = [
-    ("lc_profit",    "Формирование прибыли"),
-    ("lc_strategy",  "Рыночная стратегия"),
-    ("lc_decisions", "Принятие решений"),
-    ("lc_consumer",  "Тип потребителя"),
-    ("lc_market",    "Статус рынка"),
-    ("lc_value",     "Тип ценности"),
-]
+# Подписи блоков ЖЦ — из единого источника вопросов, без локальной копии.
+_LC_LABELS = LC_LABELS
 
 
 def _lifecycle_blocks(strategy: Any, combination: str, with_lc: bool = True) -> str:
