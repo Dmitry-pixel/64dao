@@ -22,6 +22,18 @@ def mock_emails(monkeypatch):
     return m
 
 
+@pytest.fixture(autouse=True)
+def isolated_reminder_settings(monkeypatch, tmp_path):
+    """Джоб читает порог из volume: тест не должен зависеть от прода.
+
+    Без этого смена периодичности в админке ломала бы тесты, которые
+    рассчитаны на порог 90 дней.
+    """
+    from app import reminders_settings
+    monkeypatch.setattr(reminders_settings, "SETTINGS_FILE",
+                        tmp_path / "reminders_settings.json")
+
+
 def _now():
     return datetime.now(timezone.utc)
 

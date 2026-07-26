@@ -16,6 +16,7 @@ from app.db import AsyncSessionLocal
 from app.models import Subscription, Company, Assessment, User
 from app.config import get_settings
 from app import email as email_mod
+from app import reminders_settings
 
 logger = logging.getLogger("reminders")
 settings = get_settings()
@@ -51,12 +52,16 @@ async def run_expiry_reminders(session: AsyncSession) -> int:
     return sent
 
 
-async def run_repeat_reminders(session: AsyncSession) -> int:
+async def run_repeat_reminders(session: AsyncSession,
+                               days: int | None = None) -> int:
     """«Пора повторить» через N дней после последней диагностики компании.
     Только активным подписчикам (правило гейтинга). Авто-перевзвод: при новой
     диагностике last_at > sent_at → снова сработает."""
     now = datetime.now(timezone.utc)
-    threshold = now - timedelta(days=settings.repeat_reminder_days)
+    # Порог задаётся в админке; аргумент оставлен для тестов.
+    if days is None:
+        days = reminders_settings.read()["repeat_days"]
+    threshold = now - timedelta(days=days)
     latest_sq = (
         select(
             Assessment.company_id.label("cid"),
@@ -108,9 +113,15 @@ async def main() -> None:
     if not settings.reminders_enabled:
         logger.info("reminders disabled (REMINDERS_ENABLED=false) — skip")
         return
+    cfg = reminders_settings.read()
+    if not cfg["enabled"]:
+        logger.info("reminders disabled in admin — skip")
+        return
+    rep = 0
     async with AsyncSessionLocal() as session:
         exp = await run_expiry_reminders(session)
-        rep = await run_repeat_reminders(session)
+        if cfg["repeat_enabled"]:
+            rep = await run_repeat_reminders(session, cfg["repeat_days"])
     logger.info("reminders done: expiry=%d repeat=%d", exp, rep)
 
 

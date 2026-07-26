@@ -545,6 +545,24 @@ async def update_email_templates(body: dict, _: User = Depends(require_admin)):
     return {"ok": True}
 
 
+# ── Настройки email-напоминаний ─────────────────────────────────────────────
+# Расписание живёт в host cron, здесь только «что и когда рассылать».
+from app import reminders_settings as _reminders  # noqa: E402
+
+
+@router.get("/reminders-settings")
+async def get_reminders_settings(_: User = Depends(require_admin)):
+    return _reminders.read()
+
+
+@router.put("/reminders-settings")
+async def update_reminders_settings(body: dict,
+                                    _: User = Depends(require_admin)):
+    # Возвращаем нормализованное значение: админка сразу видит,
+    # что порог мог быть подрезан до допустимых границ.
+    return _reminders.write(body)
+
+
 # ── Documents (юридические документы) ───────────────────────────────────────
 
 DOCS_DIR = Path("/var/www/64dao/uploads/docs")
