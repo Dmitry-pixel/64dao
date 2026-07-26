@@ -198,6 +198,7 @@ export function AdminSide({ current }: AdminSideProps) {
       <Link href="/admin/payment-settings" className={current === 'payment-settings' ? 'on' : ''}>Настройка оплаты</Link>
       <Link href="/admin/test-payment" className={current === 'test-payment' ? 'on' : ''}>Тест оплаты</Link>
       <Link href="/admin/email-templates" className={current === 'email-templates' ? 'on' : ''}>Email-шаблоны</Link>
+      <Link href="/admin/reminders" className={current === 'reminders' ? 'on' : ''}>Рассылка</Link>
       <Link href="/admin/social-links" className={current === 'social-links' ? 'on' : ''}>Соц. сети</Link>
       <Link href="/admin/site-mode" className={current === 'site-mode' ? 'on' : ''}>Режим заглушки</Link>
       <Link href="/admin/logs" className={current === 'logs' ? 'on' : ''}>Логи</Link>

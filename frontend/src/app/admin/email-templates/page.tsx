@@ -26,9 +26,17 @@ const TEMPLATE_META: Record<string, { label: string; vars: string[] }> = {
     label: 'Восстановление доступа',
     vars: ['{name}', '{name_part}'],
   },
+  repeat_diagnostic: {
+    label: 'Пора повторить диагностику',
+    vars: ['{name}', '{name_part}', '{company}', '{company_part}', '{days_since}', '{app_url}'],
+  },
 }
 
 const VAR_HINTS: Record<string, string> = {
+  '{company}':      'Название компании',
+  '{company_part}': 'Оборот « компании «Х»» или пусто, если названия нет',
+  '{days_since}':   'Сколько дней прошло с последней диагностики',
+  '{app_url}':      'Адрес сайта, без слэша на конце',
   '{code}':       'OTP-код (6 цифр)',
   '{name}':       'Имя пользователя',
   '{name_part}':  'Имя с запятой: «, Иван» или пусто если нет имени',

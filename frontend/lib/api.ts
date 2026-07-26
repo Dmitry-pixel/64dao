@@ -269,6 +269,13 @@ export function getSubscriptionStatus() {
 }
 
 
+// ── Настройки рассылки (админ) ───────────────────────────────────────────────
+export interface RemindersSettings {
+  enabled:        boolean
+  repeat_enabled: boolean
+  repeat_days:    number
+}
+
 export const adminApi = {
   stats:          () => request('/api/admin/stats'),
   users:          () => request('/api/admin/users'),
@@ -283,6 +290,8 @@ export const adminApi = {
   logs:           () => request<LogEntry[]>('/api/admin/logs'),
   emailTemplates:     () => request<Record<string, EmailTemplate>>('/api/admin/email-templates'),
   saveEmailTemplates: (d: Record<string, EmailTemplate>) => request('/api/admin/email-templates', { method: 'PUT', body: JSON.stringify(d) }),
+  remindersSettings:     () => request<RemindersSettings>('/api/admin/reminders-settings'),
+  saveRemindersSettings: (d: RemindersSettings) => request<RemindersSettings>('/api/admin/reminders-settings', { method: 'PUT', body: JSON.stringify(d) }),
 
   uploadImage: async (strategyId: string, file: File) => {
     const form = new FormData()

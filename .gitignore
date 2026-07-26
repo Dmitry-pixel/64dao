@@ -1,5 +1,8 @@
 # ── Секреты — НИКОГДА не коммитить ────────────────────────────
 backend/.env
+# Резервные копии окружения не должны попадать в репозиторий
+backend/.env.*
+!backend/.env.example
 frontend/.env.local
 .env
 .env.local
