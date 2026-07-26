@@ -141,6 +141,14 @@ class AssessmentOut(BaseModel):
     passed_contours:     list[ContourBrief] = []
     finance_combination: str | None = None
     finance_result:      dict[str, Any] | None = None
+    # Повторная диагностика: счётчик права живёт на первичной, связь идёт
+    # через parent_assessment_id. Кабинету это нужно, чтобы показать бейдж
+    # и сгруппировать повторный отчёт с основным.
+    company_id:           uuid.UUID | None = None
+    parent_assessment_id: uuid.UUID | None = None
+    is_followup:          bool = False
+    followup_allowed:     int = 0
+    followup_used:        int = 0
 
 
 # ── Strategies ────────────────────────────────────────────────────────────────

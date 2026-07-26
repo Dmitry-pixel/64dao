@@ -193,15 +193,23 @@ async def create_assessment(
 
 @router.get("", response_model=list[AssessmentOut])
 async def list_assessments(
+    q: str | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
+    # Поиск по названию компании из диагностики, а не из профиля: у одного
+    # владельца компаний может быть несколько, и профиль о них не знает.
+    # Индекс pg_trgm не заводим: на нынешних объёмах последовательное
+    # сканирование дешевле его поддержки.
+    stmt = (
         select(Assessment)
         .where(Assessment.user_id == user.id)
         .options(selectinload(Assessment.reports))
         .order_by(Assessment.created_at.desc())
     )
+    if q and q.strip():
+        stmt = stmt.where(Assessment.company_name.ilike("%" + q.strip() + "%"))
+    result = await db.execute(stmt)
     assessments = result.scalars().all()
 
     # Подгружаем image_url стратегий одним запросом (избегаем N+1)
