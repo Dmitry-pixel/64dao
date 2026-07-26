@@ -96,3 +96,21 @@ async def test_companies_are_independent(auth_client):
     for name in ("Альфа", "Бета"):
         assert (await _post(auth_client, name)).status_code == 200
         assert (await _post(auth_client, name)).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_method2_gets_no_followup_right(auth_client):
+    """Метод 2 это оценка бизнес-модели по шкале: сравнивать там нечего."""
+    r = await auth_client.post("/api/assessments", json={
+        "method1_answers": None,
+        "method1_combination": None,
+        "method2_data": {"value_proposition": {"score": 4, "text": "Тест"}},
+        "finance_answers": None,
+        "company_name": "Бизнес-модель Ко",
+        "status": "completed",
+    })
+    assert r.status_code == 200, r.text
+    items = (await auth_client.get(
+        "/api/assessments", params={"q": "Бизнес-модель"})).json()
+    assert items and items[0]["followup_allowed"] == 0
+    assert items[0]["is_followup"] is False

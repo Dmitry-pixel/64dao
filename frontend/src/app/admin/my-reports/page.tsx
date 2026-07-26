@@ -1,4 +1,5 @@
 'use client'
+import { FollowupBadge } from '@/components/FollowupBadge'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -152,6 +153,7 @@ export default function AdminMyReportsPage() {
                         : 'Диагностика в процессе'}
                     </div>
                     <div className="dash-detail">{a.status === 'draft' ? 'Черновик' : 'Завершено'}</div>
+                    <FollowupBadge a={a} />
                     {!isMethod2(a) && a.status !== 'draft' && (
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(26,37,64,0.08)' }}>
                         <div style={{ fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.4)', fontWeight: 700, marginBottom: 6 }}>

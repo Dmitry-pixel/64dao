@@ -1,4 +1,5 @@
 'use client'
+import { FollowupBadge } from '@/components/FollowupBadge'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getMe, listAssessments, deleteAssessment, logout, listContours, isMethod2, type AuthUser, type Assessment, type ContourInfo } from '@/lib/api'
@@ -259,6 +260,7 @@ export default function DashboardPage() {
                     <div style={S.cardDetail}>
                       {a.reports.length > 0 ? `${a.reports.length} отчёт сформирован` : 'Отчёт формируется'}
                     </div>
+                    <FollowupBadge a={a} />
                     {a.finance_combination && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
                         <span style={{ fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase' as const, fontWeight: 700, color: '#c0392b', background: 'rgba(192,57,43,0.08)', border: '1px solid rgba(192,57,43,0.2)', borderRadius: 4, padding: '2px 8px' }}>

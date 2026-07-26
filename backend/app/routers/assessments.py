@@ -123,13 +123,15 @@ async def create_assessment(
     # Право живёт на первичной диагностике компании, а не на пользователе:
     # оно куплено вместе с конкретным отчётом. Админ не ограничен.
     primary = None
-    if user.role != "admin" and body.status in ("completed", "paid"):
+    if (user.role != "admin" and body.status in ("completed", "paid")
+            and not method2_payload):
         primary = await db.scalar(
             select(Assessment)
             .where(
                 Assessment.company_id == company.id,
                 Assessment.status.in_(("completed", "paid")),
                 Assessment.is_followup.is_(False),
+                Assessment.method == "method1",
             )
             .order_by(Assessment.created_at)
             .limit(1)
@@ -162,7 +164,7 @@ async def create_assessment(
         assessment.parent_assessment_id = primary.id
         primary.followup_used += 1
         await db.flush()
-    elif body.status in ("completed", "paid"):
+    elif body.status in ("completed", "paid") and not method2_payload:
         # Первичная диагностика приносит право на один бесплатный повтор.
         # Бэкфил миграции 017 закрыл только записи, существовавшие до неё.
         assessment.followup_allowed = 1
