@@ -119,22 +119,30 @@ async def create_assessment(
             db.add(company)
             await db.flush()
 
-    # PR5: повтор диагностики компании (у неё уже есть ≥1 завершённой) —
-    # только активным подписчикам или админу. Разовый покупатель повтор
-    # запустить не может (правило гейтинга).
-    if user.role != "admin":
-        from sqlalchemy import func as _func
-        from app import subscription_service as _subs
-        _prior = await db.scalar(select(_func.count(Assessment.id)).where(
-            Assessment.company_id == company.id,
-            Assessment.status.in_(("completed", "paid")),
-        ))
-        if _prior and not await _subs.is_active(db, user.id):
+    # Повторная диагностика входит в стоимость основной и доступна один раз.
+    # Право живёт на первичной диагностике компании, а не на пользователе:
+    # оно куплено вместе с конкретным отчётом. Админ не ограничен.
+    primary = None
+    if user.role != "admin" and body.status in ("completed", "paid"):
+        primary = await db.scalar(
+            select(Assessment)
+            .where(
+                Assessment.company_id == company.id,
+                Assessment.status.in_(("completed", "paid")),
+                Assessment.is_followup.is_(False),
+            )
+            .order_by(Assessment.created_at)
+            .limit(1)
+            .with_for_update()
+        )
+        if primary is not None and primary.followup_used >= primary.followup_allowed:
             raise HTTPException(
                 status_code=403,
-                detail="Повторная диагностика доступна по подписке. "
-                       "Оформите подписку, чтобы отслеживать динамику компании.",
+                detail="Повторная диагностика для этой компании уже пройдена. "
+                       "Она входит в стоимость основной диагностики "
+                       "и доступна один раз.",
             )
+
     assessment = Assessment(
         user_id=user.id,
         method1_answers=body.method1_answers,
@@ -147,6 +155,18 @@ async def create_assessment(
     )
     db.add(assessment)
     await db.flush()
+    # Отметка повтора и выдача права — в одной транзакции с созданием:
+    # двойной клик не должен выдать два прогона.
+    if primary is not None:
+        assessment.is_followup = True
+        assessment.parent_assessment_id = primary.id
+        primary.followup_used += 1
+        await db.flush()
+    elif body.status in ("completed", "paid"):
+        # Первичная диагностика приносит право на один бесплатный повтор.
+        # Бэкфил миграции 017 закрыл только записи, существовавшие до неё.
+        assessment.followup_allowed = 1
+        await db.flush()
 
     # Финансовый контур хранится только в assessment_contours (после миграции 011).
     if finance_result and finance_combination and body.finance_answers:
