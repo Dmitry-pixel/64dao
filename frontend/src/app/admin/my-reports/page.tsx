@@ -15,6 +15,7 @@ export default function AdminMyReportsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [contours, setContours] = useState<ContourInfo[]>([])
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     listContours().then(r => setContours(r.contours)).catch(() => setContours([]))
@@ -36,6 +37,16 @@ export default function AdminMyReportsPage() {
     }
     init()
   }, [])
+
+  // Поиск идёт на сервере: клиентская фильтрация развалится, как только
+  // выдача станет постраничной. Дебаунс, чтобы не бить по API на каждый символ.
+  useEffect(() => {
+    if (loading) return
+    const t = setTimeout(() => {
+      listAssessments(query).then(setAssessments).catch(() => {})
+    }, 400)
+    return () => clearTimeout(t)
+  }, [query])
 
   const handleDelete = async (id: string) => {
     setDeletingId(id)
@@ -80,7 +91,28 @@ export default function AdminMyReportsPage() {
             <Link href="/assessment" className="btn btn-primary btn-lg">+ Новая диагностика</Link>
           </div>
 
-          {assessments.length === 0 ? (
+          <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Название компании"
+              style={{ flex: 1, minWidth: 220, padding: '10px 14px', fontFamily: 'sans-serif', fontSize: 14, border: '1px solid rgba(26,37,64,0.2)', borderRadius: 6, background: 'rgba(255,255,255,0.8)', color: 'var(--text)' }}
+            />
+            <button className="btn btn-primary" style={{ padding: '10px 20px', fontSize: 13 }}
+              onClick={() => listAssessments(query).then(setAssessments).catch(() => {})}>
+              Искать по названию компании
+            </button>
+            {query.trim() !== "" && (
+              <button className="btn btn-ghost" style={{ padding: '10px 16px', fontSize: 13 }}
+                onClick={() => setQuery("")}>Сбросить</button>
+            )}
+          </div>
+          {assessments.length === 0 && query.trim() !== "" ? (
+            <div className="dash-empty">
+              <h3>Ничего не найдено</h3>
+              <p>По запросу «{query}» диагностик нет. Проверьте название компании.</p>
+            </div>
+          ) : assessments.length === 0 ? (
             <div className="dash-empty">
               <span style={{ fontSize: 52, fontFamily: 'Georgia,serif', color: 'var(--blue)', display: 'block', marginBottom: 18 }}>䷀</span>
               <h3>Пока нет диагностик</h3>

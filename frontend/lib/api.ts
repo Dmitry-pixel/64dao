@@ -215,8 +215,9 @@ export async function submitContour(
   )
 }
 
-export async function listAssessments() {
-  return request<Assessment[]>('/api/assessments')
+export async function listAssessments(q?: string) {
+  const qs = q && q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""
+  return request<Assessment[]>(`/api/assessments${qs}`)
 }
 
 export async function getAssessment(id: string) {
@@ -438,4 +439,10 @@ export interface Assessment {
   strategy_image_url: string | null
   finance_combination?: string | null
   finance_result?: Record<string, unknown> | null
+  // Повторная диагностика: счётчик права живёт на первичной.
+  company_id?:           string | null
+  parent_assessment_id?: string | null
+  is_followup?:          boolean
+  followup_allowed?:     number
+  followup_used?:        number
 }
