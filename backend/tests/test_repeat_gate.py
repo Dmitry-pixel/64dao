@@ -114,3 +114,26 @@ async def test_method2_gets_no_followup_right(auth_client):
         "/api/assessments", params={"q": "Бизнес-модель"})).json()
     assert items and items[0]["followup_allowed"] == 0
     assert items[0]["is_followup"] is False
+
+
+@pytest.mark.asyncio
+async def test_admin_followup_is_linked_too(admin_client, db_session):
+    """Обход лимита для админа не отменяет связывание с первичной.
+
+    Раньше для админа пропускался весь блок целиком, повтор оставался
+    непомеченным и вставал в список второй первичной диагностикой.
+    """
+    name = "Админ Связь Ко"
+    assert (await _post(admin_client, name)).status_code == 200
+    assert (await _post(admin_client, name)).status_code == 200
+    db_session.expire_all()
+    rows = (await db_session.execute(
+        select(Assessment)
+        .where(Assessment.company_name == name)
+        .order_by(Assessment.created_at)
+    )).scalars().all()
+    assert len(rows) == 2
+    primary = next(r for r in rows if not r.is_followup)
+    repeat = next(r for r in rows if r.is_followup)
+    assert repeat.parent_assessment_id == primary.id
+    assert primary.followup_used == 1

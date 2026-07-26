@@ -123,8 +123,9 @@ async def create_assessment(
     # Право живёт на первичной диагностике компании, а не на пользователе:
     # оно куплено вместе с конкретным отчётом. Админ не ограничен.
     primary = None
-    if (user.role != "admin" and body.status in ("completed", "paid")
-            and not method2_payload):
+    # Поиск первичной идёт для всех, включая админа: обход касается только
+    # лимита. Иначе повтор админа не помечался бы и не связывался с основным.
+    if body.status in ("completed", "paid") and not method2_payload:
         primary = await db.scalar(
             select(Assessment)
             .where(
@@ -137,7 +138,8 @@ async def create_assessment(
             .limit(1)
             .with_for_update()
         )
-        if primary is not None and primary.followup_used >= primary.followup_allowed:
+        if (primary is not None and user.role != "admin"
+                and primary.followup_used >= primary.followup_allowed):
             raise HTTPException(
                 status_code=403,
                 detail="Повторная диагностика для этой компании уже пройдена. "
@@ -162,6 +164,11 @@ async def create_assessment(
     if primary is not None:
         assessment.is_followup = True
         assessment.parent_assessment_id = primary.id
+        if primary.followup_used >= primary.followup_allowed:
+            # Админ лимитом не ограничен, но инвариант
+            # followup_used <= followup_allowed обязан сохраниться,
+            # иначе запись не пройдёт проверку ограничения в БД.
+            primary.followup_allowed = primary.followup_used + 1
         primary.followup_used += 1
         await db.flush()
     elif body.status in ("completed", "paid") and not method2_payload:
