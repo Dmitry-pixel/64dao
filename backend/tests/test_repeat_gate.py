@@ -60,7 +60,11 @@ async def test_followup_is_linked_and_right_is_spent(auth_client, db_session):
         .order_by(Assessment.created_at)
     )).scalars().all()
     assert len(rows) == 2
-    primary, repeat = rows
+    # created_at у обеих записей одинаков: в тесте они создаются в одной
+    # транзакции, а now() в PostgreSQL возвращает время её начала.
+    # Поэтому различаем по признаку, а не по порядку сортировки.
+    primary = next(r for r in rows if not r.is_followup)
+    repeat = next(r for r in rows if r.is_followup)
     assert primary.is_followup is False
     assert primary.followup_allowed == 1
     assert primary.followup_used == 1

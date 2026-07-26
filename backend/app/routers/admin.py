@@ -15,7 +15,6 @@ from app.schemas import (
     AdminSetupRequest, AdminStats, LogEntry,
     StrategyCreate, StrategyUpdate, StrategyOut, StrategyListItem,
     UserOut, AssessmentOut, ImpersonateStatus, SuccessResponse, ContourBrief,
-    SubscriptionOut, SubscriptionStatus, SubscriptionGrant,
 )
 
 settings = get_settings()
@@ -812,36 +811,3 @@ async def admin_reset_contour(
 
 
 # ── Подписки (ручная выдача админом, роадмап 3.1) ─────────────────────────────
-@router.get("/users/{user_id}/subscription", response_model=SubscriptionStatus)
-async def admin_subscription_status(
-    user_id: str,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    from app import subscription_service as subs
-    return await subs.status_for(db, user_id)
-
-
-@router.post("/users/{user_id}/subscription", response_model=SubscriptionOut)
-async def admin_grant_subscription(
-    user_id: str,
-    body: SubscriptionGrant,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    """Ручная выдача подписки: доступ к «Динамике» без оплаты."""
-    from app import subscription_service as subs
-    user = await db.scalar(select(User).where(User.id == user_id))
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-    return await subs.grant(db, user_id, days=body.days)
-
-
-@router.delete("/users/{user_id}/subscription")
-async def admin_revoke_subscription(
-    user_id: str,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    from app import subscription_service as subs
-    return {"revoked": await subs.revoke(db, user_id)}
