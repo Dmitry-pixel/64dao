@@ -534,6 +534,15 @@ from app.email_templates_store import (  # noqa: F401,E402
 )
 
 
+@router.get("/email-senders")
+async def get_email_senders(_: User = Depends(require_admin)):
+    from app import email_templates_store as _ets
+    return {
+        "allowed": _ets.allowed_senders(),
+        "default": _ets.default_sender(),
+    }
+
+
 @router.get("/email-templates")
 async def get_email_templates(_: User = Depends(require_admin)):
     return _read_templates()

@@ -16,6 +16,8 @@ import json
 import os
 from pathlib import Path
 
+from app.config import get_settings
+
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/var/www/64dao/uploads")
 TEMPLATES_FILE = Path(UPLOAD_DIR) / "email_templates.json"
 
@@ -138,3 +140,28 @@ def render(key: str, variables: dict) -> tuple[str, str]:
         subject = subject.replace(token, str(val))
         body = body.replace(token, str(val))
     return subject, body
+
+
+# ── Отправитель письма ──────────────────────────────────────────────────────
+# Провайдер разрешает ставить в From только адреса, которыми реально владеет
+# домен и которые допускает его политика. Список задаётся в .env, а не в
+# админке: иначе через интерфейс можно было бы подставить чужой адрес.
+
+def default_sender() -> str:
+    return get_settings().smtp_from_address
+
+
+def allowed_senders() -> list[str]:
+    raw = os.getenv("SMTP_SENDERS", "")
+    items = [x.strip() for x in raw.split(",") if x.strip()]
+    base = default_sender()
+    if base not in items:
+        items.insert(0, base)
+    return items
+
+
+def sender(key: str) -> str:
+    """Адрес для шаблона. Неизвестный адрес молча откатывается на умолчание."""
+    tpl = read_templates().get(key) or {}
+    value = (tpl.get("from_address") or "").strip()
+    return value if value in allowed_senders() else default_sender()

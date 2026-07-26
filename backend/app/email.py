@@ -17,6 +17,7 @@ from app.email_templates_store import (  # noqa: F401
     TEMPLATES_FILE,
     read_templates as _load_templates,
     render as _render,
+    sender as _sender,
 )
 
 
@@ -34,10 +35,11 @@ def _wrap_html(body_html: str) -> str:
 </html>"""
 
 
-async def _send_message(to: str, subject: str, html: str) -> None:
+async def _send_message(to: str, subject: str, html: str,
+                        from_address: str | None = None) -> None:
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = f"64DAO <{settings.smtp_from_address}>"
+    msg["From"] = f"64DAO <{from_address or settings.smtp_from_address}>"
     msg["To"] = to
     msg.attach(MIMEText(html, "html", "utf-8"))
     await aiosmtplib.send(
@@ -56,7 +58,7 @@ async def send_otp_email(to: str, code: str, name: str | None = None) -> None:
     if settings.debug:
         logger.warning("=== DEBUG OTP === email=%s code=%s subject=%s ===", to, code, subject)
         return
-    await _send_message(to, subject, _wrap_html(body))
+    await _send_message(to, subject, _wrap_html(body), _sender("otp"))
 
 
 async def send_forgot_password_email(to: str, name: str | None, reset_link: str) -> None:
@@ -65,7 +67,7 @@ async def send_forgot_password_email(to: str, name: str | None, reset_link: str)
     if settings.debug:
         logger.info("=== DEBUG FORGOT PASSWORD === email=%s link=%s ===", to, reset_link)
         return
-    await _send_message(to, subject, _wrap_html(body))
+    await _send_message(to, subject, _wrap_html(body), _sender("forgot_password"))
 
 
 async def send_welcome_email(to: str, name: str) -> None:
@@ -74,7 +76,7 @@ async def send_welcome_email(to: str, name: str) -> None:
     if settings.debug:
         logger.info("=== DEBUG WELCOME === email=%s name=%s ===", to, name)
         return
-    await _send_message(to, subject, _wrap_html(body))
+    await _send_message(to, subject, _wrap_html(body), _sender("welcome"))
 
 
 async def send_account_status_email(to: str, name: str | None, activated: bool) -> None:
@@ -84,7 +86,7 @@ async def send_account_status_email(to: str, name: str | None, activated: bool) 
     if settings.debug:
         logger.warning("=== DEBUG STATUS EMAIL === email=%s key=%s ===", to, key)
         return
-    await _send_message(to, subject, _wrap_html(body))
+    await _send_message(to, subject, _wrap_html(body), _sender(key))
 
 
 async def send_support_email(from_email: str, from_name: str | None, message: str) -> None:
@@ -180,4 +182,4 @@ async def send_repeat_diagnostic_email(
         logger.info("=== DEBUG REPEAT DIAGNOSTIC === email=%s days=%s ===",
                     to, days_since)
         return
-    await _send_message(to, subject, _wrap_html(body))
+    await _send_message(to, subject, _wrap_html(body), _sender("repeat_diagnostic"))
