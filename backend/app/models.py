@@ -167,6 +167,13 @@ class Assessment(Base):
     method:              Mapped[str]       = mapped_column(String(10), nullable=False, server_default="method1")
     company_name:        Mapped[str | None]= mapped_column(String(255), nullable=True)
     company_id:          Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
+    # Право на одну бесплатную повторную диагностику живёт на первичной:
+    # оно куплено вместе с конкретным отчётом, а не выдано пользователю
+    # и не привязано к компании.
+    parent_assessment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("assessments.id", ondelete="SET NULL"), nullable=True, index=True)
+    is_followup:         Mapped[bool]      = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    followup_allowed:    Mapped[int]       = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    followup_used:       Mapped[int]       = mapped_column(Integer, nullable=False, default=0, server_default="0")
     status:              Mapped[str]       = mapped_column(String(20), nullable=False, default="draft")
     created_at:          Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:          Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -175,6 +182,7 @@ class Assessment(Base):
         CheckConstraint("status IN ('draft','completed','paid')", name="chk_assessment_status"),
         CheckConstraint("method IN ('method1','method2')", name="assessments_method_check"),
         CheckConstraint(r"method1_combination IS NULL OR method1_combination ~ '^[AB]{6}$'", name="chk_assessment_combination"),
+        CheckConstraint("followup_used >= 0 AND followup_used <= followup_allowed", name="chk_assessment_followup_used"),
     )
 
     user:    Mapped["User"]          = relationship(back_populates="assessments")
