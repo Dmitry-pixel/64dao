@@ -1,4 +1,5 @@
 'use client'
+import { NestedFollowups } from '@/components/NestedFollowups'
 import { FollowupBadge } from '@/components/FollowupBadge'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -72,6 +73,20 @@ export default function AdminMyReportsPage() {
   const completed = assessments.filter(a => a.status === 'completed').length
   const drafts = assessments.filter(a => a.status === 'draft').length
 
+  // Повтор это продолжение основного отчёта, а не отдельная строка списка.
+  // Осиротевший повтор (первичную удалили в админке) остаётся верхним
+  // уровнем, иначе он просто исчез бы из кабинета.
+  const byParent = new Map<string, any[]>()
+  assessments.forEach((a: any) => {
+    if (a.is_followup && a.parent_assessment_id) {
+      const k = a.parent_assessment_id
+      byParent.set(k, [...(byParent.get(k) ?? []), a])
+    }
+  })
+  const ids = new Set(assessments.map((a: any) => a.id))
+  const visible = assessments.filter((a: any) =>
+    !a.is_followup || !a.parent_assessment_id || !ids.has(a.parent_assessment_id))
+
   return (
     <>
       <AdminNav current="my-reports" />
@@ -124,7 +139,7 @@ export default function AdminMyReportsPage() {
             </div>
           ) : (
             <div className="dash-list">
-              {assessments.map((a, i) => (
+              {visible.map((a, i) => (
                 <div
                   key={a.id}
                   className="dash-card"
@@ -154,6 +169,7 @@ export default function AdminMyReportsPage() {
                     </div>
                     <div className="dash-detail">{a.status === 'draft' ? 'Черновик' : 'Завершено'}</div>
                     <FollowupBadge a={a} />
+                    <NestedFollowups items={byParent.get(a.id) ?? []} />
                     {!isMethod2(a) && a.status !== 'draft' && (
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(26,37,64,0.08)' }}>
                         <div style={{ fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.4)', fontWeight: 700, marginBottom: 6 }}>

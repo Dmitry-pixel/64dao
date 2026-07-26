@@ -1,4 +1,5 @@
 'use client'
+import { NestedFollowups } from '@/components/NestedFollowups'
 import { FollowupBadge } from '@/components/FollowupBadge'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -136,6 +137,20 @@ export default function DashboardPage() {
   const completed = assessments.filter(a => a.status === 'completed' || a.status === 'paid')
   const drafts = assessments.filter(a => a.status === 'draft')
 
+  // Повтор это продолжение основного отчёта, а не отдельная строка списка.
+  // Осиротевший повтор (первичную удалили в админке) остаётся верхним
+  // уровнем, иначе он просто исчез бы из кабинета.
+  const byParent = new Map<string, any[]>()
+  assessments.forEach((a: any) => {
+    if (a.is_followup && a.parent_assessment_id) {
+      const k = a.parent_assessment_id
+      byParent.set(k, [...(byParent.get(k) ?? []), a])
+    }
+  })
+  const ids = new Set(assessments.map((a: any) => a.id))
+  const visible = assessments.filter((a: any) =>
+    !a.is_followup || !a.parent_assessment_id || !ids.has(a.parent_assessment_id))
+
   return (
     <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
       {/* Навигация */}
@@ -242,7 +257,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div style={S.list}>
-              {assessments.map((a, i) => (
+              {visible.map((a, i) => (
                 <div key={a.id} className="dash-card-mobile" style={{ ...S.card, cursor: (a.status === 'completed' || a.status === 'paid') ? 'pointer' : 'default' }}
                   onClick={() => (a.status === 'completed' || a.status === 'paid') && router.push(`/report/${a.id}`)}>
                   <div style={S.cardNum}>{String(i + 1).padStart(2, '0')}</div>
@@ -261,6 +276,7 @@ export default function DashboardPage() {
                       {a.reports.length > 0 ? `${a.reports.length} отчёт сформирован` : 'Отчёт формируется'}
                     </div>
                     <FollowupBadge a={a} />
+                    <NestedFollowups items={byParent.get(a.id) ?? []} />
                     {a.finance_combination && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
                         <span style={{ fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase' as const, fontWeight: 700, color: '#c0392b', background: 'rgba(192,57,43,0.08)', border: '1px solid rgba(192,57,43,0.2)', borderRadius: 4, padding: '2px 8px' }}>
