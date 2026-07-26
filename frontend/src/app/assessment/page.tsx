@@ -2,53 +2,10 @@
 export const dynamic = 'force-dynamic'
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { getMe, getFinanceItems, type AuthUser, type FinanceBlock } from '@/lib/api'
+import { getBaseQuestions, getMe, getFinanceItems, type AuthUser, type BaseQuestion, type FinanceBlock } from '@/lib/api'
 import ContourSurvey from '@/components/ContourSurvey'
 
-const QUESTIONS = [
-  {
-    eyebrow: 'Вопрос 01 / 06',
-    question: 'Где сейчас фокус усилий компании?',
-    help: 'За счёт чего формируется прибыль? Подумайте, какой тип задач занимает больше времени у руководства последние 3–6 месяцев.',
-    a: 'Рост выручки и объёма продаж',
-    b: 'Повышение эффективности, сокращение расходов и потерь',
-  },
-  {
-    eyebrow: 'Вопрос 02 / 06',
-    question: 'Как компания реагирует на изменения рынка?',
-    help: 'Какую рыночную стратегию преимущественно использует компания? Вы копируете или создаёте?',
-    a: 'Быстрый последователь — адаптация уже подтверждённых решений. Быстро адаптирует и улучшает существующие решения',
-    b: 'Первопроходец — создание новых решений и рынков. Создаёт новые категории, продукты или подходы',
-  },
-  {
-    eyebrow: 'Вопрос 03 / 06',
-    question: 'Как принимаются стратегические решения?',
-    help: 'Как организовано управление? Как принимаются ключевые решения?',
-    a: 'Преимущественно централизованно',
-    b: 'Преимущественно распределённо',
-  },
-  {
-    eyebrow: 'Вопрос 04 / 06',
-    question: 'Кто является основным клиентом компании?',
-    help: 'Оцените, какой сегмент приносит основную часть выручки.',
-    a: 'Корпоративные клиенты (B2B)',
-    b: 'Частные потребители (B2C)',
-  },
-  {
-    eyebrow: 'Вопрос 05 / 06',
-    question: 'Как можно описать рынок компании?',
-    help: 'Оцените зрелость и конкурентную среду вашего рынка.',
-    a: 'Зрелый рынок с высокой конкуренцией',
-    b: 'Развивающийся рынок с формирующимся спросом',
-  },
-  {
-    eyebrow: 'Вопрос 06 / 06',
-    question: 'На чём преимущественно основана ценность продукта или сервиса?',
-    help: 'Что является главным источником ценности для ваших клиентов?',
-    a: 'Технологические инновации',
-    b: 'Улучшение существующих решений',
-  },
-]
+// Тексты вопросов приходят с сервера: app/method1_questions -> fin_content -> /api/method1/base-questions
 
 const BMC_BLOCKS = [
   { num: '01', title: 'Ценностное предложение', help: 'Какую конкретную пользу клиент получает? Чем вы отличаетесь от альтернатив?' },
@@ -90,6 +47,8 @@ function AssessmentInner() {
   const [finScale, setFinScale] = useState<Record<string, string>>({})
   const [finMaxUnknowns, setFinMaxUnknowns] = useState(3)
   const [finLoading, setFinLoading] = useState(false)
+  const [baseQ, setBaseQ] = useState<BaseQuestion[] | null>(null)
+  const [baseQError, setBaseQError] = useState(false)
 
   useEffect(() => {
     getMe().catch(() => router.push('/login'))
@@ -99,6 +58,15 @@ function AssessmentInner() {
   useEffect(() => {
     setSelected(answers[step] || null)
   }, [step, answers])
+
+  // Вопросы редактируются в админке, поэтому берутся с сервера, а не из сборки.
+  useEffect(() => {
+    let cancelled = false
+    getBaseQuestions()
+      .then(d => { if (!cancelled) { setBaseQ(d.questions); setBaseQError(false) } })
+      .catch(() => { if (!cancelled) setBaseQError(true) })
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -341,7 +309,24 @@ function AssessmentInner() {
 
   // ── Метод 1 — вопросы ────────────────────────────────────────────────────
   if (mode === 'method1') {
-    const q = QUESTIONS[step]
+    const q = baseQ?.[step]
+    if (!q) return (
+      <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
+        <NavBar />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '120px 20px' }}>
+          <p style={{ fontFamily: 'sans-serif', fontSize: 14, color: 'rgba(26,37,64,0.6)' }}>
+            {baseQError ? 'Не удалось загрузить вопросы.' : 'Загрузка вопросов…'}
+          </p>
+          {baseQError && (
+            <button onClick={() => { setBaseQError(false); getBaseQuestions().then(d => setBaseQ(d.questions)).catch(() => setBaseQError(true)) }}
+              style={{ background: '#1a2540', color: '#fff', border: 'none', borderRadius: 6, padding: '9px 18px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer' }}>
+              Повторить
+            </button>
+          )}
+        </div>
+      </div>
+    )
+    const eyebrow = `Вопрос 0${step + 1} / 06`
     const progress = ((step) / 6) * 100
     return (
       <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
@@ -368,17 +353,17 @@ function AssessmentInner() {
           {/* Тело вопроса */}
           <div style={S.qBody}>
             <div>
-              <div style={S.qEyebrow}>{q.eyebrow}</div>
-              <h2 style={S.qQuestion}>{q.question}</h2>
+              <div style={S.qEyebrow}>{eyebrow}</div>
+              <h2 style={S.qQuestion}>{q.q}</h2>
               <p style={S.qHelp}>{q.help}</p>
               <div style={S.qOptions}>
                 <button style={{ ...S.qOption, ...(selected === 'A' ? S.qOptionOn : {}) }} onClick={() => handleAnswer('A')}>
                   <span style={{ ...S.qLetter, ...(selected === 'A' ? S.qLetterOn : {}) }}>A</span>
-                  <span style={S.qText}>{q.a}</span>
+                  <span style={S.qText}>{q.a_full}</span>
                 </button>
                 <button style={{ ...S.qOption, ...(selected === 'B' ? S.qOptionOn : {}) }} onClick={() => handleAnswer('B')}>
                   <span style={{ ...S.qLetter, ...(selected === 'B' ? S.qLetterOn : {}) }}>B</span>
-                  <span style={S.qText}>{q.b}</span>
+                  <span style={S.qText}>{q.b_full}</span>
                 </button>
               </div>
             </div>

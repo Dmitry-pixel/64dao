@@ -167,6 +167,28 @@ def _line_balance(result: dict) -> int:
     return balance
 
 
+def lifecycle_progress(results: dict[str, dict]) -> dict:
+    """Сколько контуров пройдено и чего не хватает до жизненного цикла компании.
+
+    Принцип матрёшки: шесть базовых вопросов дают общую картину компании,
+    контуры раскрывают её детали. Стадия компании берётся у контура-ограничения,
+    поэтому нужны все четыре: по одному-двум это был бы частичный срез,
+    выданный за системный диагноз.
+    """
+    from app.contours import CONTOURS
+
+    passed = [k for k in CONTOUR_ORDER if results.get(k)]
+    missing = [k for k in CONTOUR_ORDER if not results.get(k)]
+    return {
+        "passed": len(passed),
+        "required": REQUIRED_CONTOURS,
+        "passed_contours": passed,
+        "missing_contours": missing,
+        "missing_titles": [CONTOURS[k].title for k in missing if k in CONTOURS],
+        "available": len(passed) >= REQUIRED_CONTOURS,
+    }
+
+
 def build_company_lifecycle(results: dict[str, dict], summary: dict | None) -> dict | None:
     """Главная точка входа.
 

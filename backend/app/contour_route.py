@@ -10,9 +10,7 @@ result контура, воспроизводится при генерации 
 from __future__ import annotations
 
 from app.contour_scoring import _lookup
-from app.contours import CONTOUR_ORDER
-
-GAP_THRESHOLD = 3
+from app.contours import CONTOUR_ORDER, GAP_THRESHOLD  # noqa: F401
 
 
 def _flip(code: str, line: int) -> str:

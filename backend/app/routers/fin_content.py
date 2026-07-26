@@ -12,13 +12,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_admin
+from app.base_questions import BaseQuestionEditError, validate_edit
 from app.db import get_db
 from app.models import FinContent, User
 from app.schemas import FinContentOut, FinContentUpsert
 
 router = APIRouter(prefix="/api/fin-content", tags=["fin-content"])
 
-ALLOWED_KINDS = {"tonality", "quadrant", "trigram", "tension_rule", "action_package"}
+ALLOWED_KINDS = {"tonality", "quadrant", "trigram", "tension_rule", "action_package",
+                 "base_question"}
 ALLOWED_CONTOURS = {"common", "finance", "product", "market", "process"}
 
 
@@ -55,7 +57,6 @@ async def upsert_fin_content(
         raise HTTPException(status_code=400, detail="Недопустимый kind")
     if contour not in ALLOWED_CONTOURS:
         raise HTTPException(status_code=400, detail="Недопустимый contour")
-
     row = await db.scalar(
         select(FinContent).where(
             FinContent.kind == kind,
@@ -63,6 +64,11 @@ async def upsert_fin_content(
             FinContent.contour == contour,
         )
     )
+    if kind == "base_question":
+        try:
+            validate_edit(key, contour, data.payload, row.payload if row else None)
+        except BaseQuestionEditError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
     if row is None:
         row = FinContent(kind=kind, key=key, contour=contour, payload=data.payload,
                          sort=data.sort, is_active=data.is_active)

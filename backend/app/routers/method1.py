@@ -4,12 +4,14 @@
 Единый источник текстов утверждений — app/contours.py, без дублирования во фронте.
 """
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.contours import CONTOURS, CONTOUR_ORDER, INTRO_TEXTS, get_spec
 from app.contour_settings import get_contour_settings, is_contour_enabled
 from app.finance_items import SCALE_LABELS
-from app.method1_questions import BASE_QUESTIONS
+from app.base_questions import load_questions
+from app.db import get_db
 from app.models import User
 
 router = APIRouter(prefix="/api/method1", tags=["method1"])
@@ -36,9 +38,12 @@ def _items_payload(contour: str) -> dict:
 
 
 @router.get("/base-questions")
-async def get_base_questions(user: User = Depends(get_current_user)):
-    """6 базовых вопросов Метода 1 — единый источник для анкеты, отчёта и админки."""
-    return {"questions": BASE_QUESTIONS}
+async def get_base_questions(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """6 базовых вопросов Метода 1 — тексты из админки поверх дефолтов кода."""
+    return {"questions": await load_questions(db)}
 
 
 @router.get("/finance-items")

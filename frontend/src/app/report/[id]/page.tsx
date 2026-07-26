@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { getMe, getAssessment, reportDownloadUrl, listContours, getCompanies, isMethod2, type AuthUser, type Assessment, type ContourInfo, type Company } from '@/lib/api'
+import { getMe, getAssessment, getBaseQuestions, reportDownloadUrl, listContours, getCompanies, isMethod2, type AuthUser, type Assessment, type ContourInfo, type Company } from '@/lib/api'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
 import HexDiagram, { HexLines } from '@/components/HexDiagram'
 import ContourReportSection from '@/components/ContourReportSection'
@@ -57,14 +57,7 @@ const SCENARIO_LABELS: [string, string][] = [
   ['focus',                 'Фокус'],
 ]
 
-const BASE_QUESTIONS: { q: string; a: string; b: string }[] = [
-  { q: 'Где сейчас фокус усилий компании?', a: 'Рост выручки и объёма продаж', b: 'Повышение эффективности, сокращение расходов и потерь' },
-  { q: 'Как компания реагирует на изменения рынка?', a: 'Быстрый последователь — адаптация уже подтверждённых решений', b: 'Первопроходец — создание новых решений и рынков' },
-  { q: 'Как принимаются стратегические решения?', a: 'Преимущественно централизованно', b: 'Преимущественно распределённо' },
-  { q: 'Кто является основным клиентом компании?', a: 'Корпоративные клиенты (B2B)', b: 'Частные потребители (B2C)' },
-  { q: 'Как можно описать рынок компании?', a: 'Зрелый рынок с высокой конкуренцией', b: 'Развивающийся рынок с формирующимся спросом' },
-  { q: 'На чём преимущественно основана ценность продукта или сервиса?', a: 'Технологические инновации', b: 'Улучшение существующих решений' },
-]
+// Тексты вопросов приходят с сервера (/api/method1/base-questions) — правятся в админке.
 
 const FIN_STATE_RU: Record<string, string> = {
   young_yang: 'Ян — устойчивая сильная позиция',
@@ -97,6 +90,16 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(true)
   const [activeSection, setActiveSection] = useState(0)
   const [dynCompany, setDynCompany] = useState<Company | null>(null)
+  const [baseQ, setBaseQ] = useState<{ q: string; a: string; b: string }[]>([])
+
+  // Вопросы редактируются в админке — тянем актуальные, а не вшитые в сборку.
+  useEffect(() => {
+    let cancelled = false
+    getBaseQuestions()
+      .then(d => { if (!cancelled) setBaseQ(d.questions.map(x => ({ q: x.q, a: x.a, b: x.b }))) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     Promise.all([getMe(), getAssessment(assessmentId)])
@@ -365,7 +368,7 @@ export default function ReportPage() {
 
               <HexDiagram
                 combo={combo}
-                questions={BASE_QUESTIONS}
+                questions={baseQ}
                 labels={SCENARIO_LABELS}
                 scenario={strategy?.scenario}
               />

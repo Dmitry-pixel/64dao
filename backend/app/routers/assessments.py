@@ -26,7 +26,7 @@ from app.contours import CONTOURS, CONTOUR_ORDER, get_spec
 from app.contour_summary import build_summary
 from app.contour_settings import is_contour_enabled
 from app.contour_scoring import compute_contour_result
-from app.company_lifecycle import build_company_lifecycle
+from app.company_lifecycle import build_company_lifecycle, lifecycle_progress
 
 settings = get_settings()
 router = APIRouter(prefix="/api/assessments", tags=["assessments"])
@@ -577,6 +577,9 @@ async def load_report_contours(db, assessment, finance_result):
         # Жизненный цикл компании: по контуру-ограничению, а не по финансам.
         enriched = await enrich_with_stages(db, all_results)
         summary["company_lifecycle"] = build_company_lifecycle(enriched, summary)
+        # Прогресс нужен, когда цикл ещё не собран: пользователю важно видеть,
+        # сколько контуров осталось, а не просто отсутствие раздела.
+        summary["lifecycle_progress"] = lifecycle_progress(all_results)
     return extra, summary
 
 

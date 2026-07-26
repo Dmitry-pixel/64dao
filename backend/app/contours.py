@@ -162,6 +162,11 @@ CONTOURS: dict[str, ContourSpec] = {
     "market": MARKET_SPEC,
 }
 
+# Порог значимости отрыва контура-ограничения от остальных по индексу зрелости.
+# Единственное определение: раньше константа дублировалась в contour_summary
+# и contour_route, и правка в одном месте не доезжала до другого.
+GAP_THRESHOLD = 3
+
 # Порядок разделов отчёта; он же — тай-брейк выбора контура-ограничения
 # при равном maturity_index (Поправки П5 и П7).
 CONTOUR_ORDER: tuple[str, ...] = ("finance", "product", "process", "market")

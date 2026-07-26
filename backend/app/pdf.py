@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from app.finance_pdf import finance_section_html, contour_section_html, summary_card_html
-from app.method1_questions import BASE_QUESTIONS, LC_LABELS
+from app.method1_questions import BASE_QUESTIONS, LC_LABELS  # дефолты
 
 from playwright.async_api import async_playwright, Browser, Playwright
 
@@ -353,7 +353,8 @@ def _transition_block(strategy: Any, target_hex_info: tuple | None) -> str:
 _LC_LABELS = LC_LABELS
 
 
-def _lifecycle_blocks(strategy: Any, combination: str, with_lc: bool = True) -> str:
+def _lifecycle_blocks(strategy: Any, combination: str, with_lc: bool = True,
+                      questions: list[dict] | None = None) -> str:
     """6 блоков жизненного цикла для PDF — по одному на каждый вопрос."""
     header = ""
     if strategy and strategy.stratagema_title:
@@ -361,8 +362,12 @@ def _lifecycle_blocks(strategy: Any, combination: str, with_lc: bool = True) -> 
     if strategy and strategy.title:
         header += f'<h3 style="font-size:16px;font-weight:500;color:#1a2540;margin-bottom:16px;font-family:Arial,sans-serif;">{e(strategy.title)}</h3>'
 
+    # Значения блоков — авторский контент из карточки стратагемы, а не
+    # производная от комбинации: их правит методолог, код их не пересчитывает.
+    labels = ([(q["lc_key"], q["label"]) for q in questions] if questions else _LC_LABELS)
+
     blocks_html = ""
-    for i, (field, label) in enumerate(_LC_LABELS):
+    for i, (field, label) in enumerate(labels):
         value = (getattr(strategy, field, None) or "") if strategy else ""
         blocks_html += f"""
 <div style="background:rgba(255,255,255,0.5);border:1px solid rgba(26,37,64,0.1);border-radius:6px;padding:12px 14px;">

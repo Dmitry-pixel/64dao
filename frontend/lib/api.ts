@@ -135,6 +135,22 @@ export interface FinanceItemsResponse {
   blocks: FinanceBlock[]
 }
 
+export interface BaseQuestion {
+  lc_key: string
+  label: string
+  q: string
+  help: string
+  a: string
+  b: string
+  a_full: string
+  b_full: string
+}
+
+/** 6 базовых вопросов Метода 1. Тексты правятся в админке, дефолты — в коде бэкенда. */
+export async function getBaseQuestions() {
+  return request<{ questions: BaseQuestion[] }>('/api/method1/base-questions')
+}
+
 export async function getFinanceItems() {
   return request<ContourItemsResponse>('/api/method1/finance-items')
 }

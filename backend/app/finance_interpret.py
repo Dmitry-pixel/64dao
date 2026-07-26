@@ -18,10 +18,24 @@ from app.contour_route import build_route
 
 PLACEHOLDER = "Не заполнено"
 
+# Пункт 1 ревизии метода: индекс зрелости считает все Ян-линии одинаково, но
+# Инь на линии 5 означает турбулентность внешнего контекста, а не слабость
+# функции. Компания в шторме получает заниженный индекс — это влияет на
+# тональность, квадрант и выбор контура-ограничения. Отчёт обязан это назвать.
+ENVIRONMENT_YIN_NOTE = (
+    "Линия 5 «Среда» определена как Инь: внешний и смежный контекст нестабилен. "
+    "Это не слабость функции, а характеристика обстановки. Индекс зрелости "
+    "учитывает её наравне с остальными линиями, поэтому при турбулентной среде "
+    "он занижен: без учёта линии 5 индекс равен {excl} из 5. Сравнивая контуры "
+    "между собой, держите поправку в уме."
+)
+
 # Человекочитаемые расшифровки флагов (Спецификация §3.5/§3.6) для «оговорок по данным»
 _LINE_FLAG_TEXT = {
     "INCONSISTENT_BLOCK": "противоречивые ответы в блоке (разброс ≥2) — рекомендуется уточняющее интервью",
-    "BORDERLINE_LINE":    "неустойчивое определение (балл в зоне 2.40–2.60) — рекомендуется уточняющее интервью",
+    "BORDERLINE_LINE":    "неустойчивое определение (балл в зоне 2.25–2.75) — рекомендуется уточняющее интервью",
+    "NEAR_OLD_YANG":      "балл вплотную к порогу подвижности 3.50 — сила близка к пику; пакет удержания не подключён, но риск перегрева стоит обсудить",
+    "NEAR_OLD_YIN":       "балл вплотную к порогу подвижности 1.50 — слабость близка ко дну; изменение ещё не помечено назревшим, но зона требует внимания",
     "PARTIAL_BLOCK":      "один ответ «Не знаю» — балл рассчитан по трём пунктам",
     "VETO_APPLIED":       "линия переопределена в Инь по правилу вето (нет приверженности первого лица, пункт 4.1)",
     "VETO_UNKNOWN":       "по пункту 4.1 выбран ответ «Не знаю» — правило вето не применялось",
@@ -72,6 +86,19 @@ def build_interpretation(result: dict, content: dict, blocks: dict | None = None
 
     def c(kind: str, key: str) -> dict | None:
         return content.get(kind, {}).get(key)
+
+    # Вклад линии 5 в индекс зрелости (пункт 1 ревизии метода)
+    _env = next((l for l in lines if l["line"] == 5), None)
+    _excl = sum(1 for l in lines if l["symbol"] == "A" and l["line"] != 5)
+    maturity = {
+        "index": result["maturity_index"],
+        "of": len(lines),
+        "index_excluding_environment": _excl,
+        "environment_symbol": (_env or {}).get("symbol"),
+        "environment_turbulent": bool(_env and _env["symbol"] == "B"),
+        "note": ENVIRONMENT_YIN_NOTE.format(excl=_excl)
+                if (_env and _env["symbol"] == "B") else None,
+    }
 
     # A — тональность
     tkey = tonality_key(result["maturity_index"])
@@ -196,6 +223,7 @@ def build_interpretation(result: dict, content: dict, blocks: dict | None = None
         step["is_veto"] = "VETO_APPLIED" in (_ln.get("flags") or [])
 
     return {
+        "maturity": maturity,
         "tonality": tonality,
         "veto_block": veto_block,
         "quadrant": quadrant,
@@ -214,6 +242,10 @@ def build_interpretation(result: dict, content: dict, blocks: dict | None = None
 def _build_caveats(result: dict, blocks: dict | None = None) -> list[str]:
     blocks = blocks or BLOCKS
     out: list[str] = []
+    _env = next((l for l in result["lines"] if l["line"] == 5), None)
+    if _env and _env["symbol"] == "B":
+        _excl = sum(1 for l in result["lines"] if l["symbol"] == "A" and l["line"] != 5)
+        out.append(ENVIRONMENT_YIN_NOTE.format(excl=_excl))
     if "STRAIGHTLINING" in result.get("quality_flags", []):
         out.append("Анкета помечена как недостоверная: ≥20 из 24 ответов одинаковы (straightlining).")
     if "LOW_DATA_COMPLETENESS" in result.get("quality_flags", []):

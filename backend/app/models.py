@@ -148,7 +148,8 @@ class FinContent(Base):
             name="chk_fin_content_contour",
         ),
         CheckConstraint(
-            "kind IN ('tonality','quadrant','trigram','tension_rule','action_package')",
+            "kind IN ('tonality','quadrant','trigram','tension_rule',"
+            "'action_package','base_question')",
             name="chk_fin_content_kind",
         ),
     )

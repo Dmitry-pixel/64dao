@@ -16,6 +16,11 @@ from app.hexagrams import HEXAGRAM_LIST
 _CODE_TO_HEX: dict[str, tuple[int, str]] = {c: (n, name) for n, name, c in HEXAGRAM_LIST}
 VALID_RAW = {1, 2, 3, 4}
 
+# Границы зон-предупреждений (пункты 2 и 4 ревизии метода).
+BORDERLINE_LOW, BORDERLINE_HIGH = 2.25, 2.75   # неустойчивое определение Ян/Инь
+NEAR_YANG_LOW = 3.25                            # подходит к порогу подвижности 3.50
+NEAR_YIN_HIGH = 1.75                            # подходит к порогу подвижности 1.50
+
 
 @dataclass(frozen=True)
 class ContourSpec:
@@ -173,8 +178,17 @@ def compute_contour_result(answers: dict[str, int | None], spec: ContourSpec) ->
         # §3.5 — флаги качества по блоку
         if (max(eff_scores) - min(eff_scores)) >= 2:
             flags.append("INCONSISTENT_BLOCK")
-        if 2.40 <= avg <= 2.60:
+        # Зона неустойчивого определения. При 4 пунктах балл кратен 0.25, при
+        # 3 пунктах шаг 1/3 — узкая зона 2.40–2.60 ловила только ровно 2.50.
+        if BORDERLINE_LOW <= avg <= BORDERLINE_HIGH:
             flags.append("BORDERLINE_LINE")
+        # Подвижность наступает на 3.50 и 1.50. Балл вплотную к порогу
+        # содержательно близок к пику или ко дну, но пакет не подключается —
+        # помечаем, чтобы консультант не пропустил пограничный случай.
+        if NEAR_YANG_LOW <= avg < 3.5:
+            flags.append("NEAR_OLD_YANG")
+        if 1.5 < avg <= NEAR_YIN_HIGH:
+            flags.append("NEAR_OLD_YIN")
 
         lines.append(LineResult(
             line=block,

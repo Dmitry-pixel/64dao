@@ -10,8 +10,8 @@ from sqlalchemy import select
 from app.db import AsyncSessionLocal as async_session_maker
 from app.models import Strategy
 
-# Формулировки и подписи — из единого источника app/method1_questions.
-# Локальных копий здесь быть не должно (tests/test_base_questions_mapping.py).
+# Формулировки и подписи берутся из единого источника — app/method1_questions.
+# Локальных копий здесь быть не должно (см. tests/test_base_questions_mapping.py).
 from app.method1_questions import ANSWERS, LC_FIELDS, QUESTION_LABELS  # noqa: E402
 
 
@@ -35,11 +35,15 @@ async def main():
                 continue
 
             # lifecycle_description — сводный текст для совместимости
-            s.lifecycle_description = generate_description(s.combination)
+            if not (s.lifecycle_description or "").strip():
+                s.lifecycle_description = generate_description(s.combination)
 
-            # 6 отдельных lc_* полей — заполняем всегда (авто-заполнение из комбинации)
+            # 6 полей профиля — только первичное заполнение пустых.
+            # Это редактируемый контент карточки стратагемы: безусловная
+            # перезапись затирала бы авторские правки при каждом прогоне.
             for i, field in enumerate(LC_FIELDS):
-                setattr(s, field, ANSWERS[i][0] if s.combination[i] == "A" else ANSWERS[i][1])
+                if not (getattr(s, field, None) or "").strip():
+                    setattr(s, field, ANSWERS[i][0] if s.combination[i] == "A" else ANSWERS[i][1])
 
             updated += 1
 

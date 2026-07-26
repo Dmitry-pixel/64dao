@@ -11,7 +11,13 @@ interface FinContentRow {
   kind: string
   key: string
   contour: string
-  payload: { title?: string; text?: string; condition?: string }
+  payload: {
+    title?: string; text?: string; condition?: string
+    // базовые вопросы
+    q?: string; help?: string
+    a?: string; b?: string; a_full?: string; b_full?: string
+    label?: string; lc_key?: string
+  }
   sort: number
   is_active: boolean
 }
@@ -22,6 +28,7 @@ const KINDS: { kind: string; label: string; help: string }[] = [
   { kind: 'trigram',        label: 'Триграммы',        help: 'Слой B — характеристика триграммы в нижней и верхней позиции.' },
   { kind: 'tension_rule',   label: 'Правила напряжений', help: 'Слой D — R1–R12. Снятый флаг «Активно» убирает правило из отчёта.' },
   { kind: 'action_package', label: 'Пакеты действий',  help: 'Слой E — рекомендации по подвижным линиям.' },
+  { kind: 'base_question',  label: 'Базовые вопросы',  help: 'Шесть вопросов типологии. Правится только формулировка: порядок вопросов и сторона ответа задают расчёт и защищены.' },
 ]
 
 const CONTOURS: { key: string; label: string }[] = [
@@ -79,7 +86,12 @@ export default function AdminFinContentPage() {
         credentials: 'include',
         body: JSON.stringify({ payload: row.payload, sort: row.sort, is_active: row.is_active }),
       })
-      if (!res.ok) { setError(`Не удалось сохранить ${row.kind}/${row.key} (${res.status})`); return }
+      if (!res.ok) {
+        let detail = ''
+        try { const j = await res.json(); if (typeof j?.detail === 'string') detail = j.detail } catch {}
+        setError(detail || `Не удалось сохранить ${row.kind}/${row.key} (${res.status})`)
+        return
+      }
       const saved: FinContentRow = await res.json()
       setRows(prev => prev.map(r => (r.id === row.id ? saved : r)))
       setSavedKey(saved.id)
@@ -122,7 +134,72 @@ export default function AdminFinContentPage() {
     rows.find(r => r.kind === activeKind && r.contour === activeContour && r.key === key)
   const isCommon = activeContour === 'common'
 
-  const editor = (row: FinContentRow) => (
+  const QLBL = { display: 'block', fontFamily: 'sans-serif', fontSize: 11,
+    color: 'var(--text-mute)', marginBottom: 4 } as const
+  const QINP = { width: '100%', boxSizing: 'border-box' as const, padding: '8px 10px',
+    border: '1px solid rgba(26,37,64,0.18)', borderRadius: 6, fontFamily: 'sans-serif',
+    fontSize: 13, marginBottom: 10 } as const
+
+  const sideBox = (row: FinContentRow, side: 'a' | 'b') => {
+    const yang = side === 'a'
+    const shortVal = (yang ? row.payload.a : row.payload.b) || ''
+    const fullVal = (yang ? row.payload.a_full : row.payload.b_full) || ''
+    const setShort = (v: string) =>
+      updatePayload(row.id, yang ? { a: v } : { b: v })
+    const setFull = (v: string) =>
+      updatePayload(row.id, yang ? { a_full: v } : { b_full: v })
+    return (
+      <div style={{
+        border: '1px solid rgba(26,37,64,0.14)', borderRadius: 8, padding: '12px 14px',
+        background: yang ? 'rgba(30,58,138,0.04)' : 'rgba(26,37,64,0.02)', marginBottom: 10,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span style={{
+            width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+            background: yang ? '#1e3a8a' : '#e8e4db', color: yang ? '#fff' : '#1a2540',
+            border: yang ? 'none' : '1px solid rgba(26,37,64,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: 'monospace', fontSize: 11, fontWeight: 700,
+          }}>{yang ? 'A' : 'B'}</span>
+          <span style={{ fontFamily: 'sans-serif', fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>
+            {yang ? 'Ответ А — Ян, сплошная линия' : 'Ответ Б — Инь, прерывистая линия'}
+          </span>
+        </div>
+        <label style={QLBL}>Краткая форма (таблица ответов, подписи)</label>
+        <input value={shortVal} onChange={e => setShort(e.target.value)} style={QINP} />
+        <label style={QLBL}>Развёрнутая форма (анкета и блок отчёта)</label>
+        <textarea value={fullVal} rows={2} onChange={e => setFull(e.target.value)}
+          style={{ ...QINP, marginBottom: 0, lineHeight: 1.6, resize: 'vertical' }} />
+      </div>
+    )
+  }
+
+  const baseQuestionEditor = (row: FinContentRow) => (
+    <>
+      <div style={{
+        fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)',
+        background: 'rgba(26,37,64,0.03)', borderRadius: 6, padding: '8px 12px', marginBottom: 12,
+      }}>
+        Блок отчёта: <b style={{ color: 'var(--text)' }}>{row.payload.label || '—'}</b>. Порядок вопросов
+        и сторона ответа не редактируются — от них зависит, какая из 64 гексаграмм подберётся.
+        Уточняйте смысл, не переставляя ответы местами.
+      </div>
+      <label style={QLBL}>Вопрос</label>
+      <input value={row.payload.q || ''}
+        onChange={e => updatePayload(row.id, { q: e.target.value })} style={QINP} />
+      <label style={QLBL}>Подсказка под вопросом</label>
+      <textarea value={row.payload.help || ''} rows={2}
+        onChange={e => updatePayload(row.id, { help: e.target.value })}
+        style={{ ...QINP, lineHeight: 1.6, resize: 'vertical' }} />
+      {sideBox(row, 'a')}
+      {sideBox(row, 'b')}
+    </>
+  )
+
+  const editor = (row: FinContentRow) =>
+    row.kind === 'base_question' ? baseQuestionEditor(row) : defaultEditor(row)
+
+  const defaultEditor = (row: FinContentRow) => (
     <>
       <label style={{ display: 'block', fontFamily: 'sans-serif', fontSize: 11, color: 'var(--text-mute)', marginBottom: 4 }}>Заголовок</label>
       <input value={row.payload.title || ''} onChange={e => updatePayload(row.id, { title: e.target.value })}
@@ -166,8 +243,8 @@ export default function AdminFinContentPage() {
             <div style={{ background: 'rgba(192,57,43,0.08)', border: '1px solid rgba(192,57,43,0.25)', borderRadius: 8, padding: '11px 16px', fontFamily: 'sans-serif', fontSize: 13, color: '#c0392b', marginBottom: 16 }}>{error}</div>
           )}
 
-          {/* Селектор контура */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+          {/* Селектор контура — базовые вопросы не переопределяются по контурам */}
+          <div style={{ display: activeKind === 'base_question' ? 'none' : 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
             {CONTOURS.map(c => {
               const on = c.key === activeContour
               const ovr = c.key === 'common' ? 0 : rows.filter(r => r.contour === c.key).length
@@ -191,7 +268,10 @@ export default function AdminFinContentPage() {
               const count = rows.filter(r => r.kind === k.kind && r.contour === 'common').length
               const on = k.kind === activeKind
               return (
-                <button key={k.kind} onClick={() => setActiveKind(k.kind)}
+                <button key={k.kind} onClick={() => {
+                    setActiveKind(k.kind)
+                    if (k.kind === 'base_question') setActiveContour('common')
+                  }}
                   style={{
                     border: on ? '1px solid var(--text)' : '1px solid rgba(26,37,64,0.2)',
                     background: on ? 'var(--text)' : 'transparent',

@@ -7,10 +7,7 @@
 """
 from __future__ import annotations
 
-from app.contours import CONTOURS, CONTOUR_ORDER
-
-# Порог, при котором отрыв ограничения от остальных считается значимым (§2.4)
-GAP_THRESHOLD = 3
+from app.contours import CONTOURS, CONTOUR_ORDER, GAP_THRESHOLD  # noqa: F401
 
 # Со скольких контуров карта имеет смысл: сравнивать нечего, пока он один
 MIN_CONTOURS = 2
