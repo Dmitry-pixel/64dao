@@ -266,7 +266,7 @@ export default function ReportPage() {
             <span style={S.labelRed}>Динамика</span>
             <div style={S.dynUpsellTitle}>По компании «{dynCompany.name}» накоплено {dynCompany.assessment_count} диагностик</div>
             <div style={S.dynUpsellText}>
-              Сравните контуры во времени — что усилилось, где просадка, куда смещается фокус. Раздел доступен по подписке.
+              Сравните контуры во времени: что усилилось, где просадка, куда смещается фокус.
             </div>
           </div>
           <button style={S.dynUpsellBtn} onClick={() => router.push(`/companies/${dynCompany.id}/dynamics`)}>

@@ -256,19 +256,6 @@ export function getCompanyDynamics(id: string, compare: 'previous' | 'first' = '
   return request<any>(`/api/companies/${id}/dynamics?compare=${compare}`)
 }
 
-// ── Subscription (user) ───────────────────────────────────────────────────────
-
-export interface SubscriptionStatus {
-  active:    boolean
-  starts_at: string | null
-  ends_at:   string | null
-}
-
-export function getSubscriptionStatus() {
-  return request<SubscriptionStatus>('/api/subscription/status')
-}
-
-
 // ── Настройки рассылки (админ) ───────────────────────────────────────────────
 export interface RemindersSettings {
   enabled:        boolean

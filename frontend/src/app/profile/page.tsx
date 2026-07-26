@@ -1,14 +1,14 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getMe, logout, getSubscriptionStatus, type AuthUser, type SubscriptionStatus } from '@/lib/api'
+import { getMe, logout, type AuthUser } from '@/lib/api'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
 
 export default function ProfilePage() {
   const router = useRouter()
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [tab, setTab] = useState<'account' | 'company' | 'security' | 'subscription'>('account')
+  const [tab, setTab] = useState<'account' | 'company' | 'security'>('account')
   const [loading, setLoading] = useState(true)
   const [fullName, setFullName] = useState('')
   const [companyName, setCompanyName] = useState('')
@@ -16,7 +16,6 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
-  const [sub, setSub] = useState<SubscriptionStatus | null>(null)
 
   useEffect(() => {
     getMe()
@@ -27,7 +26,6 @@ export default function ProfilePage() {
       })
       .catch(() => router.push('/login'))
       .finally(() => setLoading(false))
-    getSubscriptionStatus().then(setSub).catch(() => setSub(null))
   }, [router])
 
   async function saveProfile() {
@@ -117,7 +115,6 @@ export default function ProfilePage() {
           <button style={{ ...S.sideBtn, ...(tab === 'account' ? S.sideBtnOn : {}) }} onClick={() => { setTab('account'); setMsg('') }}>Аккаунт</button>
           <button style={{ ...S.sideBtn, ...(tab === 'company' ? S.sideBtnOn : {}) }} onClick={() => { setTab('company'); setMsg('') }}>Компания</button>
           <button style={{ ...S.sideBtn, ...(tab === 'security' ? S.sideBtnOn : {}) }} onClick={() => { setTab('security'); setMsg('') }}>Безопасность</button>
-          <button style={{ ...S.sideBtn, ...(tab === 'subscription' ? S.sideBtnOn : {}) }} onClick={() => { setTab('subscription'); setMsg('') }}>Подписка</button>
           <button style={{ ...S.sideBtn, color: '#c0392b', marginTop: 18 }} onClick={handleLogout}>Выйти из аккаунта</button>
         </aside>
 
@@ -181,39 +178,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {tab === 'subscription' && (
-            <div style={S.card}>
-              <span style={S.labelRed}>Раздел «Динамика»</span>
-              <h3 style={S.cardH3}>Подписка</h3>
-              {sub?.active ? (
-                <>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
-                    <span style={{ fontFamily: 'sans-serif', fontSize: 14, color: '#166534', fontWeight: 500 }}>Активна</span>
-                  </div>
-                  <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.65)', lineHeight: 1.6, margin: '0 0 8px' }}>
-                    Доступ к разделу «Динамика» — сравнению диагностик по компаниям во времени.
-                  </p>
-                  {sub.ends_at && (
-                    <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.65)', margin: 0 }}>
-                      Действует до <strong style={{ color: '#1a2540' }}>{new Date(sub.ends_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
-                    </p>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'rgba(26,37,64,0.3)', display: 'inline-block' }} />
-                    <span style={{ fontFamily: 'sans-serif', fontSize: 14, color: 'rgba(26,37,64,0.6)', fontWeight: 500 }}>Не активна</span>
-                  </div>
-                  <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.65)', lineHeight: 1.6, margin: '0 0 16px' }}>
-                    Подписка открывает раздел «Динамика»: как меняются контуры компании между диагностиками. Оформление — через поддержку.
-                  </p>
-                  <button style={S.btnPrimary} onClick={() => router.push('/companies')}>Мои компании →</button>
-                </>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

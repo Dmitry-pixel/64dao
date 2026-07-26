@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { getMe, getCompanyDynamics, ApiError } from '@/lib/api'
+import { getMe, getCompanyDynamics } from '@/lib/api'
 
 const CONTOUR_TITLE: Record<string, string> = {
   finance: 'Финансовая функция', product: 'Продукт/Сервис',
@@ -18,20 +18,18 @@ export default function DynamicsPage() {
   const params = useParams()
   const cid = params.id as string
   const [loading, setLoading] = useState(true)
-  const [locked, setLocked] = useState(false)
   const [error, setError] = useState('')
   const [data, setData] = useState<any>(null)
   const [compare, setCompare] = useState<'previous' | 'first'>('previous')
 
   const load = useCallback(async (mode: 'previous' | 'first') => {
-    setLoading(true); setError(''); setLocked(false)
+    setLoading(true); setError('')
     try {
       await getMe()
       const d = await getCompanyDynamics(cid, mode)
       setData(d)
     } catch (e) {
-      if (e instanceof ApiError && e.status === 403) setLocked(true)
-      else setError('Не удалось загрузить динамику')
+      setError('Не удалось загрузить динамику')
     } finally {
       setLoading(false)
     }
@@ -49,20 +47,6 @@ export default function DynamicsPage() {
   )
 
   if (loading) return wrap(<p style={{ fontFamily: 'sans-serif', color: 'var(--text-mute)', marginTop: 20 }}>Загрузка…</p>)
-
-  if (locked) return wrap(
-    <div style={{ marginTop: 24, background: 'rgba(192,57,43,0.05)', border: '1px solid rgba(192,57,43,0.25)', borderRadius: 10, padding: '28px 24px', textAlign: 'center' }}>
-      <div style={{ fontSize: 30 }}>🔒</div>
-      <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 24, fontWeight: 400, color: 'var(--text)', margin: '10px 0' }}>Раздел «Динамика» доступен по подписке</h1>
-      <p style={{ fontFamily: 'sans-serif', fontSize: 14, color: 'var(--text-mute)', lineHeight: 1.6, maxWidth: 520, margin: '0 auto 18px' }}>
-        Подписка открывает сравнение диагностик компании во времени: изменение зрелости контуров,
-        закрытые и новые точки роста, смена системного ограничения.
-      </p>
-      <Link href="/dashboard" style={{ background: 'var(--text)', color: '#fff', borderRadius: 6, padding: '10px 20px', fontFamily: 'sans-serif', fontSize: 14, textDecoration: 'none' }}>
-        Оформить подписку
-      </Link>
-    </div>
-  )
 
   if (error) return wrap(<p style={{ color: '#c0392b', fontFamily: 'sans-serif', marginTop: 20 }}>{error}</p>)
 
