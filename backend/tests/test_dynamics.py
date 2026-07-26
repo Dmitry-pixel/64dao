@@ -9,7 +9,6 @@ from app.dynamics import (
     contour_diff, summarize_contours, constraint_change, build_company_dynamics,
 )
 from app.contours import LINE_KEYS
-from app import subscription_service as subs
 
 
 def _cres(combo, moving, maturity):
@@ -106,20 +105,21 @@ def _payload(**ov):
 
 
 @pytest.mark.asyncio
-async def test_dynamics_403_without_subscription(auth_client, db_session):
+async def test_dynamics_open_without_subscription(auth_client, db_session):
+    """Динамика входит в стоимость диагностики, отдельный доступ не нужен."""
     await auth_client.post("/api/assessments", json=_payload())
     await auth_client.post("/api/assessments", json=_payload())
     companies = (await auth_client.get("/api/companies")).json()
     cid = next(c["id"] for c in companies if c["name"] == "Динамика")
     r = await auth_client.get(f"/api/companies/{cid}/dynamics")
-    assert r.status_code == 403
+    assert r.status_code == 200, r.text
+    assert r.json()["count"] == 2
 
 
 @pytest.mark.asyncio
-async def test_dynamics_200_with_subscription(auth_client, test_user, db_session):
+async def test_dynamics_returns_comparison(auth_client, test_user, db_session):
     await auth_client.post("/api/assessments", json=_payload(company_name="ДинОК"))
     await auth_client.post("/api/assessments", json=_payload(company_name="ДинОК"))
-    await subs.grant(db_session, test_user.id, days=30)
 
     companies = (await auth_client.get("/api/companies")).json()
     cid = next(c["id"] for c in companies if c["name"] == "ДинОК")

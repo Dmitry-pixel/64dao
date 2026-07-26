@@ -13,7 +13,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import AsyncSessionLocal
-from app.models import Subscription, Company, Assessment, User
+from app.models import Company, Assessment, User
 from app.config import get_settings
 from app import email as email_mod
 from app import reminders_settings
@@ -22,40 +22,10 @@ logger = logging.getLogger("reminders")
 settings = get_settings()
 
 
-async def run_expiry_reminders(session: AsyncSession) -> int:
-    """За N дней до конца подписки. Одноразово на подписку (флаг sent_at)."""
-    now = datetime.now(timezone.utc)
-    horizon = now + timedelta(days=settings.expiry_reminder_days)
-    rows = (await session.execute(
-        select(Subscription, User)
-        .join(User, User.id == Subscription.user_id)
-        .where(
-            Subscription.status == "active",
-            Subscription.ends_at > now,
-            Subscription.ends_at <= horizon,
-            Subscription.expiry_reminder_sent_at.is_(None),
-            User.is_active.is_(True),
-        )
-    )).all()
-    sent = 0
-    for sub, user in rows:
-        days_left = max(1, (sub.ends_at - now).days)
-        try:
-            await email_mod.send_subscription_expiry_email(
-                user.email, user.full_name, sub.ends_at, days_left)
-        except Exception:
-            logger.exception("expiry reminder failed: user=%s sub=%s", user.id, sub.id)
-            continue
-        sub.expiry_reminder_sent_at = now
-        await session.commit()
-        sent += 1
-    return sent
-
-
 async def run_repeat_reminders(session: AsyncSession,
                                days: int | None = None) -> int:
     """«Пора повторить» через N дней после последней диагностики компании.
-    Только активным подписчикам (правило гейтинга). Авто-перевзвод: при новой
+    Авто-перевзвод: при новой диагностике last_at > sent_at снова сработает.
     диагностике last_at > sent_at → снова сработает."""
     now = datetime.now(timezone.utc)
     # Порог задаётся в админке; аргумент оставлен для тестов.
@@ -72,16 +42,11 @@ async def run_repeat_reminders(session: AsyncSession,
         .group_by(Assessment.company_id)
         .subquery()
     )
-    active_users = (
-        select(Subscription.user_id)
-        .where(Subscription.status == "active", Subscription.ends_at > now)
-    )
     rows = (await session.execute(
         select(Company, User, latest_sq.c.last_at)
         .join(latest_sq, latest_sq.c.cid == Company.id)
         .join(User, User.id == Company.user_id)
         .where(
-            User.id.in_(active_users),
             User.is_active.is_(True),
             latest_sq.c.last_at <= threshold,
             or_(
@@ -119,10 +84,9 @@ async def main() -> None:
         return
     rep = 0
     async with AsyncSessionLocal() as session:
-        exp = await run_expiry_reminders(session)
         if cfg["repeat_enabled"]:
             rep = await run_repeat_reminders(session, cfg["repeat_days"])
-    logger.info("reminders done: expiry=%d repeat=%d", exp, rep)
+    logger.info("reminders done: repeat=%d", rep)
 
 
 if __name__ == "__main__":

@@ -44,13 +44,10 @@ async def company_dynamics(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Динамика компании (роадмап 3.1). Доступ — при активной подписке (§5).
+    """Динамика компании. Входит в стоимость основной диагностики.
     compare: 'previous' (последняя↔предыдущая) | 'first' (последняя↔первая)."""
-    from app import subscription_service as subs
     from app.dynamics import build_company_dynamics
 
-    if not await subs.is_active(db, user.id):
-        raise HTTPException(status_code=403, detail="Требуется активная подписка на «Динамику»")
 
     company = await db.scalar(
         select(Company).where(Company.id == company_id, Company.user_id == user.id))
