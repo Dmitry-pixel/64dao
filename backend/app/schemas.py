@@ -332,25 +332,6 @@ class CompanyOut(BaseModel):
     latest_at:        datetime | None = None
 
 
-class SubscriptionOut(BaseModel):
-    model_config = {"from_attributes": True}
-    id:        uuid.UUID
-    user_id:   uuid.UUID
-    starts_at: datetime
-    ends_at:   datetime
-    status:    str
-
-
-class SubscriptionStatus(BaseModel):
-    active:    bool
-    starts_at: datetime | None = None
-    ends_at:   datetime | None = None
-
-
-class SubscriptionGrant(BaseModel):
-    days: int | None = None
-
-
 class LifecycleStageOut(BaseModel):
     model_config = {"from_attributes": True}
 

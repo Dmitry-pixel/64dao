@@ -35,7 +35,6 @@ class User(Base):
     assessments: Mapped[list["Assessment"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     reports:     Mapped[list["Report"]]     = relationship(back_populates="user", cascade="all, delete-orphan")
     orders:      Mapped[list["Order"]]      = relationship(back_populates="user", cascade="all, delete-orphan")
-    subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     companies:   Mapped[list["Company"]]    = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
@@ -284,27 +283,6 @@ class LifecycleStage(Base):
     sort_order:  Mapped[int]        = mapped_column(Integer, nullable=False, unique=True)
     name:        Mapped[str]        = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-
-
-# ── Subscriptions (доступ к разделу «Динамика», роадмап 3.1) ──────────────────
-class Subscription(Base):
-    __tablename__ = "subscriptions"
-
-    id:         Mapped[uuid.UUID]        = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    user_id:    Mapped[uuid.UUID]        = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    # NULL = выдана вручную админом (без заказа); при оплате — ссылка на orders.id
-    order_id:   Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="SET NULL"), nullable=True)
-    starts_at:  Mapped[datetime]         = mapped_column(DateTime(timezone=True), nullable=False)
-    ends_at:    Mapped[datetime]         = mapped_column(DateTime(timezone=True), nullable=False)
-    status:     Mapped[str]              = mapped_column(String(20), nullable=False, default="active", server_default="active")
-    created_at: Mapped[datetime]         = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-    expiry_reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    __table_args__ = (
-        CheckConstraint("status IN ('active','expired','revoked')", name="chk_subscription_status"),
-    )
-
-    user: Mapped["User"] = relationship(back_populates="subscriptions")
 
 
 # ── Companies (группировка диагностик компании, роадмап 3.1) ──────────────────

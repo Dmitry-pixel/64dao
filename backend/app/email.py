@@ -146,24 +146,6 @@ async def send_sample_report_email(to: str, name: str | None = None) -> None:
     )
 
 
-async def send_subscription_expiry_email(
-    to: str, name: str | None, ends_at, days_left: int
-) -> None:
-    """PR6: за N дней до конца подписки на «Динамику»."""
-    greeting = f"Здравствуйте, {name}!" if name else "Здравствуйте!"
-    date_str = ends_at.strftime("%d.%m.%Y")
-    subject = "Подписка на «Динамику» скоро закончится"
-    body = (
-        f"<p>{greeting}</p>"
-        f"<p>Ваша подписка на раздел «Динамика» в 64 ДАО заканчивается "
-        f"<b>{date_str}</b> — осталось {days_left} дн.</p>"
-        f"<p>Чтобы сохранить доступ к сравнению диагностик и повторным "
-        f"диагностикам, продлите подписку в личном кабинете.</p>"
-        f'<p><a href="{settings.app_url.rstrip("/")}/profile">Открыть профиль</a></p>'
-    )
-    await _send_message(to, subject, _wrap_html(body))
-
-
 async def send_repeat_diagnostic_email(
     to: str, name: str | None, company_name: str | None, days_since: int
 ) -> None:
