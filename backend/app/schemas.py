@@ -174,6 +174,8 @@ class StrategyCreate(BaseModel):
     transition_title:           str | None = None
     transition_lifecycle_stage: str | None = None
     transition_description:     str | None = None
+    hexagram_number:            int | None = None
+    target_combination:         str | None = None
     assm_planning:              str | None = None
     assm_growth:                str | None = None
     assm_advertising:           str | None = None
@@ -233,6 +235,12 @@ class StrategyOut(BaseModel):
     transition_lifecycle_stage: str | None
     transition_description:     str | None
     image_url:                  str | None
+    hexagram_number:            int | None = None
+    target_combination:         str | None = None
+    # Целевая гексаграмма: производные поля, заполняет роутер из БД
+    target_number:              int | None = None
+    target_name:                str | None = None
+    target_symbol:              str | None = None
     assm_planning:              str | None
     assm_growth:                str | None
     assm_advertising:           str | None

@@ -659,6 +659,12 @@ async def build_html_for_assessment(db, assessment, user, allow_draft: bool = Fa
 
     is_method2 = assessment.method == "method2"
 
+    target_strategy = None
+    if strategy is not None and strategy.target_combination:
+        target_strategy = await db.scalar(
+            select(Strategy).where(Strategy.combination == strategy.target_combination)
+        )
+
     return build_report_html(
         is_method2=is_method2,
         lifecycle_stages=lifecycle_stages,
@@ -667,6 +673,7 @@ async def build_html_for_assessment(db, assessment, user, allow_draft: bool = Fa
         date_str=_date_ru(datetime.now(timezone.utc)),
         combination=combination or "",
         strategy=strategy,
+        target_strategy=target_strategy,
         method2_data=method2_data,
         finance_result=finance_result,
         finance_interpretation=finance_interpretation,

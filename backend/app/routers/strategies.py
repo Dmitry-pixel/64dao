@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_user
 from app.db import get_db
 from app.models import Strategy, User, LifecycleStage
+from app.hexagrams import hexagram_symbol
 from app.schemas import StrategyOut, StrategyListItem, StrategyCreate, StrategyUpdate, LifecycleStageOut
 
 router = APIRouter(prefix="/api/strategies", tags=["strategies"])
@@ -33,6 +34,20 @@ async def get_lifecycle_stages(
     return rows.scalars().all()
 
 
+async def _with_target(db: AsyncSession, strategy: Strategy) -> StrategyOut:
+    """Дополняет ответ данными целевой гексаграммы из БД (миграция 020)."""
+    out = StrategyOut.model_validate(strategy, from_attributes=True)
+    if strategy.target_combination:
+        target = await db.scalar(
+            select(Strategy).where(Strategy.combination == strategy.target_combination)
+        )
+        if target is not None:
+            out.target_number = target.hexagram_number
+            out.target_name = target.title
+            out.target_symbol = hexagram_symbol(target.hexagram_number)
+    return out
+
+
 @router.get("/{combination}", response_model=StrategyOut)
 async def get_strategy_by_combination(
     combination: str,
@@ -49,7 +64,7 @@ async def get_strategy_by_combination(
     )
     if not strategy:
         raise HTTPException(status_code=404, detail="Стратегия не найдена")
-    return strategy
+    return await _with_target(db, strategy)
 
 
 @router.put("/{combination}", response_model=StrategyOut)
@@ -82,4 +97,4 @@ async def upsert_strategy(
 
     await db.flush()
     await db.refresh(strategy)
-    return strategy
+    return await _with_target(db, strategy)

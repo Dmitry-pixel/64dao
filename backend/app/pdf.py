@@ -228,6 +228,7 @@ HEX_SYMBOLS = [
 # ── Hexagram data ─────────────────────────────────────────────────────────────
 # (number, name, combination)
 from app.hexagrams import _HEXAGRAM_BY_COMBO, _HEXAGRAM_BY_NUM, _TARGET_HEXAGRAM, get_target_hexagram_info
+from app.transition_block import transition_block
 _ASSUMPTION_FIELDS = [
     ("assm_planning",    "Планирование"),
     ("assm_growth",      "Рост и производительность"),
@@ -277,35 +278,6 @@ def _assumptions_block(strategy: Any) -> str:
         + items +
         '</div>'
     )
-
-
-def _transition_block(strategy: Any, target_hex_info: tuple | None) -> str:
-    """Раздел 03 «Целевой сценарий»: только описание перехода."""
-    if not strategy:
-        return ""
-    desc_html = (e(strategy.transition_description)
-                 if strategy.transition_description
-                 else '<em style="opacity:0.4;">Описание перехода будет добавлено при публикации стратегии.</em>')
-    return (
-        '<div style="padding:16px 20px;'
-        'border:1px solid rgba(192,57,43,0.2);border-radius:6px;'
-        'background:rgba(192,57,43,0.04);">'
-        '<div style="font-size:10px;color:#c0392b;letter-spacing:2px;'
-        'text-transform:uppercase;font-family:Arial,sans-serif;margin-bottom:12px;">'
-        '<span style="margin-right:8px;">02</span>Целевой сценарий'
-        '</div>'
-        '<div style="font-size:10px;color:rgba(26,37,64,0.45);text-transform:uppercase;'
-        'letter-spacing:1px;font-family:Arial,sans-serif;margin-bottom:6px;">Описание перехода</div>'
-        '<p style="font-size:12px;color:rgba(26,37,64,0.65);'
-        'font-family:Arial,sans-serif;line-height:1.7;margin:0;">'
-        + desc_html +
-        '</p>'
-        '</div>'
-    )
-
-
-# Подписи блоков ЖЦ — из единого источника вопросов, без локальной копии.
-_LC_LABELS = LC_LABELS
 
 
 def _lifecycle_blocks(strategy: Any, combination: str, with_lc: bool = True,
@@ -650,6 +622,7 @@ def build_report_html(
     is_method2: bool | None = None,
     extra_contours: list | None = None,
     summary: dict | None = None,
+    target_strategy: Any | None = None,
 ) -> str:
     """Собирает полный HTML отчёта (все данные уже экранированы через e()).
 
@@ -675,7 +648,6 @@ def build_report_html(
     )
 
     # Целевая гексаграмма — вычисляем заранее, чтобы не усложнять f-строки
-    target_hex_info = get_target_hexagram_info(combination) if combination else None
 
     # Сценарий — всегда все строки, пустые с заглушкой
     sc = (strategy.scenario or {}) if strategy else {}
@@ -715,7 +687,7 @@ def build_report_html(
         </div>"""
 
     # Блок "Целевой сценарий" — строим заранее, чтобы вставить простой переменной
-    transition_html = _transition_block(strategy, target_hex_info)
+    transition_html = transition_block(strategy, target_strategy, _hexagram_svg(target_strategy.combination, size=88) if target_strategy is not None else '')
 
     # ── Обложка ──────────────────────────────────────────────────────────────
     if is_method2:

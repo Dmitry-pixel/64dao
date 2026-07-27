@@ -114,3 +114,8 @@ def get_target_hexagram_info(combination: str) -> tuple[int, str, str] | None:
     target_name = _HEXAGRAM_BY_NUM.get(target_num, "")
     target_symbol = chr(0x4DC0 + target_num - 1)
     return target_num, target_name, target_symbol
+
+
+def hexagram_symbol(num: int | None) -> str:
+    """Unicode-символ гексаграммы по номеру: U+4DC0 + num - 1."""
+    return chr(0x4DC0 + num - 1) if num else ''

@@ -88,6 +88,9 @@ class Strategy(Base):
     transition_lifecycle_stage: Mapped[str | None]= mapped_column(String(100))
     transition_description:     Mapped[str | None]= mapped_column(Text)
     image_url:                  Mapped[str | None]= mapped_column(Text)
+    # Реестр гексаграмм (миграция 020): номер и целевая гексаграмма правятся в админке
+    hexagram_number:            Mapped[int | None]= mapped_column(Integer)
+    target_combination:         Mapped[str | None]= mapped_column(String(6))
     # Слой C — паттерны финансовых гексаграмм (для текущей и результирующей)
     fin_pattern_essence:        Mapped[str | None]= mapped_column(Text)  # суть ситуации (1–2 предложения)
     fin_pattern_mistake:        Mapped[str | None]= mapped_column(Text)  # типичная ошибка (1 предложение)
