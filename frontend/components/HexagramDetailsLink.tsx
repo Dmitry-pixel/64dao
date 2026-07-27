@@ -10,9 +10,9 @@ import { usePathname } from 'next/navigation'
 const STYLE = {
   display: 'inline-block',
   padding: '8px 16px',
-  border: '1px solid #c0392b',
+  border: '1px solid #166534',
   borderRadius: 6,
-  color: '#c0392b',
+  color: '#166534',
   fontFamily: 'sans-serif',
   fontSize: 12,
   letterSpacing: 1,
