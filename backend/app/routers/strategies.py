@@ -81,6 +81,13 @@ async def upsert_strategy(
     combination = combination.upper()
     if len(combination) != 6 or not all(c in "AB" for c in combination):
         raise HTTPException(status_code=400, detail="Комбинация должна быть 6 символов A/B")
+    tc = (data.target_combination or '').upper()
+    if tc and (len(tc) != 6 or not all(c in 'AB' for c in tc)):
+        raise HTTPException(status_code=400, detail='Целевая комбинация должна быть 6 символов A/B')
+    if tc and not await db.scalar(select(Strategy.id).where(Strategy.combination == tc)):
+        raise HTTPException(status_code=404, detail='Целевая гексаграмма не найдена')
+    data.target_combination = tc or None
+
 
     strategy = await db.scalar(
         select(Strategy).where(Strategy.combination == combination)

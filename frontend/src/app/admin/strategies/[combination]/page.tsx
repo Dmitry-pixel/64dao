@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { HEXAGRAM_DATA, HEXAGRAM_MAP, comboToHex } from '@/lib/hexagrams';
+import { TargetHexagramSelect } from '@/components/TargetHexagramSelect'
 
 
 
@@ -114,7 +115,7 @@ type FormData = {
   assm_service: string; assm_startup: string; assm_investment: string;
   assm_contracts: string; assm_sync: string; assm_creative: string; assm_interaction: string;
   assm_resources: string; assm_research: string; assm_trade: string; assm_failures: string; assm_success: string;
-  transition_title: string; transition_lifecycle_stage: string; transition_description: string;
+  transition_title: string; transition_lifecycle_stage: string; transition_description: string; target_combination: string;
   fin_pattern_essence: string; fin_pattern_mistake: string;
   scenario_innovation_strategy: string; scenario_innovation_type: string;
   scenario_value_discipline: string; scenario_leadership_principles: string;
@@ -129,7 +130,7 @@ const EMPTY_FORM: FormData = {
   assm_product: '', assm_service: '', assm_startup: '', assm_investment: '',
   assm_contracts: '', assm_sync: '', assm_creative: '', assm_interaction: '',
   assm_resources: '', assm_research: '', assm_trade: '', assm_failures: '', assm_success: '',
-  transition_title: '', transition_lifecycle_stage: '', transition_description: '',
+  transition_title: '', transition_lifecycle_stage: '', transition_description: '', target_combination: '',
   fin_pattern_essence: '', fin_pattern_mistake: '',
   scenario_innovation_strategy: '', scenario_innovation_type: '', scenario_value_discipline: '',
   scenario_leadership_principles: '', scenario_growth_strategy: '', scenario_focus: '',
@@ -200,6 +201,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
             transition_title:           data.transition_title   || '',
             transition_lifecycle_stage: data.transition_lifecycle_stage || '',
             transition_description:     data.transition_description    || '',
+            target_combination:         data.target_combination || '',
             scenario_innovation_strategy: sc.innovation_strategy  || '',
             scenario_innovation_type:     sc.innovation_type      || '',
             scenario_value_discipline:    sc.value_discipline     || '',
@@ -257,6 +259,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
         transition_title: f.transition_title,
         transition_lifecycle_stage: f.transition_lifecycle_stage,
         transition_description: f.transition_description,
+        target_combination: f.target_combination || null,
         is_published: publish,
         scenario: {
           innovation_strategy: f.scenario_innovation_strategy,
@@ -430,6 +433,7 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
             </div>
           )}
           <FA label="Описание перехода" fk="transition_description" dv={f.transition_description} rows={4} ph="Опишите как компании перейти к целевому состоянию…" onChange={handleChange} />
+          <TargetHexagramSelect defaultValue={f.target_combination} onChange={(v) => handleChange('target_combination', v)} />
         </Sec>
 
         <Sec label="Сценарий стратагемы" title="Таблица стратагемы" help="Конкретные характеристики — отображаются в блоке «Сценарий стратагемы» отчёта.">
