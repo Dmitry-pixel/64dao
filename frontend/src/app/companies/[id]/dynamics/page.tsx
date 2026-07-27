@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import BackButton from '@/components/BackButton'
 import { getMe, getCompanyDynamics } from '@/lib/api'
 
 const CONTOUR_TITLE: Record<string, string> = {
@@ -52,6 +53,7 @@ export default function DynamicsPage() {
 
   if (data && data.available === false) return wrap(
     <>
+      <BackButton />
       <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 26, fontWeight: 400, color: 'var(--text)', margin: '10px 0 6px' }}>Динамика</h1>
       <p style={{ fontFamily: 'sans-serif', fontSize: 14, color: 'var(--text-mute)' }}>
         Пока только {data.count} диагностик{data.count === 1 ? 'а' : ''}. Динамика появится после второй — повторите диагностику,
@@ -74,6 +76,7 @@ export default function DynamicsPage() {
 
   return wrap(
     <>
+      <BackButton />
       <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 26, fontWeight: 400, color: 'var(--text)', margin: '10px 0 4px' }}>Динамика</h1>
       <p style={S.faint}>
         Сравнение: {fmt(data.compare_from?.created_at)} → {fmt(data.compare_to?.created_at)} · всего диагностик: {data.count}
