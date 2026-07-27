@@ -1,5 +1,5 @@
 'use client'
-import { HexagramSVG } from '@/components/AdminNav'
+import { HexagramSVG } from '@/components/HexagramSVG'
 
 // Целевая гексаграмма раздела 02 отчёта.
 // Источник данных — БД: strategies.target_combination (миграция 020),

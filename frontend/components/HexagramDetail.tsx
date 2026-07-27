@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { HexagramSVG } from '@/components/AdminNav'
+import { HexagramSVG } from '@/components/HexagramSVG'
 
 // Страница описания гексаграммы: содержимое, вынесенное из раздела 04 отчёта
 // (Маркетинг, Управление, Предположения. Связи с будущим).

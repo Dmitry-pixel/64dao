@@ -11,7 +11,6 @@ import CompanyLifecycleSection from '@/components/CompanyLifecycleSection'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
 
-// ── Таблица гексаграмм ────────────────────────────────────────────────────────
 
 // combo → unicode hexagram character (U+4DC0 + n - 1)
 function comboToChar(combo: string): string {
