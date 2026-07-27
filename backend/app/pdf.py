@@ -280,6 +280,9 @@ def _assumptions_block(strategy: Any) -> str:
     )
 
 
+# Подписи блоков ЖЦ — из единого источника вопросов, без локальной копии.
+_LC_LABELS = LC_LABELS
+
 def _lifecycle_blocks(strategy: Any, combination: str, with_lc: bool = True,
                       questions: list[dict] | None = None) -> str:
     """6 блоков жизненного цикла для PDF — по одному на каждый вопрос."""
