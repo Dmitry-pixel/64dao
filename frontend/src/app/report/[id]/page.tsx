@@ -152,26 +152,6 @@ export default function ReportPage() {
   }
 
 
-  const ASSM_LABELS: [string, string][] = [
-    ['assm_planning',     'Планирование'],
-    ['assm_growth',       'Рост и производительность'],
-    ['assm_advertising',  'Реклама'],
-    ['assm_feedback',     'Обратная связь'],
-    ['assm_risk',         'Риск'],
-    ['assm_product',      'Выбор продукта'],
-    ['assm_service',      'Сервис'],
-    ['assm_startup',      'Стартап'],
-    ['assm_investment',   'Инвестиции и финансы'],
-    ['assm_contracts',    'Договора и соглашения'],
-    ['assm_sync',         'Синхронизация'],
-    ['assm_creative',     'Творческий вклад'],
-    ['assm_interaction',  'Взаимодействие'],
-    ['assm_resources',    'Достаточность ресурсов'],
-    ['assm_research',     'Исследование и разработка'],
-    ['assm_trade',        'Международная торговля'],
-    ['assm_failures',     'Источники неудач'],
-    ['assm_success',      'Источники удачи'],
-  ]
 
   const lc = finReport?.summary?.company_lifecycle
   const hasLc = !!lc
@@ -388,17 +368,6 @@ export default function ReportPage() {
                   <div style={{ marginTop: 16 }}>
                     <div style={{ fontSize: 10, color: '#c0392b', letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'sans-serif', fontWeight: 700, marginBottom: 8 }}>Сценарий развития</div>
                     <div style={S.reportText}>{finStrategy.scenario_text ? finStrategy.scenario_text.split('\n').map((pp: string, i: number) => <p key={i} style={{ marginBottom: 14 }}>{pp}</p>) : <em style={{ opacity: 0.4 }}>Не заполнено</em>}</div>
-                  </div>
-                  <div style={{ marginTop: 14 }}><div style={{ fontSize: 10, color: '#c0392b', letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'sans-serif', fontWeight: 700, marginBottom: 8 }}>Маркетинг</div><div style={{ border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '14px 16px', background: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.7)', lineHeight: 1.7 }}>{finStrategy.marketing_text || <em style={{ opacity: 0.4 }}>Не заполнено</em>}</div></div>
-                  <div style={{ marginTop: 14 }}><div style={{ fontSize: 10, color: '#c0392b', letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'sans-serif', fontWeight: 700, marginBottom: 8 }}>Управление</div><div style={{ border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '14px 16px', background: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.7)', lineHeight: 1.7 }}>{finStrategy.management_text || <em style={{ opacity: 0.4 }}>Не заполнено</em>}</div></div>
-                  <div style={{ marginTop: 16 }}>
-                    <div style={{ fontSize: 10, color: '#c0392b', letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'sans-serif', fontWeight: 700, marginBottom: 8 }}>Предположения. Связи с будущим</div>
-                    {ASSM_LABELS.map(([field, label]) => (
-                      <div key={field} style={{ marginBottom: 8 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: '#c0392b', fontFamily: 'sans-serif', marginBottom: 4 }}>{label}</div>
-                        <p style={{ fontSize: 13, color: 'rgba(26,37,64,0.7)', lineHeight: 1.7, margin: 0, fontFamily: 'sans-serif' }}>{finStrategy[field] || <em style={{ opacity: 0.4 }}>Не заполнено</em>}</p>
-                      </div>
-                    ))}
                   </div>
                 </>)}
               </ContourReportSection>

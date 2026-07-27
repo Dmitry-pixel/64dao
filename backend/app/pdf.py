@@ -229,57 +229,6 @@ HEX_SYMBOLS = [
 # (number, name, combination)
 from app.hexagrams import _HEXAGRAM_BY_COMBO, _HEXAGRAM_BY_NUM, _TARGET_HEXAGRAM, get_target_hexagram_info
 from app.transition_block import transition_block
-_ASSUMPTION_FIELDS = [
-    ("assm_planning",    "Планирование"),
-    ("assm_growth",      "Рост и производительность"),
-    ("assm_advertising", "Реклама"),
-    ("assm_feedback",    "Обратная связь"),
-    ("assm_risk",        "Риск"),
-    ("assm_product",     "Выбор продукта"),
-    ("assm_service",     "Сервис"),
-    ("assm_startup",     "Стартап"),
-    ("assm_investment",  "Инвестиции и финансы"),
-    ("assm_contracts",   "Договора и соглашения"),
-    ("assm_sync",        "Синхронизация"),
-    ("assm_creative",    "Творческий вклад"),
-    ("assm_interaction", "Взаимодействие"),
-    ("assm_resources",   "Достаточность ресурсов"),
-    ("assm_research",    "Исследование и разработка"),
-    ("assm_trade",       "Международная торговля"),
-    ("assm_failures",    "Источники неудач"),
-    ("assm_success",     "Источники удачи"),
-]
-
-def _assumptions_block(strategy: Any) -> str:
-    """HTML-блок 'Предположения, лежащие в основе принятия решения. Связи с будущим'."""
-    if not strategy:
-        return ""
-    items = ""
-    for field, label in _ASSUMPTION_FIELDS:
-        val = getattr(strategy, field, None)
-        items += (
-            '<div style="margin-bottom:16px;">'
-            '<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;'
-            'text-transform:uppercase;color:#c0392b;font-family:Arial,sans-serif;margin-bottom:4px;">'
-            + e(label) +
-            '</div>'
-            '<p style="font-size:13px;color:rgba(26,37,64,0.7);line-height:1.7;'
-            'margin:0;font-family:Arial,sans-serif;">'
-            + (e(val) if val else '<em style="opacity:0.4;">Не заполнено</em>') +
-            '</p>'
-            '</div>'
-        )
-    return (
-        '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:24px 0 12px;">'
-        'Предположения, лежащие в основе принятия решения. Связи с будущим'
-        '</h2>'
-        '<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;padding:24px;'
-        'background:rgba(255,255,255,0.4);">'
-        + items +
-        '</div>'
-    )
-
-
 # Подписи блоков ЖЦ — из единого источника вопросов, без локальной копии.
 _LC_LABELS = LC_LABELS
 
@@ -475,9 +424,6 @@ def _finance_description_html(finance_strategy: Any | None, lifecycle_stages=Non
         '<span style="font-size:11px;color:#c0392b;margin-right:8px;">Описание</span>Стратегический профиль финансовой гексаграммы</h2>',
         _lifecycle_blocks(fs, combo, with_lc=False),
         txt_block("Сценарий развития", getattr(fs, "scenario_text", None)),
-        txt_block("Маркетинг", getattr(fs, "marketing_text", None)),
-        txt_block("Управление", getattr(fs, "management_text", None)),
-        _assumptions_block(fs),
     ]
     return "".join(parts)
 

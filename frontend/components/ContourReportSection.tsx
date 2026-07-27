@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { HexLines } from '@/components/HexDiagram'
+import HexagramDetailsLink from '@/components/HexagramDetailsLink'
 
 export const FIN_STATE_RU: Record<string, string> = {
   young_yang: 'Ян — устойчивая сильная позиция',
@@ -53,6 +54,8 @@ export default function ContourReportSection({
           <div style={{ ...S.stateVal, fontFamily: 'monospace', letterSpacing: 3 }}>{fr?.combination_current}</div>
         </div>
       </div>
+
+      <HexagramDetailsLink combo={fr?.combination_current} />
 
       <div style={{ marginTop: 16 }}>
         {cap('Диагноз')}
