@@ -572,6 +572,7 @@ def build_report_html(
     extra_contours: list | None = None,
     summary: dict | None = None,
     target_strategy: Any | None = None,
+    dynamics: dict | None = None,
 ) -> str:
     """Собирает полный HTML отчёта (все данные уже экранированы через e()).
 
@@ -801,6 +802,25 @@ def build_report_html(
                 )
                 _cno += 1
 
+    # ── Раздел 09 «Динамика» (только повторный отчёт) ────────────────────
+    # Номер фиксированный: раздел идёт последним и не участвует в сдвиге
+    # нумерации контуров. dynamics_section_html вернёт "", если сравнивать
+    # не с чем (нет предыдущего замера).
+    dynamics_page = ""
+    if dynamics and not is_method2:
+        from app.contours import CONTOURS as _CONTOURS
+        from app.dynamics_block import dynamics_section_html
+        _dyn_body = dynamics_section_html(
+            dynamics, section_no="09",
+            titles={_k: _s.title for _k, _s in _CONTOURS.items()},
+        )
+        if _dyn_body:
+            dynamics_page = (
+                '<div style="padding:40px 50px;background:#e8e4db;'
+                'page-break-before:always;">'
+                + _dyn_body + '</div>'
+            )
+
     return f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -869,6 +889,8 @@ def build_report_html(
 {contour_sections}
 
 {bmc_section}
+
+{dynamics_page}
 
 </body>
 </html>"""

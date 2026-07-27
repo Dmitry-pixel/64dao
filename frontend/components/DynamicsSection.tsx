@@ -58,7 +58,7 @@ export default function DynamicsSection({
         return (
           <div key={key} style={{ marginTop: 14 }}>
             <span style={S.labelRed}>{name(key)}</span>
-            <p style={{ ...S.reportText, marginTop: 6 }}>{parts.join('; ')}</p>
+            <div style={{ ...S.reportText, marginTop: 6 }}>{parts.map((x, i) => <div key={i}>{x}</div>)}</div>
           </div>
         )
       })}

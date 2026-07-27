@@ -13,7 +13,15 @@ JSON-конфиг в volume по образцу contour_settings.py, чтобы 
 """
 import html as _html
 
+
 TEXT = {
+    "maturity": "зрелость",
+    "strengthen": "Инь → Ян (укрепление)",
+    "weaken": "Ян → Инь (ослабление)",
+    "moving_closed_lines": "Закрытые точки роста",
+    "moving_new_lines": "Новые",
+    "no_line_changes": "Без изменений в линиях.",
+    "reached_target": "✓ Достигнута целевая гексаграмма предыдущего прогона",
     "title": "Динамика",
     "compared_with": "Сравнение с замером от",
     "maturity_up": "зрелость выросла",
@@ -64,35 +72,38 @@ def _fmt_date(iso: str | None) -> str:
 
 
 def shift_summary(diff: dict | None) -> list[str]:
-    """Фразы о сдвиге одного контура. Общий источник для строки и раздела 09."""
+    """Фразы о сдвиге одного контура. Состав и формулировки совпадают со
+    страницей /companies/[id]/dynamics и ContourShiftLine.tsx (правило паритета).
+    Каждый элемент списка — отдельная строка вывода."""
     if not diff:
         return []
     out: list[str] = []
     delta = diff.get("maturity_delta") or 0
-    m_from = diff.get("maturity_from")
-    m_to = diff.get("maturity_to")
-    if delta > 0:
-        out.append(TEXT["maturity_up"] + ": " + str(m_from) + " → " + str(m_to))
-    elif delta < 0:
-        out.append(TEXT["maturity_down"] + ": " + str(m_from) + " → " + str(m_to))
-    else:
-        out.append(TEXT["maturity_same"])
-
+    out.append(
+        TEXT["maturity"] + " " + str(diff.get("maturity_from")) + "/6 → "
+        + str(diff.get("maturity_to")) + "/6 "
+        + "(" + ("+" + str(delta) if delta > 0 else str(delta)) + ")"
+    )
+    if diff.get("reached_prev_target"):
+        out.append(TEXT["reached_target"])
     changes = diff.get("line_changes") or []
-    if changes:
-        names = [str(c.get("line_key") or c.get("line")) for c in changes]
-        out.append(TEXT["lines_changed"] + ": " + ", ".join(names))
-
+    for ch in changes:
+        key = ch.get("line_key") or ""
+        out.append(
+            "Линия " + str(ch.get("line")) + " (" + str(ch.get("line_title") or key) + "): "
+            + (TEXT["strengthen"] if ch.get("direction") == "yin_to_yang"
+               else TEXT["weaken"])
+        )
+    closed = diff.get("moving_closed") or []
+    if closed:
+        out.append(TEXT["moving_closed_lines"] + ": линии "
+                   + ", ".join(str(n) for n in closed) + ".")
     new_moving = diff.get("moving_new") or []
     if new_moving:
-        out.append(TEXT["moving_new"] + ": " + ", ".join(str(n) for n in new_moving))
-
-    closed_moving = diff.get("moving_closed") or []
-    if closed_moving:
-        out.append(TEXT["moving_closed"] + ": " + ", ".join(str(n) for n in closed_moving))
-
-    if diff.get("reached_prev_target"):
-        out.append(TEXT["reached"])
+        out.append(TEXT["moving_new_lines"] + ": линии "
+                   + ", ".join(str(n) for n in new_moving) + ".")
+    if not changes and not closed and not new_moving:
+        out.append(TEXT["no_line_changes"])
     return out
 
 
@@ -133,7 +144,8 @@ def dynamics_section_html(dyn: dict | None, section_no: str = "09",
         if not parts:
             continue
         out.append("<div style='" + _LABEL + "'>" + _e(titles.get(key, key)) + "</div>")
-        out.append("<p style='" + _BODY + "'>" + _e("; ".join(parts)) + "</p>")
+        out.append("<p style='" + _BODY + "'>"
+                   + "<br>".join(_e(x) for x in parts) + "</p>")
 
     summary = dyn.get("summary") or {}
     if summary:

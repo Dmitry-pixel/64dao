@@ -5,14 +5,6 @@ import Link from 'next/link'
 import BackButton from '@/components/BackButton'
 import { getMe, getCompanyDynamics } from '@/lib/api'
 
-const CONTOUR_TITLE: Record<string, string> = {
-  finance: 'Финансовая функция', product: 'Продукт/Сервис',
-  process: 'Операционные процессы', market: 'Рынок и продажи',
-}
-const LINE_LABEL: Record<string, string> = {
-  processes: 'Процессы', systems: 'Системы', team: 'Команда',
-  leadership: 'Руководство', environment: 'Внешние факторы', strategy: 'Стратегия',
-}
 const fmt = (d?: string | null) => d ? new Date(d).toLocaleDateString('ru-RU') : '—'
 
 export default function DynamicsPage() {
@@ -73,6 +65,8 @@ export default function DynamicsPage() {
   }
   const deltaColor = (d: number) => d > 0 ? '#166534' : d < 0 ? '#c0392b' : 'var(--text-mute)'
   const deltaStr = (d: number) => d > 0 ? `+${d}` : `${d}`
+  // Названия контуров приходят с бэкенда (dynamics.contour_titles).
+  const cTitle = (k?: string) => (k ? (data.contour_titles?.[k] || k) : '—')
 
   return wrap(
     <>
@@ -95,7 +89,7 @@ export default function DynamicsPage() {
       <div style={S.card}>
         <h2 style={S.h2}>Сводка</h2>
         {['improved', 'degraded', 'unchanged'].map(k => {
-          const list: string[] = (data.summary?.[k] || []).map((c: string) => CONTOUR_TITLE[c] || c)
+          const list: string[] = (data.summary?.[k] || []).map((c: string) => cTitle(c))
           const label = k === 'improved' ? 'Улучшилось' : k === 'degraded' ? 'Деградировало' : 'Без изменений'
           const color = k === 'improved' ? '#166534' : k === 'degraded' ? '#c0392b' : 'var(--text-mute)'
           return (
@@ -107,7 +101,7 @@ export default function DynamicsPage() {
         })}
         {data.constraint?.changed && (
           <p style={{ ...S.faint, marginTop: 10 }}>
-            Системное ограничение сместилось: {CONTOUR_TITLE[data.constraint.from] || data.constraint.from || '—'} → {CONTOUR_TITLE[data.constraint.to] || data.constraint.to || '—'}
+            Системное ограничение сместилось: {cTitle(data.constraint.from)} → {cTitle(data.constraint.to)}
           </p>
         )}
       </div>
@@ -116,7 +110,7 @@ export default function DynamicsPage() {
       {Object.entries(data.contours || {}).map(([key, d]: [string, any]) => (
         <div key={key} style={S.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-            <h2 style={{ ...S.h2, margin: 0 }}>{CONTOUR_TITLE[key] || key}</h2>
+            <h2 style={{ ...S.h2, margin: 0 }}>{cTitle(key)}</h2>
             <div style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'var(--text)' }}>
               зрелость {d.maturity_from}/6 → {d.maturity_to}/6{' '}
               <span style={{ color: deltaColor(d.maturity_delta), fontWeight: 700 }}>({deltaStr(d.maturity_delta)})</span>
@@ -129,7 +123,7 @@ export default function DynamicsPage() {
             <div style={{ marginTop: 8 }}>
               {d.line_changes.map((ch: any, i: number) => (
                 <div key={i} style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text)' }}>
-                  Линия {ch.line} ({LINE_LABEL[ch.line_key] || ch.line_key}):{' '}
+                  Линия {ch.line} ({ch.line_title || ch.line_key}):{' '}
                   <span style={{ color: ch.direction === 'yin_to_yang' ? '#166534' : '#c0392b' }}>
                     {ch.direction === 'yin_to_yang' ? 'Инь → Ян (укрепление)' : 'Ян → Инь (ослабление)'}
                   </span>

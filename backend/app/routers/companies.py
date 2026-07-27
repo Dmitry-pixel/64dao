@@ -46,7 +46,7 @@ async def company_dynamics(
 ):
     """Динамика компании. Входит в стоимость основной диагностики.
     compare: 'previous' (последняя↔предыдущая) | 'first' (последняя↔первая)."""
-    from app.dynamics import build_company_dynamics
+    from app.dynamics_service import company_dynamics
 
 
     company = await db.scalar(
@@ -54,29 +54,5 @@ async def company_dynamics(
     if not company:
         raise HTTPException(status_code=404, detail="Компания не найдена")
 
-    assessments = (await db.execute(
-        select(Assessment)
-        .where(Assessment.company_id == company_id,
-               Assessment.status.in_(("completed", "paid")))
-        .order_by(Assessment.created_at)
-    )).scalars().all()
-
-    ids = [a.id for a in assessments]
-    contours_by_ass: dict = {}
-    if ids:
-        rows = (await db.execute(
-            select(AssessmentContour).where(AssessmentContour.assessment_id.in_(ids)))
-        ).scalars().all()
-        for r in rows:
-            contours_by_ass.setdefault(r.assessment_id, {})[r.contour] = r.result
-
-    snapshots = [{
-        "id": str(a.id),
-        "created_at": a.created_at.isoformat() if a.created_at else "",
-        "combination": a.method1_combination,
-        "method": a.method,
-        "contours": contours_by_ass.get(a.id, {}),
-    } for a in assessments]
-
-    mode = "first" if compare == "first" else "previous"
-    return build_company_dynamics(snapshots, mode=mode)
+    mode = 'first' if compare == 'first' else 'previous'
+    return await company_dynamics(db, company_id, mode=mode)

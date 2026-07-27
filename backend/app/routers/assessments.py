@@ -665,6 +665,11 @@ async def build_html_for_assessment(db, assessment, user, allow_draft: bool = Fa
             select(Strategy).where(Strategy.combination == strategy.target_combination)
         )
 
+    dynamics = None
+    if assessment.is_followup and assessment.company_id:
+        from app.dynamics_service import company_dynamics
+        dynamics = await company_dynamics(db, assessment.company_id, mode='previous')
+
     return build_report_html(
         is_method2=is_method2,
         lifecycle_stages=lifecycle_stages,
@@ -674,6 +679,7 @@ async def build_html_for_assessment(db, assessment, user, allow_draft: bool = Fa
         combination=combination or "",
         strategy=strategy,
         target_strategy=target_strategy,
+        dynamics=dynamics,
         method2_data=method2_data,
         finance_result=finance_result,
         finance_interpretation=finance_interpretation,

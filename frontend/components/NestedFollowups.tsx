@@ -66,7 +66,7 @@ export function NestedFollowups({ items }: { items: Assessment[] }) {
             Открыть отчёт
           </button>
           <a style={linkBtn} href={`${API}/api/assessments/${f.id}/pdf`}>
-            Скачать PDF
+            Скачать PDF с динамикой
           </a>
           {f.company_id && (
             <button style={linkBtn}

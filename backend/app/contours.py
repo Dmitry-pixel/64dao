@@ -19,6 +19,14 @@ REVERSE_ITEMS = frozenset({"1.3", "2.3", "3.3", "4.4", "5.3", "6.3"})
 VETO_ITEMS = frozenset({"4.1"})
 LINE_KEYS = ["processes", "systems", "team", "leadership", "environment", "strategy"]
 
+# Единые человекочитаемые названия линий. Первоисточник для отчёта, PDF и
+# экрана динамики: клиенты берут line_title из payload и своих словарей не держат.
+LINE_TITLES = {
+    "processes": "Процессы", "systems": "Системы", "team": "Команда",
+    "leadership": "Руководство", "environment": "Внешние факторы",
+    "strategy": "Стратегия",
+}
+
 
 def _blocks(titles: list[str]) -> dict[int, dict[str, str]]:
     return {

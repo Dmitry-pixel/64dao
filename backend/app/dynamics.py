@@ -14,6 +14,7 @@ snapshot = {
 from __future__ import annotations
 
 from app.contour_summary import build_summary
+from app.contours import LINE_TITLES, CONTOURS
 
 
 def contour_diff(prev: dict, curr: dict) -> dict:
@@ -29,6 +30,7 @@ def contour_diff(prev: dict, curr: dict) -> dict:
         line_changes.append({
             "line": n,
             "line_key": cl.get("block"),
+            "line_title": LINE_TITLES.get(cl.get("block"), cl.get("block")),
             "from": pl["symbol"],
             "to": cl["symbol"],
             "direction": "yin_to_yang" if cl["symbol"] == "A" else "yang_to_yin",
@@ -118,4 +120,6 @@ def build_company_dynamics(snapshots: list[dict], mode: str = "previous") -> dic
         "contours": diffs,
         "constraint": constraint_change(prev_c, curr_c),
         "summary": summarize_contours(diffs),
+        # Названия контуров отдаём с бэкенда: единственный источник — CONTOURS.
+        "contour_titles": {_k: _s.title for _k, _s in CONTOURS.items()},
     }
