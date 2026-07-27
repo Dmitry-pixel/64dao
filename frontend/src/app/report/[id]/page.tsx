@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { getMe, getAssessment, getBaseQuestions, reportDownloadUrl, listContours, getCompanies, isMethod2, type AuthUser, type Assessment, type ContourInfo, type Company } from '@/lib/api'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
+import { TargetHexagramBlock } from '@/components/TargetHexagramBlock'
 import HexDiagram, { HexLines } from '@/components/HexDiagram'
 import ContourReportSection from '@/components/ContourReportSection'
 import ContourSummaryCard from '@/components/ContourSummaryCard'
@@ -12,17 +13,6 @@ const API = process.env.NEXT_PUBLIC_API_URL || ''
 
 // ── Таблица гексаграмм ────────────────────────────────────────────────────────
 
-const TARGET_HEX: Record<number, number> = {
-   1:  9,  2: 62,  3: 49,  4:  7,  5: 63,  6:  6,  7: 62,  8: 23,
-   9: 37, 10: 25, 11: 36, 12:  9, 13: 37, 14: 26, 15: 11, 16: 54,
-  17: 63, 18: 64, 19: 34, 20: 33, 21: 64, 22: 18, 23: 56, 24: 19,
-  25: 37, 26: 22, 27:  4, 28: 44, 29:  3, 30: 22, 31: 43, 32: 44,
-  33:  1, 34:  1, 35: 64, 36: 37, 37: 63, 38: 21, 39:  5, 40: 46,
-  41: 27, 42:  3, 43:  5, 44: 33, 45: 58, 46: 57, 47: 44, 48: 47,
-  49: 63, 50: 18, 51: 25, 52: 18, 53: 39, 54: 11, 55: 36, 56: 14,
-  57: 44, 58:  5, 59: 44, 60: 43, 61: 42, 62: 33, 63: 17, 64: 40,
-}
-
 // combo → unicode hexagram character (U+4DC0 + n - 1)
 function comboToChar(combo: string): string {
   const entry = HEXAGRAM_MAP[combo]
@@ -31,22 +21,6 @@ function comboToChar(combo: string): string {
 }
 
 // Returns target hexagram info or null
-function getTargetHex(combo: string): { char: string; n: number; name: string; combo: string } | null {
-  const entry = HEXAGRAM_MAP[combo]
-  if (!entry) return null
-  const targetN = TARGET_HEX[entry.n]
-  if (!targetN) return null
-  // find target by number
-  const found = Object.entries(HEXAGRAM_MAP).find(([, v]) => v.n === targetN)
-  if (!found) return null
-  return {
-    char: String.fromCodePoint(0x4DC0 + targetN - 1),
-    n: targetN,
-    name: found[1].name,
-    combo: found[0],
-  }
-}
-
 // Русские метки для сценария стратагемы
 const SCENARIO_LABELS: [string, string][] = [
   ['innovation_strategy',   'Стратегия изменений'],
@@ -158,7 +132,6 @@ export default function ReportPage() {
 
   const hexChar = comboToChar(combo)
   const hexInfo = HEXAGRAM_MAP[combo]
-  const targetHex = getTargetHex(combo)
 
   const BMC_NAMES = [
     'Ценностное предложение', 'Отношения с клиентами', 'Ключевые ресурсы',
@@ -378,6 +351,7 @@ export default function ReportPage() {
             {/* Секция 02 — Целевой сценарий */}
             <div style={S.section} id="s4">
               <h2 style={S.sectionH2}><span style={S.num}>02</span>Целевой сценарий</h2>
+              <TargetHexagramBlock strategy={strategy} labelStyle={S.labelRed} />
 
               {/* Описание перехода */}
               <div style={{ marginBottom: 20 }}>
