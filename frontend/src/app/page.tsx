@@ -8,12 +8,15 @@ import ContactSection from '@/components/ContactSection'
 import CookieBanner from '@/components/CookieBanner'
 import LandingFonts from '@/components/LandingFonts'
 import JsonLd from '@/components/JsonLd'
+import { buildFaqSchema } from '@/lib/faqData'
 
 export const metadata: Metadata = {
   title: '64 ДАО — «И-цзин» для стратегии компании',
   description:
     'Стратегическая диагностика на основе «И-цзин»: определяет фазу компании, уместные управленческие решения, служит опорой для стратегических сессий.',
 }
+
+const LAST_UPDATED = '2026-07-28'
 
 const landingSchema = {
   '@context': 'https://schema.org',
@@ -202,10 +205,48 @@ export default async function HomePage() {
   const year = new Date().getFullYear()
   const pricing = await getPricing()
   const priceFormatted = pricing.price.toLocaleString('ru-RU')
+  const priceLabel = `${priceFormatted} ${pricing.currency}`
+  const pageSchema = {
+    ...landingSchema,
+    '@graph': [
+      ...landingSchema['@graph'],
+      {
+        '@type': 'WebPage',
+        '@id': 'https://64dao.ru/#webpage',
+        url: 'https://64dao.ru/',
+        name: '64 ДАО — «И-цзин» для стратегии компании',
+        inLanguage: 'ru-RU',
+        about: { '@id': 'https://64dao.ru/#software' },
+        publisher: { '@id': 'https://64dao.ru/#organization' },
+        dateModified: LAST_UPDATED,
+      },
+      {
+        '@type': 'Service',
+        '@id': 'https://64dao.ru/#service',
+        name: 'Стратегическая диагностика 64 ДАО',
+        serviceType: 'Стратегическая диагностика компании',
+        provider: { '@id': 'https://64dao.ru/#organization' },
+        areaServed: { '@type': 'Country', name: 'Россия' },
+        audience: {
+          '@type': 'BusinessAudience',
+          audienceType:
+            'Собственники бизнеса, CEO, топ-менеджеры, бизнес-консультанты и фасилитаторы стратегических сессий',
+        },
+        offers: {
+          '@type': 'Offer',
+          price: String(pricing.price),
+          priceCurrency: 'RUB',
+          availability: 'https://schema.org/InStock',
+          url: 'https://64dao.ru/login',
+        },
+      },
+      buildFaqSchema(priceLabel),
+    ],
+  }
 
   return (
     <div className="landing-scope" style={{ fontFamily: 'Inter, sans-serif', color: 'var(--foreground)', background: 'var(--background)' }}>
-      <JsonLd data={landingSchema} />
+      <JsonLd data={pageSchema} />
       <LandingFonts />
       <SiteNav />
 
@@ -473,7 +514,7 @@ export default async function HomePage() {
         </section>
 
         {/* ── FAQ ── */}
-        <FaqSection priceLabel={`${priceFormatted} ${pricing.currency}`} />
+        <FaqSection priceLabel={priceLabel} />
 
         {/* ── PRICE ── */}
         <section id="price" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>

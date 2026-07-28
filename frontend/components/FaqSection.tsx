@@ -1,73 +1,38 @@
-'use client'
+import { buildFaqData } from '@/lib/faqData'
 
-import { useState } from 'react'
-
-function buildFaqData(priceLabel: string) {
-  return [
-  {
-    q: 'Это что, гадание?',
-    a: 'Нет. 64 ДАО не предсказывает будущее и не обещает «правильный ответ». Это диагностика текущей фазы цикла, сформулированная на управленческом языке. Вы выносите на стол диагностику фазы компании, а не гороскоп.',
-  },
-  {
-    q: 'Я и так знаю свой бизнес. Что мне это даст?',
-    a: 'Знаете — лучше любого консультанта. 64 ДАО даёт второй взгляд: не «что у вас происходит», а «в какой фазе цикла вы находитесь и что это меняет в решениях». Ту оптику, которую трудно поймать изнутри.',
-  },
-  {
-    q: 'Автоматика поймёт специфику моего бизнеса?',
-    a: 'Ей это и не нужно. 64 ДАО не лезет в вашу продуктовую кухню и не требует NDA. Он даёт большую картину направления — опираться на эмоции или технологичность, выходить на рынок сейчас или рано. Детали остаются за вами.',
-  },
-  {
-    q: `Что именно я получу за ${priceLabel}?`,
-    a: 'Диагностику по 6 вопросам, определение фазы из 64, стратегический отчёт по 12 направлениям и Метод 2 — разбор бизнес-модели по 9 блокам. На выходе документ, с которого можно начинать стратегическую сессию.',
-  },
-  {
-    q: 'Сейчас операционка, не до стратегии.',
-    a: 'Именно поэтому. Пожары часто начинаются с одного неверного «логичного» решения. Диагностика занимает минуты, а сверка фазы помогает не залить бюджет туда, откуда потом придётся выгребать месяцами.',
-  },
-  {
-    q: 'Что такое «И Цзин»?',
-    a: '«И Цзин» («Книга перемен») — один из основополагающих текстов китайской культуры. Изначально руководство по гаданию, со временем превратился в крупный философский труд. Состоит из 64 гексаграмм, каждая из шести линий (Ян — сплошная, Инь — прерывистая). 64dao.ru адаптирует эту структуру как карту циклов изменений для делового применения.',
-  },
-  {
-    q: 'Нужны ли мне предварительные знания «И Цзин»?',
-    a: 'Нет. Система 64dao.ru разработана так, чтобы быть доступной предпринимателям без знания традиционной книги «И Цзин». Чёткая структура проведёт вас шаг за шагом.',
-  },
-  {
-    q: 'Является ли сервис 64dao.ru заменой консультанту?',
-    a: 'Это автономная альтернатива или мощное дополнение. 64dao.ru даёт мгновенный доступ к внешней, структурированной информации — без ограничений по расписанию или почасовой оплаты — обеспечивая высокий уровень ясности решений.',
-  },
-  {
-    q: 'Как получить доступ к сервису 64dao.ru?',
-    a: 'Через безопасную, интуитивно понятную онлайн-платформу, доступную 24/7 с компьютера, планшета или смартфона.',
-  },
-  {
-    q: 'Почему одна линия отчёта вышла сильной, а соседняя — слабой при близких ответах?',
-    a: 'Каждая линия считается как средний балл четырёх утверждений блока по шкале от 1 до 4. Балл 2,50 и выше даёт сильную линию, ниже 2,50 — слабую; граница 2,50 относится к сильной стороне. Крайние значения — 3,50 и выше или 1,50 и ниже — означают, что состояние дозрело до перемены, и такие линии отчёт выносит в приоритеты. Поэтому два близких, но лежащих по разные стороны границы балла дают разные линии. Если балл попал в пограничную зону, отчёт помечает это отдельно и рекомендует уточняющее интервью.',
-  },
-  {
-    q: 'Зачем отвечать на вопросы по четырём направлениям, если первые шесть уже дали результат?',
-    a: 'Это принцип матрёшки. Первые шесть вопросов дают общую картину компании, а блоки по финансам, продукту, процессам и рынку раскрывают детали. Стадия жизненного цикла компании определяется по самому слабому направлению — по узкому месту, которое задаёт скорость всей системы. Поэтому раздел о жизненном цикле открывается после прохождения всех четырёх: по одному-двум это был бы частичный срез, выданный за системный диагноз.',
-  },
-  ]
-}
+const FAQ_CSS = `
+.faq-list { margin-top: 48px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.faq-item > summary { list-style: none; cursor: pointer; padding: 24px 0 24px; border-top: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.faq-item > summary::-webkit-details-marker { display: none; }
+.faq-item > summary::marker { content: ''; }
+.faq-item > summary h3 { margin: 0; font-family: inherit; font-size: 18px; font-weight: 500; line-height: 1.4; color: var(--foreground); }
+.faq-sign { margin-top: 4px; font-size: 24px; line-height: 1; color: var(--accent); flex-shrink: 0; }
+.faq-sign::after { content: '+'; }
+.faq-item[open] .faq-sign::after { content: '\\2013'; }
+.faq-answer { margin: -8px 0 24px; max-width: 780px; font-size: 14px; line-height: 1.6; color: var(--muted-foreground); }
+`
 
 export default function FaqSection({ priceLabel }: { priceLabel: string }) {
   const FAQ_DATA = buildFaqData(priceLabel)
-  const [openIndex, setOpenIndex] = useState<number | null>(null)
-
-  function toggle(i: number) {
-    setOpenIndex(openIndex === i ? null : i)
-  }
-
   return (
     <section
+      id="faq"
       style={{
         borderBottom: '1px solid rgba(0,0,0,0.06)',
         background: 'color-mix(in oklab, var(--muted) 40%, var(--background))',
       }}
     >
+      <style dangerouslySetInnerHTML={{ __html: FAQ_CSS }} />
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 40px' }}>
-        <div style={{ marginBottom: 16, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--muted-foreground)' }}>
+        <div
+          style={{
+            marginBottom: 16,
+            fontSize: 12,
+            textTransform: 'uppercase',
+            letterSpacing: '0.22em',
+            color: 'var(--muted-foreground)',
+          }}
+        >
           Честные ответы
         </div>
         <h2
@@ -79,64 +44,17 @@ export default function FaqSection({ priceLabel }: { priceLabel: string }) {
             color: 'var(--foreground)',
           }}
         >
-          Что обычно спрашивают
+          Что обычно спрашивают о 64 ДАО
         </h2>
-
-        <div style={{ marginTop: 48, borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+        <div className="faq-list">
           {FAQ_DATA.map((item, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => toggle(i)}
-              style={{
-                display: 'block',
-                width: '100%',
-                cursor: 'pointer',
-                padding: '24px 0',
-                textAlign: 'left',
-                background: 'transparent',
-                border: 'none',
-                borderTop: '1px solid var(--border)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'space-between',
-                  gap: 24,
-                }}
-              >
-                <span style={{ fontSize: 18, fontWeight: 500, color: 'var(--foreground)' }}>
-                  {item.q}
-                </span>
-                <span
-                  style={{
-                    marginTop: 4,
-                    fontSize: 24,
-                    lineHeight: 1,
-                    color: 'var(--accent)',
-                    flexShrink: 0,
-                  }}
-                >
-                  {openIndex === i ? '–' : '+'}
-                </span>
-              </div>
-              {openIndex === i && (
-                <p
-                  style={{
-                    margin: '16px 0 0',
-                    maxWidth: 780,
-                    fontSize: 14,
-                    lineHeight: 1.6,
-                    color: 'var(--muted-foreground)',
-                    textAlign: 'left',
-                  }}
-                >
-                  {item.a}
-                </p>
-              )}
-            </button>
+            <details key={i} className="faq-item">
+              <summary>
+                <h3>{item.q}</h3>
+                <span className="faq-sign" aria-hidden="true" />
+              </summary>
+              <p className="faq-answer">{item.a}</p>
+            </details>
           ))}
         </div>
       </div>
