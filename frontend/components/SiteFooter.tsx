@@ -57,6 +57,7 @@ export default async function SiteFooter({ year }: { year: number }) {
             <li><a href="#how"     style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>Как это работает</a></li>
             <li><a href="#report"  style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>Что в отчёте</a></li>
             <li><a href="#price"   style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>Стоимость</a></li>
+            <li><Link href="/method" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>Методика</Link></li>
             <li><Link href="/about" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>О нас</Link></li>
             <li><a href="#contact" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none' }}>Контакты</a></li>
           </ul>
