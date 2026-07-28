@@ -42,13 +42,6 @@ TEXT = {
 
 _INK = "#1a2540"
 _ACCENT = "#c0392b"
-_SHIFT = "#166534"
-
-_SHIFT_STYLE = (
-    "font-size:11px;font-family:Arial,sans-serif;color:" + _SHIFT + ";"
-    "background:rgba(22,101,52,0.06);border:1px solid rgba(22,101,52,0.2);"
-    "border-radius:6px;padding:8px 12px;margin:0 0 14px;line-height:1.6;"
-)
 _BODY = (
     "font-size:12px;font-family:Arial,sans-serif;color:rgba(26,37,64,0.72);"
     "line-height:1.7;margin:0 0 8px;"
@@ -106,13 +99,6 @@ def shift_summary(diff: dict | None) -> list[str]:
         out.append(TEXT["no_line_changes"])
     return out
 
-
-def shift_line_html(diff: dict | None) -> str:
-    """Строка сдвига под шапкой раздела контура."""
-    parts = shift_summary(diff)
-    if not parts:
-        return ""
-    return "<p style='" + _SHIFT_STYLE + "'>" + _e("; ".join(parts)) + "</p>"
 
 
 def _contour_list(keys, titles: dict) -> str:
