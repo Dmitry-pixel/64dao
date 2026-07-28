@@ -73,39 +73,44 @@ function Dots({ value, tone }: { value: number; tone: DotTone }) {
 
 function CycleCurve() {
   const labels: { x: number; l: string; bold?: boolean }[] = [
-    { x: 70, l: 'ЗАРОЖДЕНИЕ' },
-    { x: 220, l: 'РОСТ', bold: true },
-    { x: 380, l: 'ЗРЕЛОСТЬ' },
-    { x: 530, l: 'СПАД' },
+    { x: 62, l: 'ЗАРОЖДЕНИЕ' },
+    { x: 185, l: 'РОСТ', bold: true },
+    { x: 322, l: 'ЗРЕЛОСТЬ' },
+    { x: 452, l: 'ОБНОВЛЕНИЕ' },
   ]
   return (
     <svg viewBox="0 0 600 220" style={{ height: 'auto', width: '100%' }}>
       <path
-        d="M10 180 C 80 180, 130 60, 220 60 C 310 60, 340 200, 430 200 C 500 200, 540 100, 590 80"
+        d="M10 178 C 55 176, 90 172, 120 162 C 148 152, 160 128, 175 108 C 196 82, 226 64, 265 61 C 305 58, 345 58, 378 60 C 398 61, 412 72, 425 88"
+        fill="none"
+        stroke="oklch(0.28 0.08 260)"
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M425 88 C 445 84, 462 72, 485 60 C 500 52, 510 48, 520 45"
         fill="none"
         stroke="oklch(0.28 0.08 260)"
         strokeWidth={2.2}
         strokeLinecap="round"
       />
       <path
-        d="M590 80 L 596 78"
+        d="M425 88 C 448 104, 468 130, 490 152 C 502 164, 512 174, 520 182"
         fill="none"
         stroke="oklch(0.28 0.08 260)"
         strokeWidth={2}
-        strokeDasharray="3 4"
+        strokeDasharray="4 5"
+        strokeLinecap="round"
+        opacity={0.5}
       />
-      <circle cx={220} cy={60} r={18} fill="oklch(0.28 0.08 260)" opacity={0.08} />
-      <circle cx={220} cy={60} r={6} fill="var(--accent)" />
-      <text
-        x={220}
-        y={36}
-        textAnchor="middle"
-        fontSize={11}
-        fill="var(--accent)"
-        style={{ letterSpacing: '0.18em' }}
-      >
-        ВЫ ЗДЕСЬ
-      </text>
+      <circle cx={425} cy={88} r={3.5} fill="oklch(0.28 0.08 260)" />
+      <text x={528} y={44} fontSize={9} fontWeight={600} fill="oklch(0.16 0.03 260)" style={{ letterSpacing: '0.14em' }}>НОВЫЙ</text>
+      <text x={528} y={57} fontSize={9} fontWeight={600} fill="oklch(0.16 0.03 260)" style={{ letterSpacing: '0.14em' }}>ЦИКЛ</text>
+      <text x={528} y={186} fontSize={9} fill="oklch(0.45 0.03 260)" style={{ letterSpacing: '0.14em' }}>СПАД</text>
+      <circle cx={175} cy={108} r={18} fill="oklch(0.28 0.08 260)" opacity={0.08} />
+      <circle cx={175} cy={108} r={6} fill="var(--accent)" />
+      <text x={148} y={86} textAnchor="middle" fontSize={11} fill="var(--accent)" style={{ letterSpacing: '0.18em' }}>ВЫ ЗДЕСЬ</text>
       <line x1={10} y1={200} x2={590} y2={200} stroke="oklch(0.86 0.02 92)" />
       {labels.map((t) => (
         <text
@@ -136,7 +141,7 @@ function GaugeSvg() {
       {/* правый сектор — «Инвестировать» */}
       <path d="M 124.18 25.9 A 78 78 0 0 1 178 100" fill="none" stroke="oklch(0.55 0.13 160)" strokeWidth={14} />
       {/* стрелка */}
-      <g transform="rotate(40 100 100)">
+      <g transform="rotate(-40 100 100)">
         <line x1={100} y1={100} x2={170} y2={100} stroke="oklch(0.16 0.03 260)" strokeWidth={3} strokeLinecap="round" />
       </g>
       <circle cx={100} cy={100} r={6} fill="oklch(0.16 0.03 260)" />
