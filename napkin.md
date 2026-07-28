@@ -29,6 +29,10 @@
    Симптом: `frontend/.next` на хосте отсутствует, `find / -name robots.txt` находит файл только в слоях overlayfs. `robots.txt` в `.next/server/app/` — это директория с `route.js`, `cat` по ней даёт «Is a directory», и пустой вывод легко принять за отсутствие маршрута.
    Do instead: деплой — `docker compose build frontend && docker compose up -d frontend`. Сервисы `db`, `backend`, `frontend`; контейнер `dao64_frontend`, порт 127.0.0.1:3000. `robots.txt` и `sitemap.xml` генерируются из `src/app/robots.ts` и `src/app/sitemap.ts`; в `public/` из текстовых файлов только `llms.txt`.
 
+9. **[2026-07-28] `git log` печатает время в зоне автора — сравнивать без приведения к UTC нельзя**
+   Симптом: `679ad4e` датирован `Sat Jun 27 08:48:34 +0800`, `b18040d` — `Sat Jun 27 15:52:14 +0000`. Визуально первый выглядит «тот же день, раньше», и вывод «черновик новее редизайна» напрашивается сам. В UTC разрыв 15 часов в обратную сторону: 00:48 против 15:52. Цена ошибки — удаление ветки с 1546 строками как якобы устаревшей.
+   Do instead: даты коммитов сравнивать только в одной зоне: `TZ=UTC git log -1 --date=iso-local --format="%ad %h %s" <ref>`. Голый `%ad` берёт зону автора и для сравнения непригоден. Для порядка событий брать дату коммиттера `%cd` или `git log --date-order`, а не дату автора: при cherry-pick и rebase они расходятся.
+
 ## [2026-07-23] Session notes
 - PR4b/тест-долг (540d6bb), PR6 email-напоминания (00ec7df), PR5 гейт повтора (28aa48e) — выкачены в origin/main.
 - PR6: за 14 дней до конца подписки + «пора повторить» через 90 дней (только подписчикам); cron 06:00 UTC → deploy/scripts/reminders.sh; kill-switch REMINDERS_ENABLED=false.
