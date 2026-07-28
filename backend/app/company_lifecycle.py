@@ -24,6 +24,7 @@ Playbook — рамка вокруг маршрута, а не его замен
 from __future__ import annotations
 
 from app.contour_route import build_route
+from app.contours import LINE_TITLES
 from app.contours import CONTOUR_ORDER
 
 # ── Стадии и категории ───────────────────────────────────────────────────────
@@ -245,6 +246,10 @@ def build_company_lifecycle(results: dict[str, dict], summary: dict | None) -> d
     if constraint:
         r = known[constraint]
         tactics = build_route(r["lines"], r["combination_current"])
+        # Названия линий отдаём с бэкенда: единственный источник — LINE_TITLES.
+        for _st in tactics:
+            _st["line_title"] = LINE_TITLES.get(
+                _st.get("line_key"), _st.get("line_key"))
         if not tactics:
             # Ограничение без подвижных линий: система «застряла» в узком
             # месте без внутреннего запроса на изменение — работа начинается

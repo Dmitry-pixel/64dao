@@ -440,11 +440,6 @@ _CL_FLAG_LABELS = {
     "OVERHEAT_RISK": "Выраженный риск перегрева: подвижные сильные позиции преобладают.",
 }
 
-_CL_LINE_TITLES = {
-    "processes": "Процессы", "systems": "Технологии и системы", "team": "Команда",
-    "leadership": "Поддержка руководства", "environment": "Внешняя среда",
-    "strategy": "Видение и стратегия",
-}
 
 
 def company_lifecycle_html(lc: dict, lifecycle_stages=None,
@@ -497,7 +492,7 @@ def company_lifecycle_html(lc: dict, lifecycle_stages=None,
     tactics = lc.get("playbook", {}).get("tactics") or []
     steps_html = ""
     for st in tactics:
-        param = _CL_LINE_TITLES.get(st.get("line_key"), st.get("line_key") or "")
+        param = st.get("line_title") or st.get("line_key") or ""
         direction = ("укрепить слабую позицию" if st.get("from_state") == "old_yin"
                      else "стабилизировать перегрев")
         steps_html += (f'<li style="margin-bottom:6px;">Шаг {st.get("order")}. Линия {st.get("line")} — '

@@ -7,10 +7,6 @@ const STAGE_INDEX: Record<string, number> = {
   'зарождение': 1, 'расцвет': 2, 'зрелость': 3, 'упадок': 4, 'обновление': 5,
 }
 
-const LINE_LABEL: Record<string, string> = {
-  processes: 'Процессы', systems: 'Технологии и системы', team: 'Команда',
-  leadership: 'Поддержка руководства', environment: 'Внешняя среда', strategy: 'Видение и стратегия',
-}
 
 const FLAG_LABEL: Record<string, string> = {
   CONSTRAINT_TIED: 'Несколько контуров делят минимальную зрелость — ограничение неустойчиво, стадия не фиксируется.',
@@ -87,7 +83,7 @@ export default function CompanyLifecycleSection({ sectionNo, lc, summary, styles
           <ul style={{ margin: '0 0 12px', paddingLeft: 18, fontSize: 12, color: '#1a2540', fontFamily: 'sans-serif', lineHeight: 1.5 }}>
             {tactics.map((st, i) => (
               <li key={i} style={{ marginBottom: 6 }}>
-                Шаг {st.order}. Линия {st.line} — {LINE_LABEL[st.line_key] || st.line_key}{' '}
+                Шаг {st.order}. Линия {st.line} — {st.line_title || st.line_key}{' '}
                 <span style={{ color: 'rgba(26,37,64,0.6)' }}>({st.from_state === 'old_yin' ? 'укрепить слабую позицию' : 'стабилизировать перегрев'})</span>
               </li>
             ))}

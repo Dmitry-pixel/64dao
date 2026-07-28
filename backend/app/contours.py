@@ -22,9 +22,9 @@ LINE_KEYS = ["processes", "systems", "team", "leadership", "environment", "strat
 # Единые человекочитаемые названия линий. Первоисточник для отчёта, PDF и
 # экрана динамики: клиенты берут line_title из payload и своих словарей не держат.
 LINE_TITLES = {
-    "processes": "Процессы", "systems": "Системы", "team": "Команда",
-    "leadership": "Руководство", "environment": "Внешние факторы",
-    "strategy": "Стратегия",
+    "processes": "Процессы", "systems": "Технологии и системы",
+    "team": "Команда", "leadership": "Поддержка руководства",
+    "environment": "Внешняя среда", "strategy": "Видение и стратегия",
 }
 
 
