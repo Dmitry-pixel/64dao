@@ -33,6 +33,10 @@
    Симптом: `679ad4e` датирован `Sat Jun 27 08:48:34 +0800`, `b18040d` — `Sat Jun 27 15:52:14 +0000`. Визуально первый выглядит «тот же день, раньше», и вывод «черновик новее редизайна» напрашивается сам. В UTC разрыв 15 часов в обратную сторону: 00:48 против 15:52. Цена ошибки — удаление ветки с 1546 строками как якобы устаревшей.
    Do instead: даты коммитов сравнивать только в одной зоне: `TZ=UTC git log -1 --date=iso-local --format="%ad %h %s" <ref>`. Голый `%ad` берёт зону автора и для сравнения непригоден. Для порядка событий брать дату коммиттера `%cd` или `git log --date-order`, а не дату автора: при cherry-pick и rebase они расходятся.
 
+10. **[2026-07-28] Уборка диска: смотреть `docker system df`, а не `du /var/lib/docker`**
+   Симптом: диск занят на 40%, `du -xh /var/lib/docker` показывает 277 M и уводит в сторону. Реальные 11 G лежат в `/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots` — Docker работает через containerd-снапшоттер. `docker system df` при этом честно показывал Build Cache 7.0 G из 10.2 G образов.
+   Do instead: порядок уборки — `docker builder prune -f` (снимает только неиспользуемое, здесь 3.767 G) → `journalctl --vacuum-size=50M` (145 M) → `apt-get clean` (125 M). Если мало: `docker builder prune -a -f` снимает остаток кэша (3.234 G) ценой одной медленной пересборки, плюс disabled-ревизии snap через `snap list --all | awk '/disabled/{print $1,$3}'` (~300 M). Итог прохода: 40% → 25%, контейнеры и тома не затрагиваются. Не трогать `/var/lib/mysql` — база FastPanel.
+
 ## [2026-07-23] Session notes
 - PR4b/тест-долг (540d6bb), PR6 email-напоминания (00ec7df), PR5 гейт повтора (28aa48e) — выкачены в origin/main.
 - PR6: за 14 дней до конца подписки + «пора повторить» через 90 дней (только подписчикам); cron 06:00 UTC → deploy/scripts/reminders.sh; kill-switch REMINDERS_ENABLED=false.
