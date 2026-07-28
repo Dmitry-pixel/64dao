@@ -6,6 +6,10 @@
 
 2. **[2026-07-06] JSON-LD в Next.js App Router**
    Do instead: `<script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(data)}} />` без `<head>` — рендерится в body корректно. Компонент `frontend/components/JsonLd.tsx`, переиспользуется на всех страницах.
+3. **[2026-07-28] Контент за useState не попадает в SSR-HTML — краулеры его не видят**
+   Симптом: `FaqSection` рендерил ответ только при `openIndex === i`; в серверном HTML были одни вопросы, ответов не было. AEO-чекер и Google Rich Results FAQ не находили (воспроизведено: `curl -s / | grep -c "<текст ответа>"` → 0 до фикса, 2 после — видимая разметка + JSON-LD).
+   Do instead: аккордеоны строить на `<details>/<summary>` без клиентского состояния — секция остаётся серверной, ответ всегда в HTML. Вопрос класть в `<h3>` внутри `<summary>`, не в `<button>` (в button нельзя ни `<h3>`, ни `<p>` — невалидная вложенность). Маркер убирать через `list-style:none` + `::-webkit-details-marker{display:none}`.
+   Тексты выносить в общий модуль (`frontend/lib/faqData.ts`) и из него же собирать JSON-LD: если разметка и схема расходятся, Google отбрасывает схему как неподтверждённую видимым контентом.
 
 ## [2026-07-23] Session notes
 - PR4b/тест-долг (540d6bb), PR6 email-напоминания (00ec7df), PR5 гейт повтора (28aa48e) — выкачены в origin/main.
