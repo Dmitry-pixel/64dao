@@ -10,8 +10,9 @@
 Настройка хранится в JSON-файле в volume dao64_uploads (тот же паттерн,
 что и social_links.json) — переживает пересборку образа.
 """
-import json
 import os
+
+from app.json_store import read_json, write_json
 
 # Каталог берётся из UPLOAD_DIR (тот же приём, что в contour_settings.py и
 # site_mode.py). Дефолт совпадает с прежним жёстким путём, поэтому в проде
@@ -27,21 +28,11 @@ _DEFAULTS = {
 
 
 def get_tax_settings() -> dict:
-    if not os.path.exists(TAX_SETTINGS_PATH):
-        return dict(_DEFAULTS)
-    try:
-        with open(TAX_SETTINGS_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return {**_DEFAULTS, **data}
-    except (json.JSONDecodeError, OSError):
-        return dict(_DEFAULTS)
+    return read_json(TAX_SETTINGS_PATH, _DEFAULTS)
 
 
 def _save(data: dict) -> dict:
-    os.makedirs(os.path.dirname(TAX_SETTINGS_PATH), exist_ok=True)
-    with open(TAX_SETTINGS_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    return data
+    return write_json(TAX_SETTINGS_PATH, data)
 
 
 def set_vat_enabled(enabled: bool, vat_type: str = "vat20") -> dict:

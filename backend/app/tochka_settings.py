@@ -11,12 +11,17 @@ dao64_uploads, тот же паттерн, что pricing.json/tax_settings.json
 Client ID нигде в .env не хранился — использовался только вручную (curl)
 для регистрации вебхука. Теперь тоже сохраняется здесь для админки.
 """
-import json
+import os
 from pathlib import Path
 
 from app.config import get_settings
+from app.json_store import read_json, write_json
 
-TOCHKA_SETTINGS_FILE = Path("/var/www/64dao/uploads/tochka_settings.json")
+# Каталог из UPLOAD_DIR, как в остальных модулях настроек. С зашитым путём
+# тесты писали бы токен банка в боевой том. Дефолт совпадает с прежним
+# путём, поэтому в проде файл резолвится туда же.
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/var/www/64dao/uploads")
+TOCHKA_SETTINGS_FILE = Path(UPLOAD_DIR) / "tochka_settings.json"
 
 DEFAULTS = {
     "jwt_token": "",
@@ -25,11 +30,7 @@ DEFAULTS = {
 
 
 def read_tochka_settings() -> dict:
-    try:
-        data = json.loads(TOCHKA_SETTINGS_FILE.read_text(encoding="utf-8"))
-        return {**DEFAULTS, **data}
-    except Exception:
-        return dict(DEFAULTS)
+    return read_json(TOCHKA_SETTINGS_FILE, DEFAULTS)
 
 
 def write_tochka_settings(data: dict) -> dict:
@@ -43,8 +44,7 @@ def write_tochka_settings(data: dict) -> dict:
         value = data.get(key)
         if isinstance(value, str) and value.strip():
             current[key] = value.strip()
-    TOCHKA_SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    TOCHKA_SETTINGS_FILE.write_text(json.dumps(current, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_json(TOCHKA_SETTINGS_FILE, current)
     return current
 
 

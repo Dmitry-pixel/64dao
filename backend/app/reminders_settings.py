@@ -15,10 +15,11 @@ REMINDERS_ENABLED в .env остаётся аварийным выключате
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
 from pathlib import Path
+
+from app.json_store import read_json, write_json
 
 logger = logging.getLogger(__name__)
 
@@ -55,21 +56,12 @@ def normalize(data: dict) -> dict:
 
 
 def read() -> dict:
-    try:
-        saved = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        return dict(_DEFAULTS)
-    except Exception:
-        logger.warning("reminders_settings.json нечитаем, беру умолчания")
-        return dict(_DEFAULTS)
-    if not isinstance(saved, dict):
-        return dict(_DEFAULTS)
-    return normalize(saved)
+    # normalize приводит к умолчаниям всё, чего нет или что испорчено,
+    # поэтому отдельные ветки «файла нет» и «не словарь» не нужны.
+    return normalize(read_json(SETTINGS_FILE, _DEFAULTS))
 
 
 def write(data: dict) -> dict:
     clean = normalize(data)
-    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    SETTINGS_FILE.write_text(
-        json.dumps(clean, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_json(SETTINGS_FILE, clean)
     return clean

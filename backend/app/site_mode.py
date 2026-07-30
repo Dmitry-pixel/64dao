@@ -1,7 +1,8 @@
-import json
 import os
 from pathlib import Path
 from pydantic import BaseModel
+
+from app.json_store import read_json, write_json
 
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/var/www/64dao/uploads")
 SITE_MODE_FILE = Path(UPLOAD_DIR) / "site_mode.json"
@@ -21,17 +22,13 @@ class SiteMode(BaseModel):
 
 def get_site_mode() -> SiteMode:
     try:
-        if not SITE_MODE_FILE.exists():
-            return SiteMode(**DEFAULT_SITE_MODE)
-        with open(SITE_MODE_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return SiteMode(**{**DEFAULT_SITE_MODE, **data})
+        return SiteMode(**read_json(SITE_MODE_FILE, DEFAULT_SITE_MODE))
     except Exception:
+        # Файл мог накопить посторонние или несовместимые поля: режим
+        # обслуживания не должен ронять сайт из-за собственной настройки.
         return SiteMode(**DEFAULT_SITE_MODE)
 
 
 def set_site_mode(mode: SiteMode) -> SiteMode:
-    SITE_MODE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(SITE_MODE_FILE, "w", encoding="utf-8") as f:
-        json.dump(mode.model_dump(), f, ensure_ascii=False, indent=2)
+    write_json(SITE_MODE_FILE, mode.model_dump())
     return mode
