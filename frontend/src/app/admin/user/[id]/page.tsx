@@ -1,7 +1,17 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { getMe, adminApi, listAssessments, reportDownloadUrl } from '@/lib/api'
+import { getMe, adminApi, listAssessments, reportDownloadUrl, type AccessGrant } from '@/lib/api'
+
+const GRANT_STATUS: Record<string, string> = {
+  active: 'Действует', pending: 'Ещё не начался', used_up: 'Квота исчерпана',
+  expired: 'Срок истёк', revoked: 'Отозван',
+}
+
+const GRANT_COLOR: Record<string, string> = {
+  active: '#166534', pending: '#1e3a8a', used_up: '#8a6d00',
+  expired: '#7a7a7a', revoked: '#c0392b',
+}
 
 export default function AdminUserPage() {
   const router = useRouter()
@@ -12,6 +22,13 @@ export default function AdminUserPage() {
   const [loading, setLoading] = useState(true)
   const [resetting, setResetting] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
+  const [grants, setGrants] = useState<AccessGrant[]>([])
+  const [grantBusy, setGrantBusy] = useState(false)
+  const [quota, setQuota] = useState(2)
+  const [preset, setPreset] = useState('14')
+  const [customDate, setCustomDate] = useState('')
+  const [reason, setReason] = useState('')
+  const [notify, setNotify] = useState(true)
 
   useEffect(() => {
     getMe()
@@ -30,6 +47,61 @@ export default function AdminUserPage() {
       .catch(() => router.push('/login'))
       .finally(() => setLoading(false))
   }, [router, userId])
+
+  async function loadGrants() {
+    try { setGrants(await adminApi.userAccessGrants(userId)) } catch { setGrants([]) }
+  }
+
+  useEffect(() => { loadGrants() }, [userId])
+
+  async function handleGrant() {
+    // Срок: пресет в днях либо своя дата (конец дня, чтобы «до 15.08»
+    // означало включительно). Бэкенд не примет дату в прошлом.
+    const expires = preset === 'custom'
+      ? new Date(customDate + 'T23:59:59').toISOString()
+      : new Date(Date.now() + Number(preset) * 86400000).toISOString()
+    if (preset === 'custom' && !customDate) { setMsg('Укажите дату окончания доступа'); return }
+    setGrantBusy(true); setMsg('')
+    try {
+      await adminApi.createAccessGrant(userId, {
+        quota, expires_at: expires, reason: reason.trim() || null, notify,
+      })
+      setMsg(notify ? 'Доступ выдан, письмо отправлено' : 'Доступ выдан без письма')
+      setReason('')
+      await loadGrants()
+    } catch (e: any) {
+      setMsg(`Не удалось выдать доступ: ${e?.message || 'ошибка'}`)
+    } finally {
+      setGrantBusy(false)
+    }
+  }
+
+  async function handleRevokeGrant(id: string) {
+    if (!window.confirm('Отозвать доступ? Уже сформированные отчёты останутся у пользователя.')) return
+    setGrantBusy(true); setMsg('')
+    try {
+      await adminApi.revokeAccessGrant(id)
+      setMsg('Доступ отозван')
+      await loadGrants()
+    } catch (e: any) {
+      setMsg(`Не удалось отозвать доступ: ${e?.message || 'ошибка'}`)
+    } finally {
+      setGrantBusy(false)
+    }
+  }
+
+  async function handleNotifyGrant(id: string) {
+    setGrantBusy(true); setMsg('')
+    try {
+      await adminApi.notifyAccessGrant(id)
+      setMsg('Письмо отправлено повторно')
+      await loadGrants()
+    } catch (e: any) {
+      setMsg(`Не удалось отправить письмо: ${e?.message || 'ошибка'}`)
+    } finally {
+      setGrantBusy(false)
+    }
+  }
 
   const CONTOUR_TITLE: Record<string, string> = {
     finance: 'Финансовая функция', product: 'Продукт/Сервис',
@@ -89,6 +161,80 @@ export default function AdminUserPage() {
         {msg && (
           <div style={{ background: 'rgba(46,125,50,0.08)', border: '1px solid rgba(46,125,50,0.25)', borderRadius: 8, padding: '10px 14px', fontFamily: 'sans-serif', fontSize: 13, color: '#166534', marginBottom: 16 }}>{msg}</div>
         )}
+
+        {/* Тестовый доступ: квота бесплатных диагностик на срок */}
+        <div style={S.card}>
+          <h2 style={S.h2}>Тестовый доступ</h2>
+          <p style={{ color: '#666', fontFamily: 'sans-serif', fontSize: 13, margin: '0 0 14px' }}>
+            Партнёр проходит диагностику без оплаты: указанное число отчётов в течение срока.
+            Право на бесплатный повтор такие диагностики не дают — квота равна числу прогонов.
+          </p>
+          <div className="row" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end', marginBottom: 16 }}>
+            <label style={{ display: 'block' }}>
+              <span style={S.infoLabel}>Диагностик</span>
+              <input type="number" min={1} max={50} value={quota}
+                onChange={e => setQuota(Math.max(1, Number(e.target.value) || 1))}
+                style={{ ...{ padding: '8px 10px', border: '1px solid #e0dcd3', borderRadius: 6, fontFamily: 'sans-serif', fontSize: 13, background: '#fff' }, width: 80 }} />
+            </label>
+            <label style={{ display: 'block' }}>
+              <span style={S.infoLabel}>Срок</span>
+              <select value={preset} onChange={e => setPreset(e.target.value)} style={{ padding: '8px 10px', border: '1px solid #e0dcd3', borderRadius: 6, fontFamily: 'sans-serif', fontSize: 13, background: '#fff' }}>
+                <option value="14">14 дней</option>
+                <option value="30">30 дней</option>
+                <option value="custom">своя дата</option>
+              </select>
+            </label>
+            {preset === 'custom' && (
+              <label style={{ display: 'block' }}>
+                <span style={S.infoLabel}>Действует до</span>
+                <input type="date" value={customDate} onChange={e => setCustomDate(e.target.value)}
+                  style={{ padding: '8px 10px', border: '1px solid #e0dcd3', borderRadius: 6, fontFamily: 'sans-serif', fontSize: 13, background: '#fff' }} />
+              </label>
+            )}
+            <label style={{ display: 'block', flex: 1, minWidth: 200 }}>
+              <span style={S.infoLabel}>Причина (для себя)</span>
+              <input value={reason} onChange={e => setReason(e.target.value)}
+                placeholder="Пилот, ООО «Партнёр»"
+                style={{ ...{ padding: '8px 10px', border: '1px solid #e0dcd3', borderRadius: 6, fontFamily: 'sans-serif', fontSize: 13, background: '#fff' }, width: '100%' }} />
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'sans-serif', fontSize: 13, color: '#333', paddingBottom: 8 }}>
+              <input type="checkbox" checked={notify} onChange={e => setNotify(e.target.checked)} />
+              письмо
+            </label>
+            <button onClick={handleGrant} disabled={grantBusy}
+              style={{ background: '#1a2540', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 18px', fontFamily: 'sans-serif', fontSize: 13, fontWeight: 600, cursor: grantBusy ? 'default' : 'pointer', opacity: grantBusy ? 0.5 : 1 }}>
+              Выдать доступ
+            </button>
+          </div>
+          {grants.length === 0 ? (
+            <p style={{ color: '#999', fontFamily: 'sans-serif', fontSize: 13 }}>Доступ не выдавался</p>
+          ) : (
+            <table style={S.table}>
+              <thead>
+                <tr>{['Квота', 'Исп.', 'Остаток', 'Действует до', 'Статус', 'Письмо', 'Причина', ''].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {grants.map(g => (
+                  <tr key={g.id}>
+                    <td style={S.td}>{g.quota}</td>
+                    <td style={S.td}>{g.used}</td>
+                    <td style={S.td}>{g.remaining}</td>
+                    <td style={S.td}>{new Date(g.expires_at).toLocaleDateString('ru-RU')}</td>
+                    <td style={{ ...S.td, color: GRANT_COLOR[g.status], fontWeight: 600 }}>{GRANT_STATUS[g.status] || g.status}</td>
+                    <td style={S.td}>{g.email_sent_at ? new Date(g.email_sent_at).toLocaleDateString('ru-RU') : 'нет'}</td>
+                    <td style={{ ...S.td, fontSize: 12, color: '#666' }}>{g.reason || '—'}</td>
+                    <td style={S.td}>
+                      <button onClick={() => handleNotifyGrant(g.id)} disabled={grantBusy || g.status === 'revoked' || g.status === 'expired'}
+                        style={{ border: 'none', background: 'none', color: '#1e3a8a', cursor: 'pointer', fontSize: 12, padding: 0, marginRight: 10 }}>письмо</button>
+                      <button onClick={() => handleRevokeGrant(g.id)} disabled={grantBusy || g.status === 'revoked'}
+                        style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: 12, padding: 0 }}>отозвать</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
 
         {/* Диагностики пользователя */}
         <div style={S.card}>

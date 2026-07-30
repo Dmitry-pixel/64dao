@@ -330,6 +330,18 @@ export const adminApi = {
     request<{ sort_order: number; name: string; description: string | null }[]>('/api/admin/lifecycle-stages'),
   saveLifecycleStages: (d: { sort_order: number; description: string | null }[]) =>
     request('/api/admin/lifecycle-stages', { method: 'PUT', body: JSON.stringify(d) }),
+
+  // Тестовый доступ (гранты): квота + срок, письмо партнёру.
+  accessGrants: (status?: string) =>
+    request<AccessGrant[]>(`/api/admin/access-grants${status ? `?status=${status}` : ''}`),
+  userAccessGrants: (userId: string) =>
+    request<AccessGrant[]>(`/api/admin/users/${userId}/access-grants`),
+  createAccessGrant: (userId: string, d: { quota: number; expires_at: string; reason?: string | null; notify: boolean }) =>
+    request<AccessGrant>(`/api/admin/users/${userId}/access-grants`, { method: 'POST', body: JSON.stringify(d) }),
+  revokeAccessGrant: (grantId: string) =>
+    request<AccessGrant>(`/api/admin/access-grants/${grantId}/revoke`, { method: 'POST' }),
+  notifyAccessGrant: (grantId: string) =>
+    request<AccessGrant>(`/api/admin/access-grants/${grantId}/notify`, { method: 'POST' }),
 }
 
 // ── Strategies (public/user) ──────────────────────────────────────────────────
@@ -445,4 +457,30 @@ export interface Assessment {
   is_followup?:          boolean
   followup_allowed?:     number
   followup_used?:        number
+}
+
+// ── Access grants (временный бесплатный доступ) ───────────────────────────────
+
+export interface AccessGrant {
+  id: string
+  user_id: string
+  user_email: string | null
+  user_name: string | null
+  quota: number
+  used: number
+  remaining: number
+  status: 'active' | 'pending' | 'used_up' | 'expired' | 'revoked'
+  starts_at: string
+  expires_at: string
+  reason: string | null
+  created_at: string
+  revoked_at: string | null
+  email_sent_at: string | null
+}
+
+export interface CreditsBreakdown {
+  credits: number
+  paid_credits: number
+  grant_credits: number
+  grant_expires_at: string | null
 }

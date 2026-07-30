@@ -6,6 +6,10 @@ import type { EmailTemplate } from '@/lib/api'
 import { AdminNav, AdminSide } from '@/components/AdminNav'
 
 const TEMPLATE_META: Record<string, { label: string; vars: string[] }> = {
+  access_grant: {
+    label: 'Тестовый доступ выдан',
+    vars: ['{name}', '{name_part}', '{quota}', '{expires_at}', '{app_url}'],
+  },
   otp: {
     label: 'Код входа (OTP)',
     vars: ['{code}', '{name}', '{name_part}'],
@@ -33,6 +37,8 @@ const TEMPLATE_META: Record<string, { label: string; vars: string[] }> = {
 }
 
 const VAR_HINTS: Record<string, string> = {
+  '{quota}':      'Сколько бесплатных диагностик открыто',
+  '{expires_at}': 'Дата окончания доступа, дд.мм.гггг',
   '{company}':      'Название компании',
   '{company_part}': 'Оборот « компании «Х»» или пусто, если названия нет',
   '{days_since}':   'Сколько дней прошло с последней диагностики',

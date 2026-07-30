@@ -129,6 +129,9 @@ export function AdminSide({ current }: AdminSideProps) {
       <Link href="/admin/users" className={current === 'users' ? 'on' : ''}>
         Все пользователи <span className="num">{stats?.users ?? '—'}</span>
       </Link>
+      <Link href="/admin/access-grants" className={current === 'access-grants' ? 'on' : ''}>
+        Тестовый доступ
+      </Link>
 
       <h4>Диагностики</h4>
       <Link href="/admin/my-reports" className={current === 'my-reports' ? 'on' : ''}>

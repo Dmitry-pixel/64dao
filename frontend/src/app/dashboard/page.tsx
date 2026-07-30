@@ -80,6 +80,8 @@ export default function DashboardPage() {
   const [assessments, setAssessments] = useState<Assessment[]>([])
   const [loading, setLoading] = useState(true)
   const [credits, setCredits] = useState<number>(0)
+  const [grantCredits, setGrantCredits] = useState<number>(0)
+  const [grantExpires, setGrantExpires] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [contours, setContours] = useState<ContourInfo[]>([])
   const [query, setQuery] = useState("")
@@ -106,7 +108,13 @@ export default function DashboardPage() {
       .finally(() => setLoading(false))
     fetch('/api/payments/credits', { credentials: 'include' })
       .then(r => r.ok ? r.json() : { credits: 0 })
-      .then(d => setCredits(d.credits ?? 0))
+      .then(d => {
+        // credits — сумма оплаченных и грантовых: показываем общий остаток,
+        // а грантовую часть отдельной строкой (она сгорает по сроку).
+        setCredits(d.credits ?? 0)
+        setGrantCredits(d.grant_credits ?? 0)
+        setGrantExpires(d.grant_expires_at ?? null)
+      })
       .catch(() => setCredits(0))
   }, [router])
 
@@ -364,8 +372,15 @@ export default function DashboardPage() {
                 {credits} {credits === 1 ? 'диагностика' : credits < 5 ? 'диагностики' : 'диагностик'}
               </div>
               <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.5, marginBottom: 16 }}>
-                {credits === 1 ? 'Одна оплаченная диагностика ожидает запуска.' : `${credits} оплаченных диагностики ожидают запуска.`}
+                {grantCredits > 0
+                  ? 'Доступ открыт без оплаты — тестовый период.'
+                  : credits === 1 ? 'Одна оплаченная диагностика ожидает запуска.' : `${credits} оплаченных диагностики ожидают запуска.`}
               </div>
+              {grantCredits > 0 && (
+                <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(52,199,89,0.95)', lineHeight: 1.5, marginBottom: 16 }}>
+                  Тестовый доступ: {grantCredits} из них{grantExpires ? `, действует до ${new Date(grantExpires).toLocaleDateString('ru-RU')}` : ''}.
+                </div>
+              )}
               <button
                 style={{ background: 'rgba(52,199,89,0.15)', border: '1px solid rgba(52,199,89,0.5)', color: '#7fff9a', fontWeight: 600, width: '100%', padding: '10px 16px', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'sans-serif' }}
                 onClick={() => router.push('/assessment')}
