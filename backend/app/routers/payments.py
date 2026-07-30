@@ -13,6 +13,7 @@ from app.tochka_client import get_tochka_client
 from app.config import get_settings
 from app.tax_settings import get_tax_settings, set_vat_enabled, current_vat_type
 from app.pricing_store import current_price, is_payment_enabled
+from app.access_grants import grant_credits, nearest_expiry
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ REPORTS_PER_ORDER = 2
 # создание платежа ушло бы на неверную сумму.
 
 
-async def calculate_credits(user_id, db: AsyncSession) -> int:
+async def paid_credits(user_id, db: AsyncSession) -> int:
     """
     Возвращает количество оплаченных, но ещё не использованных диагностик.
 
@@ -46,10 +47,36 @@ async def calculate_credits(user_id, db: AsyncSession) -> int:
         .where(
             Assessment.user_id == user_id,
             Assessment.status.in_(["completed", "paid"]),
+            # Диагностика, оплаченная грантом, не съедает платный кредит:
+            # иначе бесплатный отчёт списался бы дважды.
+            Assessment.grant_id.is_(None),
         )
     ) or 0
 
     return max(0, paid_orders * REPORTS_PER_ORDER - used_assessments)
+
+
+async def calculate_credits(user_id, db: AsyncSession) -> int:
+    """Все доступные диагностики: оплаченные + выданные грантом.
+
+    Имя сохранено ради существующих вызовов из routers/assessments.py.
+    Там, где нужен именно платный остаток (ветка списания), вызывайте
+    paid_credits(): грант списывается отдельно, через access_grants.
+    """
+    return await paid_credits(user_id, db) + await grant_credits(db, user_id)
+
+
+async def credits_breakdown(user_id, db: AsyncSession) -> dict:
+    """Разбивка для кабинета: платные, грантовые и дата сгорания гранта."""
+    paid = await paid_credits(user_id, db)
+    granted = await grant_credits(db, user_id)
+    expires = await nearest_expiry(db, user_id)
+    return {
+        "credits": paid + granted,
+        "paid_credits": paid,
+        "grant_credits": granted,
+        "grant_expires_at": expires.isoformat() if expires else None,
+    }
 
 
 @router.get("/credits")
@@ -57,8 +84,7 @@ async def get_credits(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    credits = await calculate_credits(user.id, db)
-    return {"credits": credits}
+    return await credits_breakdown(user.id, db)
 
 
 @router.get("/orders")

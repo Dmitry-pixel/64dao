@@ -354,3 +354,35 @@ class LifecycleStageOut(BaseModel):
     sort_order:  int
     name:        str
     description: str | None
+
+
+# ── Access grants (временный бесплатный доступ) ────────────────────────────────
+
+class AccessGrantCreate(BaseModel):
+    """Выдача доступа: квота и срок обязательны (решение D1/D2)."""
+
+    quota:      int = Field(ge=1, le=50)
+    expires_at: datetime
+    reason:     str | None = Field(default=None, max_length=500)
+    notify:     bool = True
+
+
+class AccessGrantOut(BaseModel):
+    """used/remaining/status считаются в app.access_grants, в БД их нет."""
+
+    model_config = {"from_attributes": True}
+
+    id:            uuid.UUID
+    user_id:       uuid.UUID
+    user_email:    str | None = None
+    user_name:     str | None = None
+    quota:         int
+    used:          int = 0
+    remaining:     int = 0
+    status:        str = "active"
+    starts_at:     datetime
+    expires_at:    datetime
+    reason:        str | None = None
+    created_at:    datetime
+    revoked_at:    datetime | None = None
+    email_sent_at: datetime | None = None

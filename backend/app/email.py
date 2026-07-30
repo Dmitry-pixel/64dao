@@ -165,3 +165,27 @@ async def send_repeat_diagnostic_email(
                     to, days_since)
         return
     await _send_message(to, subject, _wrap_html(body), _sender("repeat_diagnostic"))
+
+
+async def send_access_grant_email(
+    to: str, name: str | None, quota: int, expires_at
+) -> None:
+    """Письмо партнёру о выданном временном бесплатном доступе.
+
+    Текст правится в админке: «Email-шаблоны» -> «Тестовый доступ».
+    Сбой отправки не является причиной откатить грант: доступ уже выдан,
+    письмо переотправляется кнопкой в админке (email_sent_at).
+    """
+    name_part = f", {name}" if name else ""
+    subject, body = _render("access_grant", {
+        "name": name or "",
+        "name_part": name_part,
+        "quota": quota,
+        "expires_at": expires_at.strftime("%d.%m.%Y"),
+        "app_url": settings.app_url.rstrip("/"),
+    })
+    if settings.debug:
+        logger.info("=== DEBUG ACCESS GRANT === email=%s quota=%s until=%s ===",
+                    to, quota, expires_at)
+        return
+    await _send_message(to, subject, _wrap_html(body), _sender("access_grant"))

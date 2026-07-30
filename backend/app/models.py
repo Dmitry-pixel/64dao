@@ -36,6 +36,7 @@ class User(Base):
     reports:     Mapped[list["Report"]]     = relationship(back_populates="user", cascade="all, delete-orphan")
     orders:      Mapped[list["Order"]]      = relationship(back_populates="user", cascade="all, delete-orphan")
     companies:   Mapped[list["Company"]]    = relationship(back_populates="user", cascade="all, delete-orphan")
+    access_grants: Mapped[list["AccessGrant"]] = relationship(foreign_keys="AccessGrant.user_id", back_populates="user", cascade="all, delete-orphan")
 
 
 # ── OTP codes ─────────────────────────────────────────────────────────────────
@@ -169,6 +170,9 @@ class Assessment(Base):
     method:              Mapped[str]       = mapped_column(String(10), nullable=False, server_default="method1")
     company_name:        Mapped[str | None]= mapped_column(String(255), nullable=True)
     company_id:          Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
+    # Диагностика, оплаченная временным грантом (партнёрский доступ):
+    # платный кредит не тратит и права на бесплатный повтор не даёт.
+    grant_id:            Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("access_grants.id", ondelete="SET NULL"), nullable=True, index=True)
     # Право на одну бесплатную повторную диагностику живёт на первичной:
     # оно куплено вместе с конкретным отчётом, а не выдано пользователю
     # и не привязано к компании.
@@ -321,3 +325,36 @@ class RouteProgress(Base):
         UniqueConstraint("assessment_id", "contour", "line", name="uq_route_progress_step"),
         CheckConstraint("contour IN ('finance','product','market','process')", name="chk_route_progress_contour"),
     )
+
+
+# ── Access grants (временный бесплатный доступ) ───────────────────────────────
+class AccessGrant(Base):
+    """Временный бесплатный доступ: квота отчётов + срок действия.
+
+    Расход не хранится счётчиком, а считается по assessments.grant_id —
+    как платные кредиты в payments.calculate_credits. Рефанд (completed ->
+    draft) возвращает квоту автоматически. Статус (active/used_up/expired/
+    revoked) вычисляется в app.access_grants, в БД его нет."""
+
+    __tablename__ = "access_grants"
+
+    id:            Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id:       Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    quota:         Mapped[int]       = mapped_column(Integer, nullable=False)
+    starts_at:     Mapped[datetime]  = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    expires_at:    Mapped[datetime]  = mapped_column(DateTime(timezone=True), nullable=False)
+    reason:        Mapped[str | None]= mapped_column(Text, nullable=True)
+    created_by:    Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at:    Mapped[datetime]  = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    revoked_at:    Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_by:    Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    email_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("quota > 0", name="chk_grant_quota_positive"),
+        CheckConstraint("expires_at > starts_at", name="chk_grant_period"),
+    )
+
+    # Два FK на users (user_id и created_by): без явного foreign_keys
+    # SQLAlchemy падает на неоднозначности отношения.
+    user: Mapped["User"] = relationship(foreign_keys=[user_id], back_populates="access_grants")

@@ -22,6 +22,30 @@ UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/var/www/64dao/uploads")
 TEMPLATES_FILE = Path(UPLOAD_DIR) / "email_templates.json"
 
 DEFAULT_TEMPLATES: dict[str, dict] = {
+    "access_grant": {
+        "subject": "Вам открыт тестовый доступ к диагностике 64 ДАО",
+        "body_html": (
+            "<p>Здравствуйте{name_part}!</p>"
+            "<p>Вам открыт доступ к стратегической диагностике <b>64 ДАО</b> "
+            "без оплаты: <b>{quota}</b> диагностик(и). Доступ действует до "
+            "<b>{expires_at}</b> включительно.</p>"
+            "<p style=\"margin:24px 0;\">"
+            "<a href=\"{app_url}/assessment\" style=\"background:#1a2540;color:#fff;"
+            "padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;\">"
+            "Пройти диагностику</a></p>"
+            "<p>Отчёт формируется сразу после прохождения и остаётся в личном "
+            "кабинете — его можно скачать в PDF в любой момент.</p>"
+            "<p>Вопросы по методике: <a href=\"mailto:support@64dao.ru\">support@64dao.ru</a></p>"
+            "<p style=\"color:#999;font-size:12px;\">Команда 64 ДАО</p>"
+        ),
+        "description": (
+            "Отправляется при выдаче временного бесплатного доступа из админки "
+            "(карточка пользователя или раздел «Тестовый доступ»). Переменные: "
+            "{name} — имя, {name_part} — оборот «, Имя» или пусто, {quota} — "
+            "число диагностик, {expires_at} — дата окончания в формате дд.мм.гггг, "
+            "{app_url} — адрес сайта."
+        ),
+    },
     "account_deactivated": {
         "subject": "Доступ к 64 ДАО приостановлен",
         "body_html": (

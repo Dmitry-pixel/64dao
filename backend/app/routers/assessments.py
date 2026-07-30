@@ -15,7 +15,8 @@ from app.config import get_settings
 from app.db import get_db
 from app.models import Assessment, AssessmentContour, Company, Report, Strategy, User
 from app.pdf import generate_pdf, build_report_html
-from app.routers.payments import calculate_credits
+from app.routers.payments import calculate_credits, paid_credits
+from app.access_grants import pick_grant
 from app.finance_service import resolve_submission_finance, FinanceRequiredError
 from app.finance_scoring import InvalidAnswersError, BlockUnderfilledError
 from app.finance_interpret import load_content, build_interpretation
@@ -79,9 +80,13 @@ async def create_assessment(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # Приоритет списания: сначала грант (сгорает по сроку), потом платный
+    # кредит (не сгорает). Пока enforce_credits выключен, grant остаётся
+    # None: иначе квота партнёра расходовалась бы на общем бесплатном потоке.
+    grant = None
     if settings.enforce_credits and body.status == "completed" and user.role != "admin":
-        credits = await calculate_credits(user.id, db)
-        if credits <= 0:
+        grant = await pick_grant(db, user.id)
+        if grant is None and await paid_credits(user.id, db) <= 0:
             raise HTTPException(
                 status_code=403,
                 detail="Нет доступных диагностик. Оплатите новую диагностику, чтобы получить доступ.",
@@ -156,6 +161,7 @@ async def create_assessment(
         company_name=company.name,
         company_id=company.id,
         status=body.status,
+        grant_id=grant.id if grant else None,
     )
     db.add(assessment)
     await db.flush()
@@ -171,7 +177,9 @@ async def create_assessment(
             primary.followup_allowed = primary.followup_used + 1
         primary.followup_used += 1
         await db.flush()
-    elif body.status in ("completed", "paid") and not method2_payload:
+    # Грантовая диагностика права на повтор не даёт: квота в админке
+    # должна совпадать с реальным числом прогонов (решение D1).
+    elif body.status in ("completed", "paid") and not method2_payload and grant is None:
         # Первичная диагностика приносит право на один бесплатный повтор.
         # Бэкфил миграции 017 закрыл только записи, существовавшие до неё.
         assessment.followup_allowed = 1
@@ -345,7 +353,10 @@ async def generate_report_on_demand(
 
     if assessment.reports:
         return assessment.reports[0]
-    if settings.enforce_credits and assessment.status == "completed" and user.role != "admin":
+    # Грантовая диагностика уже оплачена грантом при создании — второй раз
+    # за неё платить не нужно.
+    if (settings.enforce_credits and assessment.status == "completed"
+            and user.role != "admin" and assessment.grant_id is None):
         credits = await calculate_credits(user.id, db)
         if credits <= 0:
             raise HTTPException(

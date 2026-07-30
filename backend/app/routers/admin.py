@@ -10,11 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import require_admin, get_current_user, hash_password, create_impersonation_token, create_token, decode_token, set_auth_cookie
 from app.config import get_settings
 from app.db import get_db
-from app.models import User, Assessment, AssessmentContour, Report, Strategy, Order, LifecycleStage
+from app.models import User, Assessment, AssessmentContour, Report, Strategy, Order, LifecycleStage, AccessGrant
 from app.schemas import (
     AdminSetupRequest, AdminStats, LogEntry,
     StrategyCreate, StrategyUpdate, StrategyOut, StrategyListItem,
     UserOut, AssessmentOut, ImpersonateStatus, SuccessResponse, ContourBrief,
+    AccessGrantCreate, AccessGrantOut,
 )
 
 settings = get_settings()
@@ -810,4 +811,170 @@ async def admin_reset_contour(
     await db.delete(row)
 
 
-# ── Подписки (ручная выдача админом, роадмап 3.1) ─────────────────────────────
+# ── Тестовый доступ: гранты на бесплатные диагностики ──────────────────────────
+# Квота + срок; расход считается по assessments.grant_id (app.access_grants).
+# Сбой SMTP не откатывает выдачу: доступ уже выдан, письмо переотправляется
+# кнопкой (POST /access-grants/{id}/notify), факт отправки — в email_sent_at.
+
+def _grant_out(grant: AccessGrant, state: dict, user: User | None = None) -> AccessGrantOut:
+    return AccessGrantOut(
+        id=grant.id,
+        user_id=grant.user_id,
+        user_email=user.email if user else None,
+        user_name=user.full_name if user else None,
+        quota=grant.quota,
+        used=state["used"],
+        remaining=state["remaining"],
+        status=state["status"],
+        starts_at=grant.starts_at,
+        expires_at=grant.expires_at,
+        reason=grant.reason,
+        created_at=grant.created_at,
+        revoked_at=grant.revoked_at,
+        email_sent_at=grant.email_sent_at,
+    )
+
+
+def _normalize_expires(value: datetime) -> datetime:
+    """Дата из формы приходит без таймзоны: считаем её UTC, иначе сравнение
+    с datetime.now(timezone.utc) упадёт на naive/aware."""
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+@router.get("/access-grants", response_model=list[AccessGrantOut])
+async def list_access_grants(
+    status: str | None = None,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Все выданные доступы, свежие сверху. ?status=active — только действующие."""
+    from app.access_grants import states as grant_states
+
+    rows = (await db.execute(
+        select(AccessGrant, User)
+        .join(User, User.id == AccessGrant.user_id)
+        .order_by(AccessGrant.created_at.desc())
+    )).all()
+    st = await grant_states(db, [g for g, _ in rows])
+    out = []
+    for grant, user in rows:
+        state = st[grant.id]
+        if status and state["status"] != status:
+            continue
+        out.append(_grant_out(grant, state, user))
+    return out
+
+
+@router.get("/users/{user_id}/access-grants", response_model=list[AccessGrantOut])
+async def list_user_access_grants(
+    user_id: str,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.access_grants import states as grant_states
+
+    user = await db.scalar(select(User).where(User.id == user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    grants = (await db.execute(
+        select(AccessGrant)
+        .where(AccessGrant.user_id == user.id)
+        .order_by(AccessGrant.created_at.desc())
+    )).scalars().all()
+    st = await grant_states(db, list(grants))
+    return [_grant_out(g, st[g.id], user) for g in grants]
+
+
+@router.post("/users/{user_id}/access-grants", response_model=AccessGrantOut, status_code=201)
+async def create_access_grant(
+    user_id: str,
+    body: AccessGrantCreate,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Выдать временный бесплатный доступ и уведомить партнёра письмом."""
+    from app.access_grants import grant_state
+    from app.email import send_access_grant_email
+
+    user = await db.scalar(select(User).where(User.id == user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if not user.is_active:
+        raise HTTPException(
+            status_code=400,
+            detail="Пользователь заблокирован — сначала разблокируйте доступ")
+    expires_at = _normalize_expires(body.expires_at)
+    if expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Дата окончания должна быть в будущем")
+
+    grant = AccessGrant(
+        user_id=user.id,
+        quota=body.quota,
+        expires_at=expires_at,
+        reason=body.reason,
+        created_by=admin.id,
+    )
+    db.add(grant)
+    await db.flush()
+
+    if body.notify:
+        try:
+            await send_access_grant_email(user.email, user.full_name, grant.quota, expires_at)
+            grant.email_sent_at = datetime.now(timezone.utc)
+            await db.flush()
+        except Exception as exc:
+            import logging; logging.getLogger(__name__).error(
+                "Access grant email failed for %s: %s", user.email, exc)
+
+    return _grant_out(grant, await grant_state(db, grant), user)
+
+
+@router.post("/access-grants/{grant_id}/revoke", response_model=AccessGrantOut)
+async def revoke_access_grant(
+    grant_id: str,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Отзыв доступа. Уже сформированные отчёты остаются у пользователя:
+    отзывается право проходить новые диагностики, а не выданные результаты."""
+    from app.access_grants import grant_state
+
+    grant = await db.scalar(select(AccessGrant).where(AccessGrant.id == grant_id))
+    if not grant:
+        raise HTTPException(status_code=404, detail="Грант не найден")
+    if grant.revoked_at:
+        raise HTTPException(status_code=409, detail="Грант уже отозван")
+    grant.revoked_at = datetime.now(timezone.utc)
+    grant.revoked_by = admin.id
+    await db.flush()
+    user = await db.scalar(select(User).where(User.id == grant.user_id))
+    return _grant_out(grant, await grant_state(db, grant), user)
+
+
+@router.post("/access-grants/{grant_id}/notify", response_model=AccessGrantOut)
+async def notify_access_grant(
+    grant_id: str,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Переотправка письма о доступе: после сбоя SMTP или по просьбе партнёра."""
+    from app.access_grants import grant_state
+    from app.email import send_access_grant_email
+
+    grant = await db.scalar(select(AccessGrant).where(AccessGrant.id == grant_id))
+    if not grant:
+        raise HTTPException(status_code=404, detail="Грант не найден")
+    if grant.revoked_at:
+        raise HTTPException(status_code=400, detail="Грант отозван — письмо не отправляется")
+    if grant.expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Срок доступа истёк — письмо не отправляется")
+    user = await db.scalar(select(User).where(User.id == grant.user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    try:
+        await send_access_grant_email(user.email, user.full_name, grant.quota, grant.expires_at)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Не удалось отправить письмо: %s" % exc)
+    grant.email_sent_at = datetime.now(timezone.utc)
+    await db.flush()
+    return _grant_out(grant, await grant_state(db, grant), user)
