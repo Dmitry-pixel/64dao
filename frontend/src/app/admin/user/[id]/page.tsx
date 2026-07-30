@@ -169,6 +169,11 @@ export default function AdminUserPage() {
             Партнёр проходит диагностику без оплаты: указанное число отчётов в течение срока.
             Право на бесплатный повтор такие диагностики не дают — квота равна числу прогонов.
           </p>
+          {userData.role === 'admin' && (
+            <p style={{ color: '#8a6d00', fontFamily: 'sans-serif', fontSize: 13, margin: '0 0 14px' }}>
+              Администратор проходит диагностику без гейта оплаты — грант ему не нужен.
+            </p>
+          )}
           <div className="row" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end', marginBottom: 16 }}>
             <label style={{ display: 'block' }}>
               <span style={S.infoLabel}>Диагностик</span>
@@ -201,7 +206,7 @@ export default function AdminUserPage() {
               <input type="checkbox" checked={notify} onChange={e => setNotify(e.target.checked)} />
               письмо
             </label>
-            <button onClick={handleGrant} disabled={grantBusy}
+            <button onClick={handleGrant} disabled={grantBusy || userData.role === 'admin'}
               style={{ background: '#1a2540', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 18px', fontFamily: 'sans-serif', fontSize: 13, fontWeight: 600, cursor: grantBusy ? 'default' : 'pointer', opacity: grantBusy ? 0.5 : 1 }}>
               Выдать доступ
             </button>

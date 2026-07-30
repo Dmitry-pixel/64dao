@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { adminApi, getMe } from '@/lib/api'
 import { AdminNav, AdminSide } from '@/components/AdminNav'
 
@@ -116,7 +117,12 @@ export default function AdminUsersPage() {
             <tbody>
               {filtered.map(u => (
                 <tr key={u.id} style={{ cursor: u.role !== 'admin' ? 'pointer' : 'default' }}>
-                  <td><strong>{u.email}</strong></td>
+                  <td>
+                    <Link href={`/admin/user/${u.id}`} title="Карточка пользователя: диагностики и тестовый доступ"
+                      style={{ color: '#1a2540', fontWeight: 700, textDecoration: 'underline', textDecorationColor: 'rgba(26,37,64,0.25)' }}>
+                      {u.email}
+                    </Link>
+                  </td>
                   <td>{u.full_name ?? '—'}</td>
                   <td>{u.company_name ?? '—'}</td>
                   <td>
@@ -148,6 +154,12 @@ export default function AdminUsersPage() {
                       >
                         {impersonating === u.id ? '…' : '👁 Войти как'}
                       </button>
+                    )}
+                    {u.role !== 'admin' && (
+                      <Link href={`/admin/user/${u.id}`} className="btn btn-ghost"
+                        style={{ padding: '5px 12px', fontSize: 12, marginLeft: 6, textDecoration: 'none' }}>
+                        Тестовый доступ
+                      </Link>
                     )}
                   </td>
                   <td>
