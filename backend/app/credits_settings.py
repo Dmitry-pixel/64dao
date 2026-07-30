@@ -12,11 +12,15 @@ JSON в volume dao64_uploads, значение из .env остаётся деф
 админке — одного клика.
 """
 import json
+import os
 from pathlib import Path
 
 from app.config import get_settings
 
-CREDITS_SETTINGS_FILE = Path("/var/www/64dao/uploads/credits_settings.json")
+# conftest подменяет UPLOAD_DIR на временный каталог: с жёстким путём тесты
+# читали бы боевой флаг обязательной оплаты и падали бы на 403.
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/var/www/64dao/uploads")
+CREDITS_SETTINGS_FILE = Path(UPLOAD_DIR) / "credits_settings.json"
 
 
 def read_credits_settings() -> dict:

@@ -48,6 +48,7 @@ async def _make_method1(auth_client) -> str:
 
 @pytest.mark.asyncio
 async def test_disabled_contour_items_404(auth_client):
+    set_contour_enabled("product", False)  # по умолчанию включён
     resp = await auth_client.get("/api/method1/contour-items/product")
     assert resp.status_code == 404
 
@@ -107,6 +108,7 @@ async def test_submit_twice_conflict(auth_client):
 
 @pytest.mark.asyncio
 async def test_submit_disabled_contour_404(auth_client):
+    set_contour_enabled("market", False)  # по умолчанию включён
     aid = await _make_method1(auth_client)
     resp = await auth_client.post(f"/api/assessments/{aid}/contours/market",
                                   json={"answers": flat_answers()})
