@@ -403,8 +403,9 @@ def _lifecycle_chart_html(stages, index) -> str:
 
 
 def _finance_description_html(finance_strategy: Any | None, lifecycle_stages=None) -> str:
-    """Описание из strategies по фин-комбинации: стадия ЖЦ, ЖЦ-блоки, сценарий,
-    маркетинг, управление, предположения. Пусто, если стратегии нет."""
+    """Описание из strategies по фин-комбинации: ЖЦ-блоки и сценарий.
+    Пусто, если стратегии нет. Стадия ЖЦ, маркетинг, управление и
+    предположения вынесены на страницы гексаграмм."""
     if not finance_strategy:
         return ""
     fs = finance_strategy
