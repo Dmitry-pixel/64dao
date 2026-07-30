@@ -10,13 +10,18 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.pdf import (
-    _hexagram_svg,
-    _HEXAGRAM_BY_COMBO,
+# Реестр гексаграмм — единый источник истины в app.hexagrams; pdf.py его
+# только потребляет и реэкспортирует не полностью (_HEXAGRAM_LIST там нет,
+# отсюда ImportError при коллекции). Тест реестра ходит в источник.
+from app.hexagrams import (
     _HEXAGRAM_LIST,
+    _HEXAGRAM_BY_COMBO,
     _HEXAGRAM_BY_NUM,
     _TARGET_HEXAGRAM,
     get_target_hexagram_info,
+)
+from app.pdf import (
+    _hexagram_svg,
     build_report_html,
     HEX_SYMBOLS,
 )
