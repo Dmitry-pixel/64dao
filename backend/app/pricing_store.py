@@ -10,10 +10,15 @@
 Теперь все три места (admin.py, routers/pricing.py, routers/payments.py)
 читают/пишут только через этот модуль.
 """
-import json
+import os
 from pathlib import Path
 
-PRICING_FILE = Path("/var/www/64dao/uploads/pricing.json")
+from app.json_store import read_json, write_json
+
+# Каталог из UPLOAD_DIR — как в остальных модулях настроек. С зашитым путём
+# тесты читали боевую цену и включённость оплаты.
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/var/www/64dao/uploads")
+PRICING_FILE = Path(UPLOAD_DIR) / "pricing.json"
 
 DEFAULT_PRICING = {
     "title": "Полный отчёт 64 ДАО",
@@ -32,15 +37,13 @@ DEFAULT_PRICING = {
 
 
 def read_pricing() -> dict:
-    try:
-        return json.loads(PRICING_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return DEFAULT_PRICING.copy()
+    # Дефолты подмешиваются: ключ, добавленный в код, появляется у всех, а не
+    # только у тех, кто после этого пересохранил тариф в админке.
+    return read_json(PRICING_FILE, DEFAULT_PRICING)
 
 
 def write_pricing(data: dict) -> None:
-    PRICING_FILE.parent.mkdir(parents=True, exist_ok=True)
-    PRICING_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_json(PRICING_FILE, data)
 
 
 def current_price() -> float:

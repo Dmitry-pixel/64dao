@@ -11,11 +11,11 @@ JSON в volume dao64_uploads, значение из .env остаётся деф
 требует доступа к серверу и перезапуска backend, а переключатель в
 админке — одного клика.
 """
-import json
 import os
 from pathlib import Path
 
 from app.config import get_settings
+from app.json_store import read_json, write_json
 
 # conftest подменяет UPLOAD_DIR на временный каталог: с жёстким путём тесты
 # читали бы боевой флаг обязательной оплаты и падали бы на 403.
@@ -29,12 +29,11 @@ def read_credits_settings() -> dict:
     source показывает, откуда реально взято значение — чтобы в админке было
     видно, действует сохранённое здесь или запасное из .env.
     """
-    try:
-        data = json.loads(CREDITS_SETTINGS_FILE.read_text(encoding="utf-8"))
-        value = data["enforce_credits"]
-    except Exception:
-        return {"enforce_credits": bool(get_settings().enforce_credits), "source": "env"}
-    return {"enforce_credits": bool(value), "source": "admin"}
+    data = read_json(CREDITS_SETTINGS_FILE)
+    if "enforce_credits" not in data:
+        return {"enforce_credits": bool(get_settings().enforce_credits),
+                "source": "env"}
+    return {"enforce_credits": bool(data["enforce_credits"]), "source": "admin"}
 
 
 def enforce_credits_enabled() -> bool:
@@ -42,9 +41,5 @@ def enforce_credits_enabled() -> bool:
 
 
 def set_enforce_credits(value: bool) -> dict:
-    CREDITS_SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    CREDITS_SETTINGS_FILE.write_text(
-        json.dumps({"enforce_credits": bool(value)}, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    write_json(CREDITS_SETTINGS_FILE, {"enforce_credits": bool(value)})
     return read_credits_settings()
