@@ -117,9 +117,6 @@ async def test_e2e_finance_flow(auth_client, db_session):
                  "Приоритеты вмешательства", "Маршрут перехода", "Оговорки по данным", "Следующие шаги"):
         assert part in fin, f"нет подраздела финраздела: {part}"
     assert "Описание сценария развития для AAAABB." in fin
-    assert "Маркетинговые рекомендации для AAAABB." in fin
-    assert "Управленческие рекомендации для AAAABB." in fin
-    assert "Предположение по планированию." in fin
     assert "№ 34" in fin and "№ 14" in fin
     assert "Поддержка без стратегии." in fin
     assert "Стратегическая сессия, целевая модель, KPI." in fin

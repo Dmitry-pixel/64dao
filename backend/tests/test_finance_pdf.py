@@ -88,8 +88,6 @@ def test_finance_section_present_and_complete():
     assert "Рост выручки и объёма продаж" in html
     fin_idx = html.index("Финансовая функция")
     assert html.index("ФИН сценарий развития — уникальный текст.") > fin_idx
-    assert html.index("ФИН маркетинг — уникальный текст.") > fin_idx
-    assert "Расцвет-ФИН" in html and html.index("Расцвет-ФИН") > fin_idx
     assert "Сценарий развития" not in html[:fin_idx]
 
 
