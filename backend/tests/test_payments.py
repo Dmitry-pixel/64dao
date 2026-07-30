@@ -22,7 +22,11 @@ def mock_tochka(monkeypatch):
     tochka.create_payment_with_receipt = AsyncMock(return_value={
         "Data": {"operationId": "op-test-123", "paymentLink": "https://pay.tochka.test/abc"}
     })
-    tochka.get_payment_status = AsyncMock(return_value={"Data": {"status": "APPROVED"}})
+    # Реальный формат ответа банка — Data.Operation[] (список операций),
+    # а не Data напрямую. Старая заглушка скрывала баг разбора.
+    tochka.get_payment_status = AsyncMock(return_value={
+        "Data": {"Operation": [{"status": "APPROVED", "operationId": "op-test-123"}]}
+    })
     tochka.refund_payment = AsyncMock(return_value={"Data": {"status": "REFUNDED"}})
     tochka.verify_and_decode_webhook = AsyncMock(
         return_value={"operationId": "op-test-123", "status": "APPROVED"}
@@ -392,3 +396,56 @@ async def test_method2_consumes_paid_credit(auth_client, db_session, test_user):
 
     resp = await auth_client.get("/api/payments/credits")
     assert resp.json()["paid_credits"] == 0
+
+@pytest.mark.asyncio
+async def test_status_polling_marks_pending_order_paid(auth_client, db_session, test_user, mock_tochka):
+    """Регресс: get_order_status читал resp['Data']['status'], а банк отдаёт
+    Data.Operation[] — remote_status всегда None. Запасной путь «вебхук не
+    дошёл, спросим банк» не работал, заказ навсегда оставался pending."""
+    a = await _make_assessment(db_session, test_user, status="draft")
+    order = await _make_order(db_session, test_user, a, status="pending")
+
+    resp = await auth_client.get(f"/api/payments/{order.id}/status")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "paid"
+    await db_session.refresh(order)
+    assert order.status == "paid"
+    assert order.paid_at is not None
+
+
+@pytest.mark.asyncio
+async def test_status_polling_detects_refund(auth_client, db_session, test_user, mock_tochka):
+    """Вебхука о возврате у Точки нет — возврат из кабинета банка виден
+    только опросом Get Payment Operation Info."""
+    a = await _make_assessment(db_session, test_user, status="completed")
+    order = await _make_order(db_session, test_user, a, status="paid")
+    mock_tochka.get_payment_status = AsyncMock(
+        return_value={"Data": {"Operation": [{"status": "REFUNDED"}]}})
+
+    resp = await auth_client.get(f"/api/payments/{order.id}/status")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "refunded"
+    await db_session.refresh(order)
+    await db_session.refresh(a)
+    assert order.status == "refunded"
+    assert a.status == "draft"
+
+
+@pytest.mark.asyncio
+async def test_admin_reconcile_marks_refunded(admin_client, db_session, test_admin, mock_tochka):
+    """Массовая сверка: администратор видит возвраты, о которых банк не
+    уведомляет."""
+    a = await _make_assessment(db_session, test_admin, status="completed")
+    order = await _make_order(db_session, test_admin, a, status="paid")
+    mock_tochka.get_payment_status = AsyncMock(
+        return_value={"Data": {"Operation": [{"status": "REFUNDED"}]}})
+
+    resp = await admin_client.post("/api/payments/admin/reconcile")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["marked_refunded"] == 1
+    assert body["errors"] == 0
+    await db_session.refresh(order)
+    await db_session.refresh(a)
+    assert order.status == "refunded"
+    assert a.status == "draft"

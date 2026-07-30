@@ -50,6 +50,23 @@ async def _get_tochka_public_key():
     return public_key
 
 
+def extract_operation(resp: dict) -> dict:
+    """Первая операция из ответа Get Payment Operation Info.
+
+    Формат — Data.Operation[] (список), а не Data напрямую. В
+    get_order_status читалось resp["Data"]["status"], то есть всегда None:
+    запасной путь «вебхук не дошёл, спросим статус» не работал вообще, и
+    заказ с потерянным вебхуком навсегда оставался pending. Проверено на
+    боевой операции 662a3212.
+
+    Функция модульного уровня, а не метод клиента: разбор ответа не зависит
+    от состояния соединения, а в тестах клиент подменяется AsyncMock —
+    вызов через него вернул бы корутину вместо словаря.
+    """
+    ops = (resp or {}).get("Data", {}).get("Operation") or []
+    return ops[0] if ops else {}
+
+
 class TochkaClient:
     def __init__(self):
         self.base_url = settings.tochka_api_base_url

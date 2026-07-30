@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.auth import get_current_user, require_admin
 from app.db import get_db
 from app.models import Assessment, Order, User
-from app.tochka_client import get_tochka_client
+from app.tochka_client import get_tochka_client, extract_operation
 from app.config import get_settings
 from app.tax_settings import get_tax_settings, set_vat_enabled, current_vat_type
 from app.pricing_store import current_price, is_payment_enabled
@@ -21,11 +21,15 @@ router = APIRouter(prefix="/api/payments", tags=["payments"])
 
 REPORTS_PER_ORDER = 2
 
-# Возврат приходит не только из админки: его можно провести в кабинете
-# Точки или получить диспутом — тогда вебхук единственный сигнал о нём.
-# Точное имя статуса в схеме вебхука Точки документацией не подтверждено,
-# поэтому принимаем оба признака: флаг isRefund (виден в ответе refund API)
-# и статус из набора ниже. Лишний вариант дешевле пропущенного возврата.
+# Вебхука о возврате у Точки НЕ существует: банк шлёт вебхуки только об
+# успешных операциях, событий ровно пять (incomingPayment, outgoingPayment,
+# incomingSbpPayment, incomingSbpB2BPayment, acquiringInternetPayment) и
+# возврата среди них нет. Возврат, проведённый в кабинете банка, виден
+# приложению только опросом Get Payment Operation Info — см. reconcile
+# и get_order_status. Ветка в вебхуке оставлена как страховка на случай,
+# если Точка добавит такое событие: на платёжном вебхуке она не срабатывает
+# (в его claims нет ни isRefund, ни этих статусов — проверено на боевом).
+# Статус REFUNDED здесь тот же, что возвращает Get Payment Operation Info.
 REFUND_STATUSES = {"REFUNDED", "REFUND", "REVERSED"}
 
 # Статусы, в которых диагностика считается израсходованной — тот же набор,
@@ -439,23 +443,33 @@ async def get_order_status(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Order).where(Order.id == order_id, Order.user_id == user.id)
+        select(Order)
+        .where(Order.id == order_id, Order.user_id == user.id)
+        # assessment нужен ветке возврата (revoke_order_access); ленивая
+        # загрузка вне async-контекста дала бы greenlet_spawn -> 500.
+        .options(selectinload(Order.assessment))
     )
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    if order.status == "pending" and order.tochka_operation_id:
+    if order.status in ("pending", "paid") and order.tochka_operation_id:
         client = get_tochka_client()
         try:
             resp = await client.get_payment_status(order.tochka_operation_id)
-            remote_status = resp.get("Data", {}).get("status")
-            if remote_status == "APPROVED":
+            remote_status = extract_operation(resp).get("status")
+            if remote_status == "APPROVED" and order.status == "pending":
                 order.status = "paid"
                 order.paid_at = datetime.now(timezone.utc)
                 await db.commit()
+            elif remote_status in REFUND_STATUSES and order.status != "refunded":
+                # Единственный способ узнать о возврате из кабинета банка.
+                order.status = "refunded"
+                await revoke_order_access(db, order)
+                await db.commit()
         except Exception:
-            pass
+            logger.exception("Не удалось сверить статус операции %s",
+                             order.tochka_operation_id)
 
     return {"status": order.status}
 
@@ -511,6 +525,50 @@ async def refund_order(
     return {"status": "refunded",
             "revoked_assessments": revoked["assessments"],
             "revoked_followup_rights": revoked["followup_rights"]}
+
+
+@router.post("/admin/reconcile")
+async def reconcile_orders(
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Сверка заказов с банком: возвраты и недошедшие вебхуки.
+
+    Вебхука о возврате не существует (см. комментарий к REFUND_STATUSES),
+    поэтому возврат из кабинета Точки виден только здесь. Заодно
+    подхватываются оплаты, чей вебхук не дошёл: банк повторяет отправку
+    30 раз с интервалом 10 секунд и на этом останавливается.
+    """
+    rows = (await db.execute(
+        select(Order)
+        .where(Order.status.in_(("pending", "paid")),
+               Order.tochka_operation_id.is_not(None))
+        .options(selectinload(Order.assessment))
+    )).scalars().all()
+
+    client = get_tochka_client()
+    marked_paid = marked_refunded = errors = 0
+    for order in rows:
+        try:
+            resp = await client.get_payment_status(order.tochka_operation_id)
+        except Exception:
+            logger.exception("reconcile: нет статуса операции %s",
+                             order.tochka_operation_id)
+            errors += 1
+            continue
+        remote_status = extract_operation(resp).get("status")
+        if remote_status in REFUND_STATUSES and order.status != "refunded":
+            order.status = "refunded"
+            await revoke_order_access(db, order)
+            marked_refunded += 1
+        elif remote_status == "APPROVED" and order.status == "pending":
+            order.status = "paid"
+            order.paid_at = datetime.now(timezone.utc)
+            marked_paid += 1
+
+    await db.commit()
+    return {"checked": len(rows), "marked_paid": marked_paid,
+            "marked_refunded": marked_refunded, "errors": errors}
 
 
 # ── НДС: переключатель (для будущего admin UI) ──────────────────────────────
