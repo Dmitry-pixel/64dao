@@ -12,11 +12,11 @@ description, в почтовой нет. Правило проекта запр�
 """
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 
 from app.config import get_settings
+from app.json_store import read_json, write_json
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/var/www/64dao/uploads")
 TEMPLATES_FILE = Path(UPLOAD_DIR) / "email_templates.json"
@@ -131,12 +131,10 @@ def read_templates() -> dict:
     кода: это документация для администратора, её не редактируют.
     """
     result = {k: dict(v) for k, v in DEFAULT_TEMPLATES.items()}
-    try:
-        saved = json.loads(TEMPLATES_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return result
-    if not isinstance(saved, dict):
-        return result
+    # Мердж поштучный, по ключам шаблонов, поэтому read_json нужен только
+    # как безопасное чтение: отсутствие файла и битый JSON дают пустой
+    # словарь, и результат остаётся дефолтным.
+    saved = read_json(TEMPLATES_FILE)
     for key, tpl in saved.items():
         if not isinstance(tpl, dict):
             continue
@@ -149,9 +147,7 @@ def read_templates() -> dict:
 
 
 def write_templates(data: dict) -> None:
-    TEMPLATES_FILE.parent.mkdir(parents=True, exist_ok=True)
-    TEMPLATES_FILE.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_json(TEMPLATES_FILE, data)
 
 
 def render(key: str, variables: dict) -> tuple[str, str]:
