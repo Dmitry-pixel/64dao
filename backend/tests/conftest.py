@@ -60,6 +60,11 @@ test_engine = create_async_engine(settings.database_url, echo=False)
 @pytest_asyncio.fixture(scope="function", autouse=True)
 async def setup_test_database():
     async with test_engine.begin() as conn:
+        # drop_all перед create_all: сам create_all с checkfirst молча
+        # пропускает уже существующие таблицы. После миграции или упавшего
+        # прогона схема оставалась старой, и весь набор падал каскадом —
+        # 477 ошибок, за которыми не видно настоящей причины.
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with test_engine.begin() as conn:
