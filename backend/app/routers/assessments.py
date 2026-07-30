@@ -15,7 +15,7 @@ from app.config import get_settings
 from app.db import get_db
 from app.models import Assessment, AssessmentContour, Company, Report, Strategy, User
 from app.pdf import generate_pdf, build_report_html
-from app.routers.payments import calculate_credits, paid_credits
+from app.routers.payments import calculate_credits, paid_credits, pick_order
 from app.access_grants import pick_grant
 from app.credits_settings import enforce_credits_enabled
 from app.finance_service import resolve_submission_finance, FinanceRequiredError
@@ -85,6 +85,7 @@ async def create_assessment(
     # входит в стоимость основной диагностики и кредит не тратит, а до
     # поиска primary неизвестно, повтор это или новая диагностика.
     grant = None
+    order = None
 
     # Финансовый блок Метода 1: скоринг считает сервер (не доверяем фронту).
     is_method1 = not body.method2_data
@@ -156,11 +157,15 @@ async def create_assessment(
     if (enforce_credits_enabled() and body.status == "completed"
             and user.role != "admin" and primary is None):
         grant = await pick_grant(db, user.id)
-        if grant is None and await paid_credits(user.id, db) <= 0:
-            raise HTTPException(
-                status_code=403,
-                detail="Нет доступных диагностик. Оплатите новую диагностику, чтобы получить доступ.",
-            )
+        if grant is None:
+            # Списываем с конкретного заказа: связь нужна и для учёта
+            # остатка, и для точного отзыва доступа при возврате.
+            order = await pick_order(db, user.id)
+            if order is None:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Нет доступных диагностик. Оплатите новую диагностику, чтобы получить доступ.",
+                )
 
     assessment = Assessment(
         user_id=user.id,
@@ -172,6 +177,7 @@ async def create_assessment(
         company_id=company.id,
         status=body.status,
         grant_id=grant.id if grant else None,
+        order_id=order.id if order else None,
     )
     db.add(assessment)
     await db.flush()

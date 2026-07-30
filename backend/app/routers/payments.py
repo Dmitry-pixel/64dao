@@ -61,29 +61,29 @@ async def revoke_order_access(db: AsyncSession, order: Order) -> dict:
     заказа вычиталась бы из кредитов будущих покупок — пользователь
     заплатил бы за неё дважды.
 
-    Граница отзыва — компания заказа. Прямой связи assessment -> order в
-    схеме нет: order.assessment_id указывает только на запись, из которой
-    создан платёж, а Метод 2 и повтор создаются отдельно. Пока у компании
-    один платный заказ, это одно и то же; при нескольких заказах на одну
-    компанию нужен assessments.order_id и миграция.
+    Отзываются диагностики, привязанные к заказу через assessments.order_id
+    (миграция 022), их повторы и запись, из которой создан платёж. Раньше
+    границей была компания: при нескольких платных заказах на одну компанию
+    возврат одного закрывал доступ, оплаченный другим.
     """
     a = order.assessment
     if a is None:
         return {"assessments": 0, "followup_rights": 0}
 
-    rows = []
-    if a.company_id is not None:
-        rows = list((await db.execute(
-            select(Assessment).where(
-                Assessment.company_id == a.company_id,
-                Assessment.user_id == order.user_id,
-                # Диагностику, оплаченную грантом, возврат денег не касается:
-                # за неё не платили, квота гранта живёт своей жизнью.
-                Assessment.grant_id.is_(None),
-            )
-        )).scalars().all())
+    rows = list((await db.execute(
+        select(Assessment).where(Assessment.order_id == order.id)
+    )).scalars().all())
+    # Запись, из которой создан платёж: у легаси-заказов и служебных
+    # тестовых платежей привязки может не быть вовсе.
     if a not in rows:
         rows.append(a)
+    # Повторы куплены вместе с основной диагностикой и отзываются с ней.
+    followups = (await db.execute(
+        select(Assessment).where(
+            Assessment.parent_assessment_id.in_([r.id for r in rows])
+        )
+    )).scalars().all()
+    rows += [f for f in followups if f not in rows]
 
     closed = 0
     rights = 0
@@ -100,6 +100,35 @@ async def revoke_order_access(db: AsyncSession, order: Order) -> dict:
             rights += 1
 
     return {"assessments": closed, "followup_rights": rights}
+
+
+async def pick_order(db: AsyncSession, user_id) -> Order | None:
+    """Оплаченный заказ с непотраченным остатком — им и оплатится диагностика.
+
+    Старейший первым. Аналог access_grants.pick_grant, только у платного
+    кредита нет срока сгорания, поэтому порядок — по дате оплаты.
+    """
+    orders = (await db.execute(
+        select(Order)
+        .where(Order.user_id == user_id, Order.status == "paid")
+        .order_by(func.coalesce(Order.paid_at, Order.created_at).asc(),
+                  Order.id.asc())
+    )).scalars().all()
+    if not orders:
+        return None
+
+    rows = await db.execute(
+        select(Assessment.order_id, func.count(Assessment.id))
+        .where(Assessment.order_id.in_([o.id for o in orders]),
+               Assessment.status.in_(USED_STATUSES),
+               Assessment.is_followup.is_(False))
+        .group_by(Assessment.order_id)
+    )
+    used = {oid: cnt for oid, cnt in rows.all()}
+    for o in orders:
+        if used.get(o.id, 0) < REPORTS_PER_ORDER:
+            return o
+    return None
 
 
 # Цена больше НЕ хардкодится здесь — берётся из pricing.json через
@@ -126,12 +155,11 @@ async def paid_credits(user_id, db: AsyncSession) -> int:
 
     used_assessments = await db.scalar(
         select(func.count(Assessment.id))
+        .join(Order, Order.id == Assessment.order_id)
         .where(
-            Assessment.user_id == user_id,
+            Order.user_id == user_id,
+            Order.status == "paid",
             Assessment.status.in_(["completed", "paid"]),
-            # Диагностика, оплаченная грантом, не съедает платный кредит:
-            # иначе бесплатный отчёт списался бы дважды.
-            Assessment.grant_id.is_(None),
             # Повтор входит в стоимость основной диагностики и кредит не
             # тратит. Иначе на один заказ приходится 2 прогона из трёх
             # обещанных (Метод 1 + Метод 2 + повтор), и на третьем

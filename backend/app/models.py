@@ -173,6 +173,11 @@ class Assessment(Base):
     # Диагностика, оплаченная временным грантом (партнёрский доступ):
     # платный кредит не тратит и права на бесплатный повтор не даёт.
     grant_id:            Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("access_grants.id", ondelete="SET NULL"), nullable=True, index=True)
+    # Заказ, которым оплачена диагностика (миграция 022). Симметрично
+    # grant_id: расход считается по привязке, а не глобальным вычитанием.
+    # Иначе диагностики бесплатного периода и возвращённых заказов съедают
+    # кредиты будущих покупок.
+    order_id:            Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="SET NULL", use_alter=True, name="fk_assessments_order_id"), nullable=True, index=True)
     # Право на одну бесплатную повторную диагностику живёт на первичной:
     # оно куплено вместе с конкретным отчётом, а не выдано пользователю
     # и не привязано к компании.
@@ -195,7 +200,7 @@ class Assessment(Base):
     reports: Mapped[list["Report"]]  = relationship(back_populates="assessment", cascade="all, delete-orphan")
     contours: Mapped[list["AssessmentContour"]] = relationship(back_populates="assessment", cascade="all, delete-orphan")
     company:  Mapped["Company | None"] = relationship(back_populates="assessments")
-    orders:  Mapped[list["Order"]]   = relationship(back_populates="assessment", cascade="all, delete-orphan")
+    orders:  Mapped[list["Order"]]   = relationship(back_populates="assessment", cascade="all, delete-orphan", foreign_keys="Order.assessment_id")
 
 
 # ── Assessment contours (мультиконтурная диагностика Метода 1) ───────────────
@@ -261,7 +266,7 @@ class Order(Base):
     )
 
     user:       Mapped["User"]       = relationship(back_populates="orders")
-    assessment: Mapped["Assessment"] = relationship(back_populates="orders")
+    assessment: Mapped["Assessment"] = relationship(back_populates="orders", foreign_keys=[assessment_id])
 
 
 # ── Sample-report leads (заявки на пример отчёта) ─────────────────────────────

@@ -249,6 +249,11 @@ async def test_refund_revokes_whole_purchase(admin_client, db_session, test_admi
     await db_session.flush()
 
     order = await _make_order(db_session, test_admin, m1, status="paid")
+    # Привязка к заказу — то, по чему теперь проходит граница отзыва.
+    m1.order_id = order.id
+    m2.order_id = order.id
+    await db_session.flush()
+
     resp = await admin_client.post(f"/api/payments/{order.id}/refund")
     assert resp.status_code == 200
     assert resp.json()["revoked_assessments"] == 3
@@ -376,7 +381,9 @@ async def test_followup_does_not_consume_paid_credit(auth_client, db_session, te
                           is_followup=True, parent_assessment_id=primary.id)
     db_session.add(followup)
     await db_session.flush()
-    await _make_order(db_session, test_user, primary, status="paid")
+    order = await _make_order(db_session, test_user, primary, status="paid")
+    primary.order_id = order.id
+    await db_session.flush()
 
     resp = await auth_client.get("/api/payments/credits")
     assert resp.status_code == 200
@@ -391,7 +398,10 @@ async def test_method2_consumes_paid_credit(auth_client, db_session, test_user):
                     company_name="Test Co", status="completed")
     db_session.add(m2)
     await db_session.flush()
-    await _make_order(db_session, test_user, m1, status="paid")
+    order = await _make_order(db_session, test_user, m1, status="paid")
+    m1.order_id = order.id
+    m2.order_id = order.id
+    await db_session.flush()
 
     resp = await auth_client.get("/api/payments/credits")
     assert resp.json()["paid_credits"] == 0
@@ -448,3 +458,49 @@ async def test_admin_reconcile_marks_refunded(admin_client, db_session, test_adm
     await db_session.refresh(a)
     assert order.status == "refunded"
     assert a.status == "draft"
+
+
+@pytest.mark.asyncio
+async def test_paid_credits_ignores_unlinked_assessments(auth_client, db_session, test_user):
+    """Диагностики бесплатного периода (order_id IS NULL) не съедают
+    оплаченные кредиты. Раньше расход считался глобально, и покупатель
+    получал меньше, чем оплатил."""
+    await _make_assessment(db_session, test_user, status="completed")
+    a = await _make_assessment(db_session, test_user, status="draft")
+    await _make_order(db_session, test_user, a, status="paid")
+
+    resp = await auth_client.get("/api/payments/credits")
+    assert resp.status_code == 200
+    assert resp.json()["paid_credits"] == payments_router.REPORTS_PER_ORDER
+
+
+@pytest.mark.asyncio
+async def test_refund_revokes_only_its_own_order(admin_client, db_session, test_admin, mock_tochka):
+    """Два платных заказа на одну компанию: возврат первого не должен
+    закрывать диагностику, оплаченную вторым. Раньше границей отзыва была
+    компания, и возврат бил по чужой оплате."""
+    company = await _make_company(db_session, test_admin, name="Two Orders Co")
+    first = Assessment(user_id=test_admin.id, company_id=company.id, method="method1",
+                       method1_combination="AAABAA", company_name=company.name,
+                       status="completed")
+    second = Assessment(user_id=test_admin.id, company_id=company.id, method="method1",
+                        method1_combination="BBBABA", company_name=company.name,
+                        status="completed")
+    db_session.add_all([first, second])
+    await db_session.flush()
+
+    o1 = await _make_order(db_session, test_admin, first, status="paid")
+    o2 = await _make_order(db_session, test_admin, second, status="paid",
+                           operation_id="op-test-456")
+    first.order_id = o1.id
+    second.order_id = o2.id
+    await db_session.flush()
+
+    resp = await admin_client.post(f"/api/payments/{o1.id}/refund")
+    assert resp.status_code == 200
+    assert resp.json()["revoked_assessments"] == 1
+
+    await db_session.refresh(first)
+    await db_session.refresh(second)
+    assert first.status == "draft"
+    assert second.status == "completed"
