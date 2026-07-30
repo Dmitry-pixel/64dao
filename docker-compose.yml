@@ -56,6 +56,14 @@ services:
       DB_PORT: "5432"
     volumes:
       - uploads:/var/www/64dao/uploads
+      # Код монтируем с хоста. Без этого правки в backend/ не видны ни
+      # приложению, ни pytest до полной пересборки образа: на этом уже
+      # получили ложные «15 passed» при применённом патче. Настройки
+      # (pricing.json, tochka_settings.json, contour_settings.json) лежат
+      # в volume uploads, вне /app, и монтированием не затрагиваются.
+      # uvicorn запущен без --reload, поэтому после правки кода нужен
+      # docker compose restart backend — но не пересборка.
+      - ./backend:/app
     networks:
       - internal
     depends_on:
