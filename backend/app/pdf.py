@@ -11,6 +11,7 @@ from typing import Any
 
 from app.finance_pdf import finance_section_html, contour_section_html, summary_card_html
 from app.method1_questions import BASE_QUESTIONS, LC_LABELS  # дефолты
+from app.config import get_settings
 
 from playwright.async_api import async_playwright, Browser, Playwright
 
@@ -402,6 +403,31 @@ def _lifecycle_chart_html(stages, index) -> str:
     )
 
 
+def _details_link_html(combination: str | None) -> str:
+    """Ссылка на страницу гексаграммы — аналог кнопки «Подробно» в HTML-отчёте.
+
+    Маркетинг, управление и предположения вынесены из отчёта на эти страницы
+    (разгрузка раздела 04), и у читателя PDF доступа к ним не оставалось
+    вовсе: кнопки в PDF нет, а текста больше нет в самом отчёте.
+
+    Ограничение осознанное: страница под авторизацией, поэтому ссылка
+    сработает только у владельца аккаунта — пересланный PDF приведёт
+    постороннего на форму входа. Открывать страницы публично не стали:
+    описания 64 гексаграмм входят в то, за что платят.
+
+    Адрес дублируется текстом рядом: в распечатанном отчёте по ссылке не
+    кликнешь, а переписать её можно.
+    """
+    if not combination:
+        return ""
+    url = f"{get_settings().app_url.rstrip('/')}/hexagram/{combination}"
+    return (
+        '<p style="font-size:12px;margin:12px 0 0;font-family:Arial,sans-serif;">'
+        f'<a href="{url}" style="color:#c0392b;text-decoration:none;">Подробно о гексаграмме</a>'
+        f'<span style="color:rgba(26,37,64,0.45);"> — {e(url)}</span></p>'
+    )
+
+
 def _finance_description_html(finance_strategy: Any | None, lifecycle_stages=None) -> str:
     """Описание из strategies по фин-комбинации: ЖЦ-блоки и сценарий.
     Пусто, если стратегии нет. Стадия ЖЦ, маркетинг, управление и
@@ -425,6 +451,7 @@ def _finance_description_html(finance_strategy: Any | None, lifecycle_stages=Non
         '<span style="font-size:11px;color:#c0392b;margin-right:8px;">Описание</span>Стратегический профиль финансовой гексаграммы</h2>',
         _lifecycle_blocks(fs, combo, with_lc=False),
         txt_block("Сценарий развития", getattr(fs, "scenario_text", None)),
+        _details_link_html(combo),
     ]
     return "".join(parts)
 
@@ -778,8 +805,9 @@ def build_report_html(
     )
 
     # Сводная карта и секции дополнительных контуров (Поправки П7 и П8).
-    # Полный профиль стратегии остаётся только у финансового контура, поэтому
-    # description_html здесь пустой.
+    # Полный профиль стратегии остаётся только у финансового контура (П8);
+    # в description_html контуров идёт одна ссылка на страницу гексаграммы —
+    # та же кнопка «Подробно», что в HTML-отчёте.
     summary_section = ""
     contour_sections = ""
     if not is_method2:
@@ -795,6 +823,7 @@ def build_report_html(
                     blocks=_spec_of(_c["contour"]).blocks,
                     title=_c["title"],
                     section_no=f"{_cno:02d}",
+                    description_html=_details_link_html(_c["combination"]),
                 )
                 _cno += 1
 
