@@ -6,6 +6,11 @@ import { AdminNav, AdminSide } from '@/components/AdminNav'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
 
+interface CreditsView {
+  enforce_credits: boolean
+  source: string
+}
+
 interface TochkaView {
   jwt_token_masked: string | null
   jwt_token_set: boolean
@@ -22,10 +27,14 @@ export default function AdminPaymentSettingsPage() {
   const [view, setView] = useState<TochkaView | null>(null)
   const [jwtInput, setJwtInput] = useState('')
   const [clientIdInput, setClientIdInput] = useState('')
+  const [credits, setCredits] = useState<CreditsView | null>(null)
+  const [creditsSaving, setCreditsSaving] = useState(false)
 
   const load = async () => {
     const res = await fetch(`${API}/api/admin/tochka-settings`, { credentials: 'include' })
     if (res.ok) setView(await res.json())
+    const c = await fetch(`${API}/api/payments/admin/credits-settings`, { credentials: 'include' })
+    if (c.ok) setCredits(await c.json())
   }
 
   useEffect(() => {
@@ -64,6 +73,22 @@ export default function AdminPaymentSettingsPage() {
     }
   }
 
+  const toggleCredits = async (next: boolean) => {
+    setCreditsSaving(true)
+    try {
+      const res = await fetch(`${API}/api/payments/admin/credits-settings?enforce_credits=${next}`, {
+        method: 'PUT',
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error()
+      setCredits(await res.json())
+    } catch {
+      alert('Не удалось переключить')
+    } finally {
+      setCreditsSaving(false)
+    }
+  }
+
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', color: 'var(--text-mute)' }}>
       Загрузка...
@@ -95,6 +120,33 @@ export default function AdminPaymentSettingsPage() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 640 }}>
+
+            <div className="card" style={{ padding: '20px 24px' }}>
+              <h3 style={S.sectionTitle}>Обязательная оплата диагностик</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => toggleCredits(!credits?.enforce_credits)}
+                  disabled={creditsSaving || !credits}
+                  style={{
+                    background: credits?.enforce_credits ? '#166534' : 'rgba(26,37,64,0.12)',
+                    color: credits?.enforce_credits ? '#fff' : 'var(--dark)',
+                    border: 'none', borderRadius: 6, padding: '10px 22px',
+                    fontFamily: 'sans-serif', fontSize: 13, fontWeight: 500,
+                    cursor: creditsSaving ? 'default' : 'pointer', minWidth: 150,
+                  }}>
+                  {creditsSaving ? 'Сохраняем...' : credits?.enforce_credits ? 'Включена' : 'Выключена'}
+                </button>
+                <span style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)' }}>
+                  {credits ? (credits.source === 'admin' ? 'значение задано здесь' : 'значение из .env на сервере') : ''}
+                </span>
+              </div>
+              <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)', marginTop: 14, lineHeight: 1.5 }}>
+                Когда включена: завершённая диагностика требует оплаченного кредита или гранта,
+                а результат диагностики в статусе «черновик» закрыт. Администратора ограничение не касается.
+                Переключение действует сразу, без перезапуска backend — это аварийный выключатель,
+                поэтому сохраняется по клику, отдельно от кнопки «Сохранить» выше.
+              </div>
+            </div>
 
             <div className="card" style={{ padding: '20px 24px' }}>
               <h3 style={S.sectionTitle}>Точка Банк — доступ к API</h3>

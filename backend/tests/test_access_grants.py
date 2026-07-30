@@ -38,7 +38,9 @@ def payload(**overrides) -> dict:
 
 @pytest.fixture
 def enforce_credits_on(monkeypatch):
-    monkeypatch.setattr(assessments_router.settings, "enforce_credits", True)
+    # Флаг читается из credits_settings.py, а не из Settings: подменяем
+    # функцию, иначе тест молча работал бы вхолостую.
+    monkeypatch.setattr(assessments_router, "enforce_credits_enabled", lambda: True)
 
 
 @pytest.fixture

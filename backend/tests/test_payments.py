@@ -352,8 +352,7 @@ async def test_report_download_blocked_after_refund(
     import app.routers.assessments as assessments_router
     from app.models import Report
 
-    monkeypatch.setattr(assessments_router.settings, "enforce_credits", True,
-                        raising=False)
+    monkeypatch.setattr(assessments_router, "enforce_credits_enabled", lambda: True)
     a = await _make_assessment(db_session, test_user, status="draft")
     report = Report(assessment_id=a.id, user_id=test_user.id,
                     pdf_path="/tmp/x.pdf", pdf_filename="x.pdf")

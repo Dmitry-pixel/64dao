@@ -13,6 +13,7 @@ from app.tochka_client import get_tochka_client, extract_operation
 from app.config import get_settings
 from app.tax_settings import get_tax_settings, set_vat_enabled, current_vat_type
 from app.pricing_store import current_price, is_payment_enabled
+from app.credits_settings import read_credits_settings, set_enforce_credits
 from app.access_grants import grant_credits, nearest_expiry
 
 logger = logging.getLogger(__name__)
@@ -576,6 +577,27 @@ async def reconcile_orders(
 #   docker compose exec backend python3 -c \
 #     "from app.tax_settings import set_vat_enabled; print(set_vat_enabled(True))"
 # Эндпоинты ниже — для тех же двух действий через API/будущую кнопку в админке.
+
+@router.get("/admin/credits-settings")
+async def get_credits_settings_endpoint(
+    _admin: User = Depends(require_admin),
+):
+    return read_credits_settings()
+
+
+@router.put("/admin/credits-settings")
+async def update_credits_settings_endpoint(
+    enforce_credits: bool,
+    _admin: User = Depends(require_admin),
+):
+    """Аварийный выключатель обязательной оплаты.
+
+    Включённый флаг требует кредит или грант на создание завершённой
+    диагностики и закрывает результат для черновиков. Выключение
+    возвращает бесплатный доступ немедленно, без перезапуска backend.
+    """
+    return set_enforce_credits(enforce_credits)
+
 
 @router.get("/admin/tax-settings")
 async def get_tax_settings_endpoint(

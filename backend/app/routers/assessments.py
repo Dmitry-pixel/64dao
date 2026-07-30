@@ -17,6 +17,7 @@ from app.models import Assessment, AssessmentContour, Company, Report, Strategy,
 from app.pdf import generate_pdf, build_report_html
 from app.routers.payments import calculate_credits, paid_credits
 from app.access_grants import pick_grant
+from app.credits_settings import enforce_credits_enabled
 from app.finance_service import resolve_submission_finance, FinanceRequiredError
 from app.finance_scoring import InvalidAnswersError, BlockUnderfilledError
 from app.finance_interpret import load_content, build_interpretation
@@ -39,7 +40,7 @@ def _ensure_result_access(assessment, user) -> None:
     диагностики, draft результата не даёт (иначе — обход кредитов). Админ —
     без ограничений. После рефанда assessment возвращается в draft, и доступ
     к результату корректно закрывается."""
-    if settings.enforce_credits and user.role != "admin" and assessment.status == "draft":
+    if enforce_credits_enabled() and user.role != "admin" and assessment.status == "draft":
         raise HTTPException(
             status_code=403,
             detail="Результат доступен после оформления диагностики.",
@@ -152,7 +153,7 @@ async def create_assessment(
     # primary is not None означает повтор — он уже оплачен вместе с основной
     # диагностикой, второй раз за него не платят. Его лимит проверен выше,
     # по followup_allowed/followup_used.
-    if (settings.enforce_credits and body.status == "completed"
+    if (enforce_credits_enabled() and body.status == "completed"
             and user.role != "admin" and primary is None):
         grant = await pick_grant(db, user.id)
         if grant is None and await paid_credits(user.id, db) <= 0:
@@ -364,7 +365,7 @@ async def generate_report_on_demand(
         return assessment.reports[0]
     # Грантовая диагностика уже оплачена грантом при создании — второй раз
     # за неё платить не нужно. Повтор — тоже: он входит в стоимость основной.
-    if (settings.enforce_credits and assessment.status == "completed"
+    if (enforce_credits_enabled() and assessment.status == "completed"
             and user.role != "admin" and assessment.grant_id is None
             and not assessment.is_followup):
         credits = await calculate_credits(user.id, db)
