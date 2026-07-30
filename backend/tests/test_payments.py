@@ -179,3 +179,36 @@ async def test_credits_reflects_paid_orders(auth_client, db_session, test_user):
     resp = await auth_client.get("/api/payments/credits")
     assert resp.status_code == 200
     assert resp.json()["credits"] == payments_router.REPORTS_PER_ORDER
+
+
+@pytest.mark.asyncio
+async def test_orders_list_loads_reports_eagerly(auth_client, db_session, test_user):
+    """Регресс: /api/payments/orders читал assessment.reports без selectinload
+    и падал 500 (greenlet_spawn ... await_only) на первом же заказе с готовым
+    отчётом — то есть у любого, кто уже оплатил."""
+    from app.models import Report
+
+    a = await _make_assessment(db_session, test_user, status="paid")
+    db_session.add(Report(assessment_id=a.id, user_id=test_user.id,
+                          pdf_path="/tmp/x.pdf", pdf_filename="x.pdf"))
+    await db_session.flush()
+    await _make_order(db_session, test_user, a, status="paid")
+
+    resp = await auth_client.get("/api/payments/orders")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body[0]["assessment"]["reports"], "отчёты должны приезжать в ответе"
+
+
+@pytest.mark.asyncio
+async def test_refund_passes_order_amount(admin_client, db_session, test_admin, mock_tochka):
+    """Регресс: refund_payment вызывался без amount, клиент отправлял пустое
+    тело, и Точка отвечала 400 «Field Data : Field required» — возврат не
+    работал вообще (воспроизведено на боевом)."""
+    a = await _make_assessment(db_session, test_admin, status="completed")
+    order = await _make_order(db_session, test_admin, a, status="paid")
+    resp = await admin_client.post(f"/api/payments/{order.id}/refund")
+    assert resp.status_code == 200
+    args, kwargs = mock_tochka.refund_payment.await_args
+    passed = kwargs.get('amount', args[1] if len(args) > 1 else None)
+    assert passed == float(order.amount)

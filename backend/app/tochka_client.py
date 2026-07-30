@@ -129,14 +129,17 @@ class TochkaClient:
             resp.raise_for_status()
             return resp.json()
 
-    async def refund_payment(self, operation_id: str, amount: float | None = None) -> dict:
+    async def refund_payment(self, operation_id: str, amount: float) -> dict:
         """
         Возврат платежа, принятого через интернет-эквайринг.
         https://developers.tochka.com/docs/tochka-api/api/refund-payment-operation-acquiring-v-1-0-payments-operation-id-refund-post
         Если amount не передан — предполагается полный возврат (уточнить в доках
         точное поведение при отсутствии тела запроса).
         """
-        payload = {"Data": {"amount": amount}} if amount is not None else {}
+        # Data обязателен всегда: на пустом теле Точка отвечает 400
+        # "Field Data : Field required" (воспроизведено на боевом возврате
+        # тестового платежа 1 ₽). Рабочее тело — {"Data": {"amount": N}}.
+        payload = {"Data": {"amount": float(amount)}}
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(
                 f"{self.base_url}/uapi/acquiring/v1.0/payments/{operation_id}/refund",

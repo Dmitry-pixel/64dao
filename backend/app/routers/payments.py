@@ -96,7 +96,10 @@ async def list_orders(
     result = await db.execute(
         select(Order)
         .where(Order.user_id == user.id)
-        .options(selectinload(Order.assessment))
+        # reports грузим сразу: обращение к a.reports в цикле ниже уходит в
+        # ленивую загрузку вне async-контекста и даёт greenlet_spawn -> 500
+        # (воспроизведено на боевом после первой реальной оплаты).
+        .options(selectinload(Order.assessment).selectinload(Assessment.reports))
         .order_by(Order.created_at.desc())
     )
     orders = result.scalars().all()
@@ -384,9 +387,12 @@ async def refund_order(
 
     client = get_tochka_client()
     try:
-        await client.refund_payment(order.tochka_operation_id)
+        await client.refund_payment(order.tochka_operation_id, float(order.amount))
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Tochka refund error: {e}")
+        # Тело ответа Точки обязательно в тексте ошибки: без него 400
+        # выглядит как «Client error 400» без причины (потеряли час).
+        body = getattr(getattr(e, "response", None), "text", None)
+        raise HTTPException(status_code=502, detail=f"Tochka refund error: {e} | body: {body}")
 
     order.status = "refunded"
 
