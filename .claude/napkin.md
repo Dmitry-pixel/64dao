@@ -53,7 +53,7 @@
    Do instead: `ssh root@188.225.77.18 "cd /var/www/64dao && git reset --hard origin/main && docker compose build frontend && docker compose up -d"`
 
 2. **[2026-05-23] Backend-only redeploy (faster)**
-   Do instead: `docker compose build backend && docker compose up -d backend`
+   Do instead (since 2026-07-30): backend code is bind-mounted (`./backend:/app`) — just `docker compose restart backend`. Rebuild only when requirements change.
 
 3. **[2026-05-23] git index.lock on Windows blocks git commands**
    Do instead: `Remove-Item "...\.git\index.lock" -Force` in PowerShell before retrying.
@@ -77,3 +77,46 @@
 
 1. **[2026-07-14] pytest: нужен `-e DB_NAME=dao64_test` + установка перед каждым прогоном**
    Do instead: `docker compose exec backend pip install -q -r requirements-test.txt` (pytest НЕ в prod-образе, исчезает после каждой пересборки), затем `docker compose exec -e DB_NAME=dao64_test backend pytest tests/<file>.py -v`. Без `-e DB_NAME=dao64_test` conftest падает (assert-защита от прогона по проду `dao64`). Запускать файлы по одному — иначе флейки cross-file InterfaceError. Если базы нет: `docker compose exec db psql -U dao64 -d dao64 -c "CREATE DATABASE dao64_test OWNER dao64;"`.
+
+---
+## Deploy & Git (added 2026-07-30)
+1. **[2026-07-30] `.env` changes need `up -d`, not `restart`**
+   Do instead: compose injects `env_file` at container creation, so `restart` reuses the old environment and the stale value silently wins over the file. Cost us an hour on `TOCHKA_MERCHANT_ID`.
+2. **[2026-07-30] `TOCHKA_MERCHANT_ID` was declared twice in `.env`**
+   Do instead: check for duplicate keys before editing — the last one wins, so filling the first has no effect.
+
+---
+## Payments & Tochka (added 2026-07-30)
+1. **[2026-07-30] Tochka never sends a refund webhook**
+   Do instead: reconcile via `GET /uapi/acquiring/v1.0/payments/{operationId}`. Only five webhook events exist, all for successful operations. A refund made in the bank UI reaches the app only through polling — `POST /api/payments/admin/reconcile`.
+2. **[2026-07-30] Get Payment Operation Info returns `Data.Operation[]`, not `Data`**
+   Do instead: use `tochka_client.extract_operation(resp)`. Reading `resp["Data"]["status"]` yields None silently, and the "webhook never arrived" fallback dies with it.
+3. **[2026-07-30] `refund_payment` needs a non-empty body**
+   Do instead: always send `{"Data": {"amount": N}}`. An empty body returns 400 "Field Data : Field required".
+4. **[2026-07-30] A retried APPROVED webhook can resurrect a refunded order**
+   Do instead: check `order.status == "refunded"` before applying anything. Tochka retries 30 times at 10s intervals until it gets HTTP 200.
+5. **[2026-07-30] Credit spend is bound to an order, not counted globally**
+   Do instead: set `assessments.order_id` when spending (mirror of `grant_id`). Follow-up diagnostics are part of the parent purchase and must never consume a credit.
+
+---
+## Async SQLAlchemy & Schema (added 2026-07-30)
+1. **[2026-07-30] `orders.assessment_id` + `assessments.order_id` form an FK cycle**
+   Do instead: give `Assessment.orders` and `Order.assessment` explicit `foreign_keys`, and the newer FK `use_alter=True`. Without the first, `configure_mappers()` fails and every ORM call 500s; without the second, `create_all` cannot sort tables.
+2. **[2026-07-30] Reading a relationship without eager loading gives `greenlet_spawn` 500**
+   Do instead: add `selectinload()` whenever a handler touches a related object. Hit twice: `/api/payments/orders`, then the refund branch of the webhook.
+3. **[2026-07-30] `create_all` with checkfirst does not catch up with migrations**
+   Do instead: conftest now runs `drop_all` before `create_all`. If the test DB still looks stale: `psql -d dao64_test -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`.
+
+---
+## Runtime Settings (added 2026-07-30)
+1. **[2026-07-30] All runtime flags go through `app/json_store.py`**
+   Do instead: a new setting is a thin module with an `UPLOAD_DIR`-based path constant plus `read_json`/`write_json`. Never hardcode `/var/www/64dao/uploads` — tests then read and write production state.
+2. **[2026-07-30] Keep the path as a module-level constant**
+   Do instead: tests monkeypatch `X_SETTINGS_FILE` by name; hiding the path inside a class instance breaks that.
+3. **[2026-07-30] `ENFORCE_CREDITS` is an admin toggle now, not env**
+   Do instead: flip it on `/admin/payment-settings`. `.env` is only the default until `credits_settings.json` exists.
+
+---
+## Report Content (added 2026-07-30)
+1. **[2026-07-30] `marketing_text`, `management_text`, `assm_*` and strategy `lifecycle_stage` are NOT in the report**
+   Do instead: they live on `/hexagram/{combination}` pages (section 04 was deliberately unloaded). The PDF links there instead of repeating the text. Do not "fix" tests by re-adding these blocks.
