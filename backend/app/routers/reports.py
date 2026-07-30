@@ -11,7 +11,7 @@ from app.db import get_db
 from app.models import Report, User
 from app.config import get_settings
 from app.pdf import generate_pdf
-from app.routers.assessments import build_html_for_assessment
+from app.routers.assessments import build_html_for_assessment, _ensure_result_access
 
 settings = get_settings()
 
@@ -39,6 +39,12 @@ async def download_report(
     is_admin = user.role == "admin"
     if not is_owner and not is_admin:
         raise HTTPException(status_code=403, detail="Нет доступа")
+
+    # Отзыв доступа при возврате. Рефанд переводит диагностику в draft, но
+    # ссылка на готовый PDF оставалась рабочей: это единственный эндпоинт
+    # выдачи файла, и проверки статуса в нём не было. id отчёта пользователь
+    # видит в /api/payments/orders, так что доступ переживал возврат денег.
+    _ensure_result_access(report.assessment, user)
 
     if settings.regenerate_pdf_on_download:
         owner = await db.scalar(select(User).where(User.id == report.user_id))

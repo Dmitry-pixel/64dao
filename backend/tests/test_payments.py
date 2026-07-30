@@ -212,3 +212,183 @@ async def test_refund_passes_order_amount(admin_client, db_session, test_admin, 
     args, kwargs = mock_tochka.refund_payment.await_args
     passed = kwargs.get('amount', args[1] if len(args) > 1 else None)
     assert passed == float(order.amount)
+
+
+async def _make_company(db, user, name="Test Co"):
+    from app.models import Company
+    c = Company(user_id=user.id, name=name)
+    db.add(c)
+    await db.flush()
+    return c
+
+
+@pytest.mark.asyncio
+async def test_refund_revokes_whole_purchase(admin_client, db_session, test_admin, mock_tochka):
+    """Оплата покупает диагностику целиком: Метод 1, Метод 2 и повторный
+    Метод 1. Регресс: возврат закрывал только ту запись, из которой создан
+    платёж. Метод 2 и повтор оставались в 'completed'."""
+    company = await _make_company(db_session, test_admin)
+
+    m1 = Assessment(user_id=test_admin.id, company_id=company.id, method="method1",
+                    method1_combination="AAABAA", company_name=company.name,
+                    status="completed", followup_allowed=1, followup_used=1)
+    db_session.add(m1)
+    await db_session.flush()
+
+    m2 = Assessment(user_id=test_admin.id, company_id=company.id, method="method2",
+                    method2_data={"x": 1}, company_name=company.name, status="completed")
+    followup = Assessment(user_id=test_admin.id, company_id=company.id, method="method1",
+                          method1_combination="AAABAB", company_name=company.name,
+                          status="completed", is_followup=True,
+                          parent_assessment_id=m1.id)
+    db_session.add_all([m2, followup])
+    await db_session.flush()
+
+    order = await _make_order(db_session, test_admin, m1, status="paid")
+    resp = await admin_client.post(f"/api/payments/{order.id}/refund")
+    assert resp.status_code == 200
+    assert resp.json()["revoked_assessments"] == 3
+
+    for row in (m1, m2, followup):
+        await db_session.refresh(row)
+        assert row.status == "draft"
+    assert m1.followup_allowed == 0
+    assert m1.followup_used == 0
+
+
+@pytest.mark.asyncio
+async def test_refund_ignores_grant_paid_assessment(admin_client, db_session, test_admin, mock_tochka):
+    """Диагностику, выданную грантом, возврат денег не касается."""
+    from datetime import timedelta
+    from app.models import AccessGrant
+
+    company = await _make_company(db_session, test_admin, name="Grant Co")
+    grant = AccessGrant(user_id=test_admin.id, quota=1,
+                        expires_at=datetime.now(timezone.utc) + timedelta(days=30))
+    db_session.add(grant)
+    await db_session.flush()
+
+    paid = Assessment(user_id=test_admin.id, company_id=company.id, method="method1",
+                      method1_combination="AAABAA", company_name=company.name,
+                      status="completed")
+    granted = Assessment(user_id=test_admin.id, company_id=company.id, method="method1",
+                         method1_combination="BBBABA", company_name=company.name,
+                         status="completed", grant_id=grant.id)
+    db_session.add_all([paid, granted])
+    await db_session.flush()
+
+    order = await _make_order(db_session, test_admin, paid, status="paid")
+    resp = await admin_client.post(f"/api/payments/{order.id}/refund")
+    assert resp.status_code == 200
+    assert resp.json()["revoked_assessments"] == 1
+
+    await db_session.refresh(granted)
+    assert granted.status == "completed"
+
+
+@pytest.mark.asyncio
+async def test_webhook_refund_revokes_access(client, db_session, test_user, mock_tochka):
+    """Возврат вне админки (кабинет Точки, диспут) должен отзывать доступ:
+    вебхук знал только APPROVED/REJECTED/DECLINED."""
+    a = await _make_assessment(db_session, test_user, status="completed")
+    order = await _make_order(db_session, test_user, a, status="paid")
+    mock_tochka.verify_and_decode_webhook = AsyncMock(
+        return_value={"operationId": order.tochka_operation_id, "status": "REFUNDED"}
+    )
+    resp = await client.post("/api/payments/webhook", content=b"jwt")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "refunded"
+    assert resp.json()["revoked_assessments"] == 1
+    await db_session.refresh(order)
+    await db_session.refresh(a)
+    assert order.status == "refunded"
+    assert a.status == "draft"
+
+
+@pytest.mark.asyncio
+async def test_webhook_refund_flag_without_status(client, db_session, test_user, mock_tochka):
+    """Точка помечает возврат флагом isRefund; имя статуса не зафиксировано."""
+    a = await _make_assessment(db_session, test_user, status="completed")
+    order = await _make_order(db_session, test_user, a, status="paid")
+    mock_tochka.verify_and_decode_webhook = AsyncMock(
+        return_value={"operationId": order.tochka_operation_id,
+                      "status": "APPROVED", "isRefund": True}
+    )
+    resp = await client.post("/api/payments/webhook", content=b"jwt")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "refunded"
+    await db_session.refresh(order)
+    assert order.status == "refunded"
+
+
+@pytest.mark.asyncio
+async def test_webhook_approved_does_not_resurrect_refunded_order(
+    client, db_session, test_user, mock_tochka
+):
+    """Регресс: ретрай APPROVED по возвращённой операции возвращал 'paid'
+    вместе с REPORTS_PER_ORDER кредитов."""
+    a = await _make_assessment(db_session, test_user, status="draft")
+    order = await _make_order(db_session, test_user, a, status="refunded")
+    mock_tochka.verify_and_decode_webhook = AsyncMock(
+        return_value={"operationId": order.tochka_operation_id, "status": "APPROVED"}
+    )
+    resp = await client.post("/api/payments/webhook", content=b"jwt")
+    assert resp.status_code == 200
+    assert resp.json()["reason"] == "order refunded"
+    await db_session.refresh(order)
+    assert order.status == "refunded"
+
+
+@pytest.mark.asyncio
+async def test_report_download_blocked_after_refund(
+    auth_client, db_session, test_user, monkeypatch
+):
+    """Регресс: рефанд переводил диагностику в draft, но /api/reports/{id}/
+    download отдавал PDF без проверки."""
+    import app.routers.assessments as assessments_router
+    from app.models import Report
+
+    monkeypatch.setattr(assessments_router.settings, "enforce_credits", True,
+                        raising=False)
+    a = await _make_assessment(db_session, test_user, status="draft")
+    report = Report(assessment_id=a.id, user_id=test_user.id,
+                    pdf_path="/tmp/x.pdf", pdf_filename="x.pdf")
+    db_session.add(report)
+    await db_session.flush()
+
+    resp = await auth_client.get(f"/api/reports/{report.id}/download")
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_followup_does_not_consume_paid_credit(auth_client, db_session, test_user):
+    """Регресс: повтор входит в стоимость основной диагностики, но
+    списывался как отдельный кредит — на заказ приходилось 2 прогона из
+    трёх обещанных."""
+    primary = await _make_assessment(db_session, test_user, status="completed")
+    primary.followup_allowed = 1
+    primary.followup_used = 1
+    followup = Assessment(user_id=test_user.id, method1_combination="AAABAB",
+                          company_name="Test Co", status="completed",
+                          is_followup=True, parent_assessment_id=primary.id)
+    db_session.add(followup)
+    await db_session.flush()
+    await _make_order(db_session, test_user, primary, status="paid")
+
+    resp = await auth_client.get("/api/payments/credits")
+    assert resp.status_code == 200
+    assert resp.json()["paid_credits"] == 1
+
+
+@pytest.mark.asyncio
+async def test_method2_consumes_paid_credit(auth_client, db_session, test_user):
+    """Метод 2 кредит тратит: фильтр по is_followup не должен исключить всё."""
+    m1 = await _make_assessment(db_session, test_user, status="completed")
+    m2 = Assessment(user_id=test_user.id, method="method2", method2_data={"x": 1},
+                    company_name="Test Co", status="completed")
+    db_session.add(m2)
+    await db_session.flush()
+    await _make_order(db_session, test_user, m1, status="paid")
+
+    resp = await auth_client.get("/api/payments/credits")
+    assert resp.json()["paid_credits"] == 0

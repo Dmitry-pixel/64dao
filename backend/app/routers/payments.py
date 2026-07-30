@@ -20,6 +20,83 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
 REPORTS_PER_ORDER = 2
+
+# Возврат приходит не только из админки: его можно провести в кабинете
+# Точки или получить диспутом — тогда вебхук единственный сигнал о нём.
+# Точное имя статуса в схеме вебхука Точки документацией не подтверждено,
+# поэтому принимаем оба признака: флаг isRefund (виден в ответе refund API)
+# и статус из набора ниже. Лишний вариант дешевле пропущенного возврата.
+REFUND_STATUSES = {"REFUNDED", "REFUND", "REVERSED"}
+
+# Статусы, в которых диагностика считается израсходованной — тот же набор,
+# что в paid_credits и access_grants.USED_STATUSES.
+USED_STATUSES = ("completed", "paid")
+
+
+def _is_refund_event(claims: dict) -> bool:
+    if str(claims.get("isRefund", "")).lower() == "true":
+        return True
+    return str(claims.get("status") or "").upper() in REFUND_STATUSES
+
+
+async def revoke_order_access(db: AsyncSession, order: Order) -> dict:
+    """Полный отзыв доступа по возвращённому заказу.
+
+    Оплата покупает диагностику целиком: Метод 1, Метод 2 и повторный
+    Метод 1. По частям она не продаётся, поэтому возврат закрывает всё,
+    что было пройдено, — считать «использованную» долю не нужно.
+
+    Неиспользованный остаток кредитов отзывать тоже не нужно: paid_credits
+    учитывает только заказы в статусе 'paid', так что смена статуса на
+    'refunded' сама снимает REPORTS_PER_ORDER из баланса.
+
+    Все затронутые диагностики уходят в 'draft'. Это не только закрытие
+    доступа, но и корректность счётчика: used_assessments считается
+    глобально, и оставленная в 'completed' диагностика возвращённого
+    заказа вычиталась бы из кредитов будущих покупок — пользователь
+    заплатил бы за неё дважды.
+
+    Граница отзыва — компания заказа. Прямой связи assessment -> order в
+    схеме нет: order.assessment_id указывает только на запись, из которой
+    создан платёж, а Метод 2 и повтор создаются отдельно. Пока у компании
+    один платный заказ, это одно и то же; при нескольких заказах на одну
+    компанию нужен assessments.order_id и миграция.
+    """
+    a = order.assessment
+    if a is None:
+        return {"assessments": 0, "followup_rights": 0}
+
+    rows = []
+    if a.company_id is not None:
+        rows = list((await db.execute(
+            select(Assessment).where(
+                Assessment.company_id == a.company_id,
+                Assessment.user_id == order.user_id,
+                # Диагностику, оплаченную грантом, возврат денег не касается:
+                # за неё не платили, квота гранта живёт своей жизнью.
+                Assessment.grant_id.is_(None),
+            )
+        )).scalars().all())
+    if a not in rows:
+        rows.append(a)
+
+    closed = 0
+    rights = 0
+    for row in rows:
+        if row.status in USED_STATUSES:
+            row.status = "draft"
+            closed += 1
+        # followup_used обнуляется вместе с followup_allowed: снять только
+        # право нельзя — при пройденном повторе запись не пройдёт
+        # chk_assessment_followup_used (used <= allowed).
+        if row.followup_allowed or row.followup_used:
+            row.followup_used = 0
+            row.followup_allowed = 0
+            rights += 1
+
+    return {"assessments": closed, "followup_rights": rights}
+
+
 # Цена больше НЕ хардкодится здесь — берётся из pricing.json через
 # app.pricing_store (тот же источник, что у лендинга и админки "Тариф и цена").
 # Раньше тут было REPORT_PRICE = 5500.00, а реальная цена на сайте — 14900 ₽:
@@ -50,6 +127,12 @@ async def paid_credits(user_id, db: AsyncSession) -> int:
             # Диагностика, оплаченная грантом, не съедает платный кредит:
             # иначе бесплатный отчёт списался бы дважды.
             Assessment.grant_id.is_(None),
+            # Повтор входит в стоимость основной диагностики и кредит не
+            # тратит. Иначе на один заказ приходится 2 прогона из трёх
+            # обещанных (Метод 1 + Метод 2 + повтор), и на третьем
+            # пользователь получает 403. Лимит повторов держится на
+            # followup_allowed/followup_used, а не на кредитах.
+            Assessment.is_followup.is_(False),
         )
     ) or 0
 
@@ -302,12 +385,38 @@ async def tochka_webhook(
         return {"status": "ignored", "reason": "no operationId"}
 
     result = await db.execute(
-        select(Order).where(Order.tochka_operation_id == operation_id)
+        select(Order)
+        .where(Order.tochka_operation_id == operation_id)
+        # assessment грузим сразу: ветка возврата обращается к нему, а
+        # ленивая загрузка вне async-контекста даёт greenlet_spawn -> 500
+        # (ровно этот баг уже ловили в /api/payments/orders).
+        .options(selectinload(Order.assessment))
     )
     order = result.scalar_one_or_none()
     if not order:
         logger.info("Tochka webhook: no order for operationId=%s (test/unknown webhook)", operation_id)
         return {"status": "ignored", "reason": "order not found"}
+
+    # Сверка возврата с банком. Идемпотентно: повторный вебхук по уже
+    # возвращённому заказу ничего не ломает.
+    if _is_refund_event(claims):
+        was_refunded = order.status == "refunded"
+        order.webhook_payload = claims
+        order.status = "refunded"
+        revoked = await revoke_order_access(db, order)
+        await db.commit()
+        logger.info("Tochka webhook: refund confirmed for order %s (%s)", order.id, revoked)
+        return {"status": "refunded", "was_refunded": was_refunded,
+                "revoked_assessments": revoked["assessments"],
+                "revoked_followup_rights": revoked["followup_rights"]}
+
+    # Возвращённый заказ не воскрешаем. Ретрай вебхука или вебхук самой
+    # операции возврата со статусом APPROVED иначе вернул бы 'paid', а с
+    # ним REPORTS_PER_ORDER кредитов при возвращённых деньгах.
+    if order.status == "refunded":
+        logger.warning("Tochka webhook: status=%s for refunded order %s — ignored",
+                       status, order.id)
+        return {"status": "ignored", "reason": "order refunded"}
 
     if order.status == "paid":
         return {"status": "already_processed"}
@@ -396,11 +505,12 @@ async def refund_order(
 
     order.status = "refunded"
 
-    if order.assessment and order.assessment.status in ("completed", "paid"):
-        order.assessment.status = "draft"
+    revoked = await revoke_order_access(db, order)
 
     await db.commit()
-    return {"status": "refunded"}
+    return {"status": "refunded",
+            "revoked_assessments": revoked["assessments"],
+            "revoked_followup_rights": revoked["followup_rights"]}
 
 
 # ── НДС: переключатель (для будущего admin UI) ──────────────────────────────

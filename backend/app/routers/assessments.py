@@ -80,17 +80,10 @@ async def create_assessment(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Приоритет списания: сначала грант (сгорает по сроку), потом платный
-    # кредит (не сгорает). Пока enforce_credits выключен, grant остаётся
-    # None: иначе квота партнёра расходовалась бы на общем бесплатном потоке.
+    # Проверка доступа перенесена ниже, под разрешение primary: повтор
+    # входит в стоимость основной диагностики и кредит не тратит, а до
+    # поиска primary неизвестно, повтор это или новая диагностика.
     grant = None
-    if settings.enforce_credits and body.status == "completed" and user.role != "admin":
-        grant = await pick_grant(db, user.id)
-        if grant is None and await paid_credits(user.id, db) <= 0:
-            raise HTTPException(
-                status_code=403,
-                detail="Нет доступных диагностик. Оплатите новую диагностику, чтобы получить доступ.",
-            )
 
     # Финансовый блок Метода 1: скоринг считает сервер (не доверяем фронту).
     is_method1 = not body.method2_data
@@ -150,6 +143,22 @@ async def create_assessment(
                 detail="Повторная диагностика для этой компании уже пройдена. "
                        "Она входит в стоимость основной диагностики "
                        "и доступна один раз.",
+            )
+
+    # Списание. Приоритет: сначала грант (сгорает по сроку), потом платный
+    # кредит (не сгорает). Пока enforce_credits выключен, grant остаётся
+    # None: иначе квота партнёра расходовалась бы на общем бесплатном потоке.
+    #
+    # primary is not None означает повтор — он уже оплачен вместе с основной
+    # диагностикой, второй раз за него не платят. Его лимит проверен выше,
+    # по followup_allowed/followup_used.
+    if (settings.enforce_credits and body.status == "completed"
+            and user.role != "admin" and primary is None):
+        grant = await pick_grant(db, user.id)
+        if grant is None and await paid_credits(user.id, db) <= 0:
+            raise HTTPException(
+                status_code=403,
+                detail="Нет доступных диагностик. Оплатите новую диагностику, чтобы получить доступ.",
             )
 
     assessment = Assessment(
@@ -354,9 +363,10 @@ async def generate_report_on_demand(
     if assessment.reports:
         return assessment.reports[0]
     # Грантовая диагностика уже оплачена грантом при создании — второй раз
-    # за неё платить не нужно.
+    # за неё платить не нужно. Повтор — тоже: он входит в стоимость основной.
     if (settings.enforce_credits and assessment.status == "completed"
-            and user.role != "admin" and assessment.grant_id is None):
+            and user.role != "admin" and assessment.grant_id is None
+            and not assessment.is_followup):
         credits = await calculate_credits(user.id, db)
         if credits <= 0:
             raise HTTPException(
