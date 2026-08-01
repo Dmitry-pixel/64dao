@@ -101,10 +101,12 @@ CONFIG_FILES=()
 for f in \
     "${APP_DIR}/backend/.env" \
     "${APP_DIR}/frontend/.env.local" \
-    "/etc/nginx/sites-available/64dao" \
-    "/etc/nginx/conf.d/64dao.conf" \
-    "/etc/systemd/system/64dao-backend.service" \
-    "/etc/systemd/system/64dao-frontend.service"; do
+    "${APP_DIR}/docker-compose.yml" \
+    "/usr/local/fastpanel2-nginx/vhosts/64dao.conf" \
+    "/etc/systemd/system/64dao-alerts.service" \
+    "/etc/systemd/system/64dao-alerts.timer" \
+    "/root/docker_cache_cleanup.sh" \
+    "/etc/nginx/sites-available/64dao"; do
     [ -f "$f" ] && CONFIG_FILES+=("$f")
 done
 
@@ -116,6 +118,21 @@ else
 fi
 
 # ── 4. Удаление старых бэкапов ────────────────────────────────────────────────
+log_info "Проверяем целостность архивов..."
+VERIFY_FAILED=0
+for f in "${DB_FILE}" "${UPLOADS_FILE}" "${CONFIG_FILE}"; do
+    { [ -n "$f" ] && [ -f "$f" ]; } || continue
+    if gzip -t "$f" 2>/dev/null; then
+        log_ok "цел: $(basename "$f")"
+    else
+        log_err "БИТЫЙ АРХИВ: $f"
+        VERIFY_FAILED=1
+    fi
+done
+if [ "${VERIFY_FAILED}" -ne 0 ]; then
+    log_err "Проверка целостности провалена, бэкап ненадёжен"
+fi
+
 log_info "Удаляем бэкапы старше ${KEEP_DAYS} дней..."
 
 DELETED=0
