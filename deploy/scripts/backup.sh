@@ -105,7 +105,6 @@ for f in \
     "/usr/local/fastpanel2-nginx/vhosts/64dao.conf" \
     "/etc/systemd/system/64dao-alerts.service" \
     "/etc/systemd/system/64dao-alerts.timer" \
-    "/root/docker_cache_cleanup.sh" \
     "/etc/nginx/sites-available/64dao"; do
     [ -f "$f" ] && CONFIG_FILES+=("$f")
 done
