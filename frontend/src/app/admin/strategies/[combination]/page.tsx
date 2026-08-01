@@ -436,14 +436,14 @@ export default function StrategyEditorPage({ params }: { params: { combination: 
           <TargetHexagramSelect defaultValue={f.target_combination} onChange={(v) => handleChange('target_combination', v)} />
         </Sec>
 
-        <Sec label="Сценарий стратагемы" title="Таблица стратагемы" help="Конкретные характеристики — отображаются в блоке «Сценарий стратагемы» отчёта.">
-          <div className="admin-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <FI label="Стратегия изменений" fk="scenario_innovation_strategy" dv={f.scenario_innovation_strategy} onChange={handleChange} />
-            <FI label="Тип изменений" fk="scenario_innovation_type" dv={f.scenario_innovation_type} onChange={handleChange} />
-            <FI label="Ценностная дисциплина" fk="scenario_value_discipline" dv={f.scenario_value_discipline} onChange={handleChange} />
-            <FI label="Принципы лидерства" fk="scenario_leadership_principles" dv={f.scenario_leadership_principles} onChange={handleChange} />
-            <FI label="Стратегия роста" fk="scenario_growth_strategy" dv={f.scenario_growth_strategy} onChange={handleChange} />
-            <FI label="Фокус" fk="scenario_focus" dv={f.scenario_focus} onChange={handleChange} />
+        <Sec label="Сценарий стратагемы" title="Таблица стратагемы" help="Полный текст выводится отдельной таблицей после гексаграммы; рядом с линией показывается только первое предложение.">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+            <FA rows={5} label="Стратегия изменений" fk="scenario_innovation_strategy" dv={f.scenario_innovation_strategy} onChange={handleChange} />
+            <FA rows={5} label="Тип изменений" fk="scenario_innovation_type" dv={f.scenario_innovation_type} onChange={handleChange} />
+            <FA rows={5} label="Ценностная дисциплина" fk="scenario_value_discipline" dv={f.scenario_value_discipline} onChange={handleChange} />
+            <FA rows={5} label="Принципы лидерства" fk="scenario_leadership_principles" dv={f.scenario_leadership_principles} onChange={handleChange} />
+            <FA rows={5} label="Стратегия роста" fk="scenario_growth_strategy" dv={f.scenario_growth_strategy} onChange={handleChange} />
+            <FA rows={5} label="Фокус" fk="scenario_focus" dv={f.scenario_focus} onChange={handleChange} />
           </div>
         </Sec>
       </div>{/* конец key={formKey} */}

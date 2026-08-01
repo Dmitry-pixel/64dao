@@ -4,7 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { getMe, getAssessment, getBaseQuestions, reportDownloadUrl, listContours, getCompanies, isMethod2, type AuthUser, type Assessment, type ContourInfo, type Company } from '@/lib/api'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
 import { TargetHexagramBlock } from '@/components/TargetHexagramBlock'
-import HexDiagram, { HexLines } from '@/components/HexDiagram'
+import HexDiagram, { HexLines, StratagemaTable } from '@/components/HexDiagram'
 import ContourReportSection from '@/components/ContourReportSection'
 import ContourSummaryCard from '@/components/ContourSummaryCard'
 import CompanyLifecycleSection from '@/components/CompanyLifecycleSection'
@@ -324,6 +324,8 @@ export default function ReportPage() {
                 labels={SCENARIO_LABELS}
                 scenario={strategy?.scenario}
               />
+
+              <StratagemaTable labels={SCENARIO_LABELS} scenario={strategy?.scenario} />
             </div>
 
 

@@ -3,6 +3,15 @@ import React from 'react'
 
 type Q = { q: string; a: string; b: string }
 
+function firstSentence(text: string, limit = 90): string {
+  const t = (text || '').trim()
+  if (!t) return ''
+  const i = t.indexOf('. ')
+  let head = i !== -1 ? t.slice(0, i + 1) : t
+  if (head.length > limit) head = head.slice(0, limit).replace(/[ ,.;:]+$/, '') + '…'
+  return head
+}
+
 export default function HexDiagram({ combo, questions, labels, scenario }: {
   combo: string
   questions: Q[]
@@ -24,8 +33,8 @@ export default function HexDiagram({ combo, questions, labels, scenario }: {
   }
 
   const param = (j: number) => {
-    const v = scenario?.[labels[j][0]]
-    return v || <em style={{ opacity: 0.4 }}>Не заполнено</em>
+    const short = firstSentence(String(scenario?.[labels[j][0]] || ''))
+    return short || <em style={{ opacity: 0.4 }}>Не заполнено</em>
   }
 
   const ansCell = (i: number) => (
@@ -82,6 +91,29 @@ export default function HexDiagram({ combo, questions, labels, scenario }: {
           {order.map((i, j) => <li key={i}>{parCell(i, j)}</li>)}
         </ul>
       </div>
+    </div>
+  )
+}
+
+export function StratagemaTable({ labels, scenario }: {
+  labels: [string, string][]
+  scenario?: Record<string, any> | null
+}) {
+  return (
+    <div className="strt">
+      <div className="strt-cap">Сценарий стратагемы</div>
+      <p className="strt-note">Полные формулировки параметров, кратко показанных рядом с гексаграммой.</p>
+      <table className="strt-tbl"><tbody>
+        {labels.map(([key, label], j) => (
+          <tr key={key}>
+            <th>
+              <span className="strt-line">Линия {6 - j}</span>
+              <span className="strt-name">{label}</span>
+            </th>
+            <td>{scenario?.[key] || <em style={{ opacity: 0.4 }}>Не заполнено</em>}</td>
+          </tr>
+        ))}
+      </tbody></table>
     </div>
   )
 }

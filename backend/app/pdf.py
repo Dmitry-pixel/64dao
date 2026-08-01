@@ -269,6 +269,74 @@ def _lifecycle_blocks(strategy: Any, combination: str, with_lc: bool = True,
 
 
 
+def _first_sentence(text: str | None, limit: int = 90) -> str:
+    """Краткая версия параметра для колонки рядом с гексаграммой.
+
+    Полный текст (до ~420 знаков) выводится ниже отдельной таблицей: если
+    вставить его прямо в строку рядом с линией, строки разъезжаются и
+    гексаграмма перестаёт читаться как цельная фигура.
+    """
+    s = (text or "").strip()
+    if not s:
+        return ""
+    i = s.find(". ")
+    head = s[:i + 1] if i != -1 else s
+    if len(head) > limit:
+        head = head[:limit].rstrip(" ,.;:") + "…"
+    return head
+
+
+def _stratagema_table_html(scenario: dict | None, company_name: str = "") -> str:
+    """Раздел 01 · таблица стратагемы: полные формулировки 6 параметров.
+
+    Отдельная страница: шесть текстов по 200-420 знаков не помещаются на
+    страницу с диаграммой.
+    """
+    sc = scenario or {}
+    rows = ""
+    for j, (key, label) in enumerate(SCENARIO_LABELS.items()):
+        line_no = 6 - j  # параметр 1 стоит напротив верхней линии 6
+        val = sc.get(key) or ""
+        bg = "background:rgba(255,255,255,0.45);" if j % 2 == 0 else ""
+        body = e(val) if val else '<em style="opacity:0.4;">Не заполнено</em>'
+        rows += (
+            '<tr style="page-break-inside:avoid;">'
+            f'<td style="border:1px solid rgba(26,37,64,0.12);padding:10px 12px;{bg}'
+            'width:26%;vertical-align:top;font-family:Arial,sans-serif;">'
+            '<div style="font-size:8px;letter-spacing:1px;text-transform:uppercase;'
+            f'color:#c0392b;font-weight:700;margin-bottom:3px;">Линия {line_no}</div>'
+            '<div style="font-size:11.5px;color:#1a2540;font-weight:600;'
+            f'line-height:1.4;">{e(label)}</div></td>'
+            f'<td style="border:1px solid rgba(26,37,64,0.12);padding:10px 12px;{bg}'
+            'font-size:11.5px;color:#1a2540;line-height:1.65;vertical-align:top;'
+            f'font-family:Arial,sans-serif;overflow-wrap:anywhere;">{body}</td></tr>'
+        )
+    return (
+        '<div style="padding:40px 50px;background:#e8e4db;page-break-after:always;">'
+        '<div style="display:flex;justify-content:space-between;align-items:center;'
+        'padding-bottom:14px;border-bottom:1px solid rgba(26,37,64,0.12);margin-bottom:24px;">'
+        '<span style="font-size:11px;font-weight:700;color:#c0392b;'
+        'font-family:Arial,sans-serif;letter-spacing:2px;">64DAO</span>'
+        '<span style="font-size:10px;color:rgba(26,37,64,0.3);'
+        f'font-family:Arial,sans-serif;">{e(company_name)} · таблица стратагемы</span>'
+        '</div>'
+        '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 6px;">'
+        '<span style="font-size:11px;color:#c0392b;margin-right:8px;">01</span>'
+        'Сценарий стратагемы</h2>'
+        '<p style="font-size:12px;color:rgba(26,37,64,0.5);line-height:1.6;'
+        'font-family:Arial,sans-serif;margin:0 0 16px;">Полные формулировки '
+        'параметров, кратко показанных рядом с гексаграммой.</p>'
+        '<table style="width:100%;border-collapse:collapse;"><tbody>' + rows +
+        '</tbody></table>'
+        '<div style="margin-top:24px;padding-top:12px;'
+        'border-top:1px solid rgba(26,37,64,0.08);display:flex;'
+        'justify-content:space-between;font-family:Arial,sans-serif;'
+        'font-size:10px;color:rgba(26,37,64,0.3);">'
+        '<span>64dao.ru</span><span>© 2024 64DAO — Конфиденциально</span>'
+        '</div></div>'
+    )
+
+
 def _hex_diagram_html(combination: str, scenario: dict | None) -> str:
     """Раздел 01: гексаграмма по центру, ответы слева, параметры стратагемы справа."""
     sc = scenario or {}
@@ -285,7 +353,8 @@ def _hex_diagram_html(combination: str, scenario: dict | None) -> str:
          'font-weight:700;font-family:Arial,sans-serif;margin-bottom:2px;')
     qs = ('font-size:9.5px;line-height:1.35;color:rgba(26,37,64,0.5);'
           'font-family:Arial,sans-serif;margin-bottom:2px;')
-    v = 'font-size:11px;line-height:1.4;color:#1a2540;font-family:Arial,sans-serif;'
+    v = ('font-size:11px;line-height:1.4;color:#1a2540;'
+         'font-family:Arial,sans-serif;overflow-wrap:anywhere;')
     dash = 'flex:0 0 34px;height:0;border-top:1.5px dashed rgba(26,37,64,0.25);'
     empty = '<em style="opacity:0.4;">Не заполнено</em>'
 
@@ -295,7 +364,7 @@ def _hex_diagram_html(combination: str, scenario: dict | None) -> str:
         bq = BASE_QUESTIONS[i]
         ans = e(bq["a"]) if ch == "A" else (e(bq["b"]) if ch == "B" else "—")
         key, label = labels[j]
-        pval = sc.get(key) or None
+        pval = _first_sentence(sc.get(key)) or None
         rows += (
             '<div style="display:flex;align-items:center;min-height:74px;page-break-inside:avoid;">'
             '<div style="flex:1 1 0;min-width:0;text-align:right;padding-right:10px;">'
@@ -799,6 +868,10 @@ def build_report_html(
             section_no=f"{3 + _shift:02d}",
         )
 
+    stratagema_page = (
+        _stratagema_table_html(sc, company_name) if not is_method2 else ""
+    )
+
     transition_page = (
         f'<div style="padding:40px 50px;background:#e8e4db;">{transition_html}</div>'
         if (transition_html and not is_method2) else ""
@@ -902,6 +975,8 @@ def build_report_html(
 </div>
 
 {page1}
+
+{stratagema_page}
 
 {transition_page}
 
