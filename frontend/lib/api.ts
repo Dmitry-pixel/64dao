@@ -14,7 +14,13 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+/**
+ * Экспортирован ради lib/m3.ts: Метод 3 держит свои типы отдельно, но
+ * транспорт должен остаться один. Иначе credentials: 'include' для
+ * httpOnly-куки пришлось бы дублировать, и копии разошлись бы при первой
+ * же правке заголовков.
+ */
+export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...options,
     credentials: 'include',

@@ -345,6 +345,42 @@ class TestObjects:
         assert r.status_code == 422
 
 
+# ── Справочники ───────────────────────────────────────────────────────────────
+class TestIndustries:
+    async def test_list_from_db(self, auth_client, m3_on, seeded):
+        r = await auth_client.get(f"{M3}/industries")
+        assert r.status_code == 200
+        rows = r.json()
+        assert len(rows) == 18
+        assert rows[0] == {"id": 1, "name": "IT и разработка"}
+        assert rows[-1]["id"] == 18
+
+    async def test_falls_back_to_config_before_seed(self, auth_client, m3_on):
+        """До сида таблица пуста — форма не должна остаться без вариантов."""
+        r = await auth_client.get(f"{M3}/industries")
+        assert r.status_code == 200
+        assert len(r.json()) == 18
+
+    async def test_reflects_admin_rename(self, client, test_user, test_admin, m3_on, seeded):
+        """Название правится в админке вместе с весами: второй список
+        в коде фронта разошёлся бы с первым при первой же правке."""
+        as_role(client, test_admin)
+        r = await client.put("/api/admin/m3/weights/2", json={
+            "industry_id": 2, "name": "Производство и сборка",
+            "w_l1": 45, "w_l2": 25, "w_l3": 30,
+            "w_l4": 30, "w_l5": 45, "w_l6": 25,
+        })
+        assert r.status_code == 200
+
+        as_role(client, test_user)
+        rows = (await client.get(f"{M3}/industries")).json()
+        assert next(x for x in rows if x["id"] == 2)["name"] == "Производство и сборка"
+
+    async def test_404_when_disabled(self, client, m3_off):
+        r = await client.get(f"{M3}/industries")
+        assert r.status_code == 404
+
+
 # ── Анкета ────────────────────────────────────────────────────────────────────
 class TestQuestionnaire:
     async def test_structure(self, auth_client, m3_on, seeded):

@@ -74,6 +74,30 @@ def _bad(e: Exception) -> HTTPException:
     return HTTPException(status_code=400, detail=str(e))
 
 
+# ── Справочники ───────────────────────────────────────────────────────────────
+@router.get("/industries")
+async def list_industries(
+    _: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    18 областей для селекта отрасли. Отдаются с бэкенда, а не зашиты во фронт:
+    названия правятся в админке вместе с весами, и второй список в коде фронта
+    разошёлся бы с первым при первой же правке.
+
+    Пустая таблица — рабочее состояние до сида: отдаём дефолты из конфига,
+    чтобы форма не оставалась без вариантов.
+    """
+    rows = (await db.execute(select(M3Weight).order_by(M3Weight.industry_id))).scalars().all()
+    if rows:
+        return [{"id": w.industry_id, "name": w.name} for w in rows]
+    cfg = svc.get_config()
+    return [
+        {"id": iid, "name": preset["name"]}
+        for iid, preset in sorted(cfg["industry_presets"].items(), key=lambda kv: int(kv[0]))
+    ]
+
+
 # ── Портфель ──────────────────────────────────────────────────────────────────
 @router.post("/portfolios", response_model=M3PortfolioOut, status_code=201)
 async def create_portfolio(
