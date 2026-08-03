@@ -211,6 +211,45 @@ export function getReport(id: string) {
   return request<M3Report>(`/api/reports/m3/${id}`)
 }
 
+// ── Чек-лист и решение по волнам ──────────────────────────────────────────────
+
+export interface M3ChecklistStep {
+  id: string
+  object_id: string | null
+  step_text: string
+  line: number | null
+  step_type: 'route' | 'hold' | 'prep' | 'decision'
+  wave: number
+  needs_budget: boolean
+  done: boolean
+  done_at: string | null
+}
+
+export interface M3TradeoffIn {
+  accepted_option: 'method' | 'custom'
+  waves: Record<string, string[]>
+  cost_accepted?: string | null
+  review_triggers?: string[]
+}
+
+export function getChecklist(id: string) {
+  return request<M3ChecklistStep[]>(`/api/reports/m3/${id}/checklist`)
+}
+
+export function toggleChecklistStep(id: string, stepId: string, done: boolean) {
+  return request<M3ChecklistStep>(`/api/reports/m3/${id}/checklist/${stepId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ done }),
+  })
+}
+
+export function postTradeoff(id: string, body: M3TradeoffIn) {
+  return request<{ decision_id: string; steps_rescheduled: number }>(
+    `/api/reports/m3/${id}/tradeoff`,
+    { method: 'POST', body: JSON.stringify(body) },
+  )
+}
+
 // ── Ограничения, зеркалящие серверные ─────────────────────────────────────────
 // Дублируются намеренно: форма должна ловить ошибку до отправки, иначе
 // пользователь получает 422 без указания, какое поле виновато. Сервер остаётся
