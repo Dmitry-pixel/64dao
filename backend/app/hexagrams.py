@@ -119,3 +119,19 @@ def get_target_hexagram_info(combination: str) -> tuple[int, str, str] | None:
 def hexagram_symbol(num: int | None) -> str:
     """Unicode-символ гексаграммы по номеру: U+4DC0 + num - 1."""
     return chr(0x4DC0 + num - 1) if num else ''
+
+
+# ── Код -> (номер, название) ────────────────────────────────────────
+# Единая точка маппинга шести символов в номер Вэнь-вана. До появления этой
+# функции таблица разворачивалась в словарь отдельно в contour_scoring.py;
+# Метод 3 стал бы третьей копией. Алфавит: A = Ян, B = Инь, чтение снизу вверх,
+# позиция 1 = нижняя линия.
+CODE_TO_HEXAGRAM: dict[str, tuple[int, str]] = {
+    combo: (num, name) for num, name, combo in HEXAGRAM_LIST
+}
+
+
+def hexagram_by_code(code: str) -> tuple[int, str]:
+    """(номер, название) по коду вида 'AAABBA'. KeyError, если кода нет."""
+    return CODE_TO_HEXAGRAM[code]
+
