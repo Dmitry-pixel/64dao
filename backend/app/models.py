@@ -363,3 +363,15 @@ class AccessGrant(Base):
     # Два FK на users (user_id и created_by): без явного foreign_keys
     # SQLAlchemy падает на неоднозначности отношения.
     user: Mapped["User"] = relationship(foreign_keys=[user_id], back_populates="access_grants")
+
+
+# ── Метод 3 «Матрица силы» ────────────────────────────────────────────────────
+# Модели вынесены в отдельный модуль: Метод 3 — изолированный раздел со своим
+# роутером и своими таблицами, и держать его схему здесь значит расширять файл,
+# который импортируют все остальные методы. Импорт нужен для регистрации
+# в Base.metadata: без него create_all в тестах и autogenerate в alembic
+# таблиц m3_* не увидят.
+from app.m3_models import (  # noqa: E402,F401
+    M3Portfolio, M3Object, M3Item, M3Hint, M3Answer, M3Weight, M3Hexagram,
+    M3Content, M3Result, M3PortfolioResult, M3TradeoffDecision, M3ChecklistStep,
+)
