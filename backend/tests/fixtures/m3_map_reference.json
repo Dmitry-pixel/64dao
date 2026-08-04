@@ -1,0 +1,363 @@
+{
+ "control": [
+  {
+   "object_id": "o5",
+   "x": 304,
+   "y": 56,
+   "r": 14,
+   "col": 2,
+   "row": 2,
+   "target": {
+    "x1": 284,
+    "y1": 56,
+    "x2": 242,
+    "y2": 56
+   },
+   "risk": null
+  },
+  {
+   "object_id": "o2",
+   "x": 317,
+   "y": 138.62804997461342,
+   "r": 21,
+   "col": 2,
+   "row": 1,
+   "target": {
+    "x1": 290,
+    "y1": 138.62804997461342,
+    "x2": 248,
+    "y2": 138.62804997461342
+   },
+   "risk": {
+    "x1": 317,
+    "y1": 165.62804997461342,
+    "x2": 317,
+    "y2": 207.62804997461342
+   }
+  },
+  {
+   "object_id": "o4",
+   "x": 203.92000000000002,
+   "y": 151.94,
+   "r": 17,
+   "col": 1,
+   "row": 1,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "o3",
+   "x": 284.0402118561335,
+   "y": 161.29195002538657,
+   "r": 15,
+   "col": 2,
+   "row": 1,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "o1",
+   "x": 100.06,
+   "y": 248.06,
+   "r": 24,
+   "col": 0,
+   "row": 0,
+   "target": null,
+   "risk": {
+    "x1": 130.06,
+    "y1": 248.06,
+    "x2": 172.06,
+    "y2": 248.06
+   }
+  }
+ ],
+ "identical": [
+  {
+   "object_id": "a",
+   "x": 229,
+   "y": 131,
+   "r": 19,
+   "col": 1,
+   "row": 1,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "b",
+   "x": 181,
+   "y": 179,
+   "r": 19,
+   "col": 1,
+   "row": 1,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "c",
+   "x": 187.507144321488,
+   "y": 137.50714431980057,
+   "r": 19,
+   "col": 1,
+   "row": 1,
+   "target": null,
+   "risk": null
+  }
+ ],
+ "extremes": [
+  {
+   "object_id": "lo",
+   "x": 322,
+   "y": 272,
+   "r": 13,
+   "col": 2,
+   "row": 0,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "hi",
+   "x": 103,
+   "y": 53,
+   "r": 31,
+   "col": 0,
+   "row": 2,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "mid",
+   "x": 205,
+   "y": 155,
+   "r": 9,
+   "col": 1,
+   "row": 1,
+   "target": null,
+   "risk": null
+  }
+ ],
+ "eight_one_cell": [
+  {
+   "object_id": "x0",
+   "x": 325,
+   "y": 275,
+   "r": 13,
+   "col": 2,
+   "row": 0,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "x1",
+   "x": 324,
+   "y": 248.9814840401117,
+   "r": 14,
+   "col": 2,
+   "row": 0,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "x2",
+   "x": 297.75086004536934,
+   "y": 227.76289159404337,
+   "r": 15,
+   "col": 2,
+   "row": 0,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "x3",
+   "x": 268,
+   "y": 272,
+   "r": 16,
+   "col": 2,
+   "row": 0,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "x4",
+   "x": 268,
+   "y": 218,
+   "r": 16,
+   "col": 2,
+   "row": 0,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "x5",
+   "x": 321,
+   "y": 219,
+   "r": 17,
+   "col": 2,
+   "row": 0,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "x6",
+   "x": 270,
+   "y": 247.39648903291211,
+   "r": 18,
+   "col": 2,
+   "row": 0,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "x7",
+   "x": 300.47259479452254,
+   "y": 263.81885953387365,
+   "r": 18,
+   "col": 2,
+   "row": 0,
+   "target": null,
+   "risk": null
+  }
+ ],
+ "stable": [
+  {
+   "object_id": "only",
+   "x": 103,
+   "y": 164,
+   "r": 31,
+   "col": 0,
+   "row": 1,
+   "target": null,
+   "risk": null
+  }
+ ],
+ "vectors": [
+  {
+   "object_id": "h",
+   "x": 304,
+   "y": 254,
+   "r": 16,
+   "col": 2,
+   "row": 0,
+   "target": {
+    "x1": 282,
+    "y1": 254,
+    "x2": 240,
+    "y2": 254
+   },
+   "risk": {
+    "x1": 326,
+    "y1": 254,
+    "x2": 340,
+    "y2": 254
+   }
+  },
+  {
+   "object_id": "v",
+   "x": 106,
+   "y": 56,
+   "r": 16,
+   "col": 0,
+   "row": 2,
+   "target": {
+    "x1": 106,
+    "y1": 34,
+    "x2": 106,
+    "y2": 20
+   },
+   "risk": {
+    "x1": 106,
+    "y1": 78,
+    "x2": 106,
+    "y2": 120
+   }
+  },
+  {
+   "object_id": "t",
+   "x": 205,
+   "y": 155,
+   "r": 16,
+   "col": 1,
+   "row": 1,
+   "target": {
+    "x1": 183,
+    "y1": 155,
+    "x2": 141,
+    "y2": 155
+   },
+   "risk": null
+  }
+ ],
+ "round_half": [
+  {
+   "object_id": "half_up",
+   "x": 233,
+   "y": 127,
+   "r": 15,
+   "col": 1,
+   "row": 1,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "half_even",
+   "x": 188,
+   "y": 172,
+   "r": 26,
+   "col": 1,
+   "row": 1,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "plain",
+   "x": 229,
+   "y": 163.38170170327274,
+   "r": 19,
+   "col": 1,
+   "row": 1,
+   "target": null,
+   "risk": null
+  }
+ ],
+ "order_sensitive": [
+  {
+   "object_id": "d",
+   "x": 182,
+   "y": 171.56530523542824,
+   "r": 20,
+   "col": 1,
+   "row": 1,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "a",
+   "x": 229,
+   "y": 179,
+   "r": 19,
+   "col": 1,
+   "row": 1,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "c",
+   "x": 188.0270557227953,
+   "y": 130,
+   "r": 18,
+   "col": 1,
+   "row": 1,
+   "target": null,
+   "risk": null
+  },
+  {
+   "object_id": "b",
+   "x": 228.4243917865125,
+   "y": 137.00394452827072,
+   "r": 19,
+   "col": 1,
+   "row": 1,
+   "target": null,
+   "risk": null
+  }
+ ]
+}

@@ -14,7 +14,9 @@ import uuid
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import m3_portfolio as pf
 from app import m3_scoring as sc
+from app import m3_verdict as vd
 from app.m3_config import DEFAULT_M3_CONFIG, industry_weights, read_m3_config
 from app.m3_models import (
     M3Answer, M3ChecklistStep, M3Content, M3Hint, M3Item, M3Object,
@@ -458,6 +460,26 @@ def disclaimers(calc: dict) -> list[str]:
     return out
 
 
+def enrich_result(item: dict, share: float | None) -> dict:
+    """
+    Дописывает в результат направления вердикт, траекторию и причину места
+    в очереди исполнения. Мутирует переданный словарь и возвращает его же.
+
+    Отдельная функция, а не три строки внутри build_report: тест сверяет
+    вердикт из API с вердиктом в PDF, и для этого ему нужен вход без БД.
+
+    Всё три величины — производные от снимка, а не контент. Их считает
+    m3_verdict, и те же функции на том же словаре вызывает m3_pdf.
+    """
+    item["verdict"] = vd.verdict_for(item)
+    item["trajectory"] = {
+        "target": vd.transition(item, "target"),
+        "risk": vd.transition(item, "risk"),
+    }
+    item["execution_reason"] = vd.execution_reason(item, share)
+    return item
+
+
 async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
     """
     Отчёт собирается из сохранённого снимка, а не пересчитывается: выданный
@@ -489,8 +511,10 @@ async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
             "symbols": code, "mobility": r.mobility or {},
             "cell_strength": r.cell_strength, "cell_attract": r.cell_attract,
             "cell_key": cell_key,
-            "cell_label": f"{sc.CELL_LABEL_RU[r.cell_strength]} / "
-                          f"{sc.CELL_LABEL_RU[r.cell_attract]}",
+            # Формулировка одна на оба отчёта — из m3_verdict, а не из
+            # CELL_LABEL_RU: там осталось старое «низкая конкурентная среда»,
+            # которое называет не ту сущность.
+            "cell_label": vd.cell_label(r.cell_strength, r.cell_attract),
             "coord_strength": float(r.coord_strength),
             "coord_attract": float(r.coord_attract),
             "current_hex": r.current_hex, "current_name": hex_name,
@@ -501,6 +525,10 @@ async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
             "weak_line": r.weak_line, "strong_line": r.strong_line,
             "tensions": list(r.tensions or []), "flags": list(r.flags or []),
         }
+        enrich_result(
+            item,
+            float(o.revenue_share) if o.revenue_share is not None else None,
+        )
         packed.append({"result": item, "narrative": compose_narrative(item, content)})
 
     # Разделы 02 и 04 отчёта: разбор идёт в порядке ранга V, а решение
@@ -518,21 +546,35 @@ async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
         "portfolio": {"verdicts_held": bool(summary and summary.verdicts_held)},
     }
 
+    summary_out = {
+        "objects": len(packed),
+        "sum_positions": summary.sum_positions if summary else 0,
+        "sum_positions_max": 6 * len(packed),
+        "turbulence": summary.turbulence if summary else 0,
+        "delta": summary.delta if summary else 0,
+        "distinct_cells": summary.distinct_cells if summary else 0,
+        "spearman": float(summary.spearman) if summary and summary.spearman is not None else None,
+        "flags": list(summary.flags or []) if summary else [],
+        "verdicts_held": bool(summary and summary.verdicts_held),
+    }
+
+    # Раздел 03. Ограничения компании выводятся из снимка строгим большинством,
+    # а не берутся из таблицы контента: линия, слабая у большинства направлений,
+    # перестаёт быть свойством продукта и становится свойством компании.
+    results_only = [x["result"] for x in packed]
+    analysis = {
+        "yin_table": pf.yin_table(results_only),
+        "constraints": pf.constraints(results_only),
+        "metrics": pf.metric_readings(summary_out),
+        "tact_note": pf.tact_note(results_only, summary_out),
+    }
+
     return {
         "portfolio": portfolio,
-        "summary": {
-            "objects": len(packed),
-            "sum_positions": summary.sum_positions if summary else 0,
-            "sum_positions_max": 6 * len(packed),
-            "turbulence": summary.turbulence if summary else 0,
-            "delta": summary.delta if summary else 0,
-            "distinct_cells": summary.distinct_cells if summary else 0,
-            "spearman": float(summary.spearman) if summary and summary.spearman is not None else None,
-            "flags": list(summary.flags or []) if summary else [],
-            "verdicts_held": bool(summary and summary.verdicts_held),
-        },
+        "summary": summary_out,
         "objects": packed,
         "investment_order": investment,
         "execution_order": execution,
+        "analysis": analysis,
         "disclaimers": disclaimers(calc_like),
     }

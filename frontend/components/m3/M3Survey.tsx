@@ -191,6 +191,31 @@ export default function M3Survey({
     return new Set(vals).size === objects.length
   }, [ranks, objects])
 
+  // Кнопка «Дальше» гасится, пока порядок не перестановка. Молчащая кнопка —
+  // не сообщение: человек видит, что переход не работает, и не понимает почему.
+  // Называем конкретно: какое место занято дважды и какое пустует.
+  const rankProblems = useMemo(() => {
+    const out: string[] = []
+    const byPlace = new Map<number, string[]>()
+    for (const o of objects) {
+      const v = ranks[o.id]
+      if (v == null) continue
+      byPlace.set(v, [...(byPlace.get(v) ?? []), o.name || `№${o.position}`])
+    }
+    for (const [place, names] of [...byPlace.entries()].sort((a, b) => a[0] - b[0])) {
+      if (names.length > 1) {
+        out.push(`Место ${place} занято дважды: ${names.join(', ')}.`)
+      }
+    }
+    const free = objects.map((_, i) => i + 1).filter(n => !byPlace.has(n))
+    if (free.length && byPlace.size) {
+      out.push(free.length === 1
+        ? `Место ${free[0]} никем не занято.`
+        : `Не заняты места: ${free.join(', ')}.`)
+    }
+    return out
+  }, [ranks, objects])
+
   function set(code: string, objectId: string | null, value: number | null) {
     setAnswers(prev => ({ ...prev, [key(code, objectId)]: value }))
   }
@@ -348,8 +373,14 @@ export default function M3Survey({
               </div>
             ))}
           </div>
-          {!ranksReady && Object.keys(ranks).length > 0 && (
-            <p style={S.note}>Каждое место должно быть занято ровно одним направлением.</p>
+          {rankProblems.map((p, i) => (
+            <p key={i} style={S.warn}>{p}</p>
+          ))}
+          {rankProblems.length > 0 && (
+            <p style={S.note}>
+              Каждое место занимает ровно одно направление: порядок сравнивается
+              с расчётным рангом, и два первых места сравнивать не с чем.
+            </p>
           )}
         </>
       )}

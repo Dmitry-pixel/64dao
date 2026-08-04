@@ -505,3 +505,14 @@ async def admin_put_hint(
     row.text = body.text
     await db.flush()
     return {"id": row.id}
+
+
+# ── Скачивание PDF ────────────────────────────────────────────────────────────
+# Обработчик живёт в отдельном модуле: роутер уже длинный, а правка
+# существующего файла дороже нового. Регистрация здесь, чтобы эндпоинт попал
+# в reports_router с гейтом флага фичи — при m3_enabled=false он отдаёт 404
+# наравне с остальными. Проверка доступа переиспользует _owned: второй её
+# копии в проекте быть не должно.
+from app.m3_report_api import register_download  # noqa: E402
+
+register_download(reports_router, _owned)

@@ -119,9 +119,19 @@ function blank(position: number): M3ObjectIn {
   }
 }
 
+// Минус бывает типографским: с клавиатуры и из вставки приходит «−» или «–».
+// Запятая как десятичный разделитель тоже законна.
+function normalise(v: string): string {
+  return v.replace(/[−–—]/g, '-').replace(',', '.')
+}
+
 function num(v: string): number | null {
-  if (v.trim() === '') return null
-  const n = Number(v.replace(',', '.'))
+  const t = normalise(v).trim()
+  // Промежуточные состояния набора — «-», «.», «-.» — ещё не число, но и не
+  // ошибка. Возвращаем null; сырой текст поле хранит отдельно, иначе первый
+  // же введённый минус исчезал бы в тот же миг.
+  if (t === '' || t === '-' || t === '.' || t === '-.') return null
+  const n = Number(t)
   return Number.isFinite(n) ? n : null
 }
 
@@ -134,6 +144,27 @@ export default function PortfolioForm({
     initial && initial.length ? initial : [blank(1), blank(2), blank(3)],
   )
   const [touched, setTouched] = useState(false)
+  // Сырой текст числовых полей. В модели лежит уже разобранное число, и если
+  // брать value прямо оттуда, минус стирается сразу после набора.
+  const [raw, setRaw] = useState<Record<string, string>>({})
+
+  type NumField = 'revenue' | 'revenue_dynamics' | 'revenue_share'
+
+  function numField(i: number, field: NumField) {
+    const k = `${field}-${i}`
+    const model = objects[i][field]
+    return {
+      value: raw[k] ?? (model === null ? '' : String(model)),
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+        const text = e.target.value
+        // Буквы и вторая точка в поле не нужны: пусть человек увидит, что
+        // символ не принят, а не получит 422 после отправки.
+        if (!/^-?\d*\.?\d*$/.test(normalise(text))) return
+        setRaw(prev => ({ ...prev, [k]: text }))
+        patch(i, { [field]: num(text) } as Partial<M3ObjectIn>)
+      },
+    }
+  }
 
   function patch(i: number, part: Partial<M3ObjectIn>) {
     setObjects(prev => prev.map((o, k) => (k === i ? { ...o, ...part } : o)))
@@ -246,8 +277,7 @@ export default function PortfolioForm({
                 id={`rev-${i}`}
                 style={S.input}
                 inputMode="decimal"
-                value={o.revenue ?? ''}
-                onChange={e => patch(i, { revenue: num(e.target.value) })}
+                {...numField(i, 'revenue')}
               />
             </div>
 
@@ -257,9 +287,8 @@ export default function PortfolioForm({
                 id={`dyn-${i}`}
                 style={S.input}
                 inputMode="decimal"
-                placeholder="−5 или 60"
-                value={o.revenue_dynamics ?? ''}
-                onChange={e => patch(i, { revenue_dynamics: num(e.target.value) })}
+                placeholder="-5 или 60"
+                {...numField(i, 'revenue_dynamics')}
               />
             </div>
 
@@ -269,8 +298,7 @@ export default function PortfolioForm({
                 id={`share-${i}`}
                 style={S.input}
                 inputMode="decimal"
-                value={o.revenue_share ?? ''}
-                onChange={e => patch(i, { revenue_share: num(e.target.value) })}
+                {...numField(i, 'revenue_share')}
               />
             </div>
 

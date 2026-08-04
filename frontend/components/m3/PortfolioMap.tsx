@@ -44,11 +44,28 @@ const C = {
   red: '#c0392b',
 }
 
-const CELL_INDEX: Record<string, number> = { low: 0, mid: 1, high: 2 }
+// Строка — привлекательность рынка. Индекс 0 — нижний ряд, «низкая».
+const ROW_INDEX: Record<string, number> = { low: 0, mid: 1, high: 2 }
 
-/** Позиция внутри ячейки: 0,2 … 0,8 от её ширины по координате 1…4. */
-function inCell(index: number, coord: number): number {
-  const f = Math.min(1, Math.max(0, (coord - 1) / 3))
+// Колонка — конкурентная сила. Ось направлена как в матрице GE/McKinsey:
+// СИЛЬНАЯ СЛЕВА, слабая справа. Поэтому «Инвестировать» приходится на левый
+// верхний угол, а «Избегать / выходить» — на правый нижний, и клиент,
+// видевший матрицу раньше, читает картинку без переучивания.
+const COL_INDEX: Record<string, number> = { high: 0, mid: 1, low: 2 }
+
+// Знак горизонтали: рост конкурентной силы идёт влево.
+const X_SIGN = -1
+
+/**
+ * Позиция внутри ячейки: 0,2 … 0,8 от её ширины по координате 1…4.
+ *
+ * reverse нужен горизонтали. Ось силы направлена вправо-налево, и без
+ * зеркала направление с силой 4,00 внутри сильной колонки встало бы у её
+ * правого края — то есть ближе к средней колонке, а не дальше от неё.
+ */
+function inCell(index: number, coord: number, reverse = false): number {
+  let f = Math.min(1, Math.max(0, (coord - 1) / 3))
+  if (reverse) f = 1 - f
   return index * CELL + CELL * (0.2 + 0.6 * f)
 }
 
@@ -79,10 +96,11 @@ type Placed = { x: number; y: number; r: number; col: number; row: number }
 function layout(results: M3Result[], shares: Record<string, number | null>) {
   const pts = new Map<string, Placed>()
   for (const r of results) {
-    const col = CELL_INDEX[r.cell_strength] ?? 0
-    const row = CELL_INDEX[r.cell_attract] ?? 0
+    // Неизвестная сила трактуется как слабая — крайняя правая колонка.
+    const col = COL_INDEX[r.cell_strength] ?? 2
+    const row = ROW_INDEX[r.cell_attract] ?? 0
     pts.set(r.object_id, {
-      x: PAD_L + inCell(col, r.coord_strength),
+      x: PAD_L + inCell(col, r.coord_strength, true),
       y: PAD_T + GRID - inCell(row, r.coord_attract),
       r: radius(shares[r.object_id] ?? null),
       col, row,
@@ -98,12 +116,23 @@ function layout(results: M3Result[], shares: Record<string, number | null>) {
         const B = pts.get(ids[j])!
         const dx = B.x - A.x
         const dy = B.y - A.y
-        const d = Math.sqrt(dx * dx + dy * dy) || 0.01
+        // Полностью совпавшие координаты дают нулевой вектор отталкивания,
+        // и круги остались бы друг на друге: два направления с одинаковыми
+        // баллами читались бы как одно. При шкале в два-три пункта совпадение
+        // вероятно, поэтому расталкиваем по углу от порядкового номера пары —
+        // правило детерминированное, картинка воспроизводима.
+        let d = Math.sqrt(dx * dx + dy * dy)
+        let ux: number
+        let uy: number
+        if (d < 1e-9) {
+          const angle = 2 * Math.PI * j / ids.length
+          ux = Math.cos(angle); uy = Math.sin(angle); d = 0.01
+        } else {
+          ux = dx / d; uy = dy / d
+        }
         const need = A.r + B.r + 4
         if (d < need) {
           const push = (need - d) / 2
-          const ux = dx / d
-          const uy = dy / d
           A.x -= ux * push; A.y -= uy * push
           B.x += ux * push; B.y += uy * push
           moved = true
@@ -129,19 +158,44 @@ function vector(p: Placed, lines: number[], kind: 'target' | 'risk') {
   if (!lines.length) return null
   const gap = p.r + 6
   const len = 42
-  // Целевая — проработка назревшего, движение вправо и вверх.
-  // Рисковая — эрозия, движение влево и вниз.
+  // Целевая — проработка назревшего, движение к росту. Рисковая — эрозия,
+  // движение к падению. По вертикали рост — вверх, по горизонтали — ВЛЕВО:
+  // ось силы развёрнута под GE/McKinsey, отсюда X_SIGN.
   const dir = kind === 'target' ? 1 : -1
   // Линии 1–3 — конкурентная сила (горизонталь), 4–6 — привлекательность
   // (вертикаль). Ведём по той оси, где подвижных линий больше.
   const horizontal = lines.filter(n => n <= 3).length
   const alongX = horizontal >= lines.length - horizontal
+  let v
   if (alongX) {
-    const from = p.x + dir * gap
-    return { x1: from, y1: p.y, x2: from + dir * len, y2: p.y }
+    const dx = dir * X_SIGN
+    const from = p.x + dx * gap
+    v = { x1: from, y1: p.y, x2: from + dx * len, y2: p.y }
+  } else {
+    const from = p.y - dir * gap
+    v = { x1: p.x, y1: from, x2: p.x, y2: from - dir * len }
   }
-  const from = p.y - dir * gap
-  return { x1: p.x, y1: from, x2: p.x, y2: from - dir * len }
+  return clipToGrid(v)
+}
+
+/**
+ * Стрелка обрезается по рамке матрицы.
+ *
+ * Длина вектора фиксированная, а зажимается только круг, поэтому у направления
+ * в крайней ячейке стрелка уезжала за сетку и висела в пустоте.
+ *
+ * Если после обрезки осталось меньше VECTOR_MIN, стрелку не рисуем вовсе:
+ * огрызок в три пикселя направления не показывает, а цель и риск в отчёте
+ * всё равно названы номерами гексаграмм в таблице под картой.
+ */
+const VECTOR_MIN = 10
+
+function clipToGrid(v: { x1: number; y1: number; x2: number; y2: number }) {
+  const cx = (n: number) => Math.min(Math.max(n, PAD_L), PAD_L + GRID)
+  const cy = (n: number) => Math.min(Math.max(n, PAD_T), PAD_T + GRID)
+  const c = { x1: cx(v.x1), y1: cy(v.y1), x2: cx(v.x2), y2: cy(v.y2) }
+  if (Math.hypot(c.x2 - c.x1, c.y2 - c.y1) < VECTOR_MIN) return null
+  return c
 }
 
 
@@ -188,10 +242,10 @@ export default function PortfolioMap({ results, shares, width = 400 }: Portfolio
         <text x={PAD_L - 8} y={158} fontSize="11" textAnchor="end" fill={C.muted}>Сред.</text>
         <text x={PAD_L - 8} y={248} fontSize="11" textAnchor="end" fill={C.muted}>Низ.</text>
         <text x={PAD_L} y={13} fontSize="11" fill={C.muted}>Привлекательность рынка</text>
-        <text x={115} y={306} fontSize="11" textAnchor="middle" fill={C.muted}>Низкая</text>
+        <text x={115} y={306} fontSize="11" textAnchor="middle" fill={C.muted}>Сильная</text>
         <text x={205} y={306} fontSize="11" textAnchor="middle" fill={C.muted}>Средняя</text>
-        <text x={295} y={306} fontSize="11" textAnchor="middle" fill={C.muted}>Высокая</text>
-        <text x={205} y={324} fontSize="11" textAnchor="middle" fill={C.muted}>Конкурентная сила</text>
+        <text x={295} y={306} fontSize="11" textAnchor="middle" fill={C.muted}>Слабая</text>
+        <text x={205} y={324} fontSize="11" textAnchor="middle" fill={C.muted}>Конкурентоспособность бизнеса</text>
 
         {results.map(r => {
           const p = placed.get(r.object_id)

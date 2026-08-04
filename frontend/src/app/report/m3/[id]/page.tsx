@@ -89,6 +89,13 @@ const S = {
     color: C.dark,
   } as React.CSSProperties,
   warn: { fontSize: 13, color: C.red, lineHeight: 1.6 } as React.CSSProperties,
+  traj: {
+    fontSize: 12.5, color: C.muted, lineHeight: 1.8, margin: '10px 0 0',
+  } as React.CSSProperties,
+  verdict: {
+    borderTop: `1px solid ${C.line}`, marginTop: 18, paddingTop: 13, fontSize: 14,
+  } as React.CSSProperties,
+  reason: { color: C.muted, fontSize: 12.5 } as React.CSSProperties,
   muted: { color: C.muted, fontSize: 12.5, lineHeight: 1.65 } as React.CSSProperties,
 }
 
@@ -114,6 +121,21 @@ const PORTFOLIO_FLAG_LABELS: Record<string, string> = {
 const MOBILITY_LABELS: Record<string, string> = {
   old_yin: 'старый Инь · назревшая слабость',
   old_yang: 'старый Ян · перегрев',
+}
+
+/**
+ * Число с десятичной запятой.
+ *
+ * toFixed даёт точку, а отчёт русскоязычный и печатается рядом с PDF, где
+ * запятая уже стоит. Разнобой в одном документе читается как опечатка.
+ */
+function num(value: number | null | undefined, digits = 2, dash = '—'): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return dash
+  return value.toFixed(digits).replace('.', ',')
+}
+
+function signed(value: number): string {
+  return value > 0 ? `+${value}` : String(value)
 }
 
 function LineGlyph({ yang, moving }: { yang: boolean; moving: boolean }) {
@@ -142,7 +164,7 @@ function Lines({ r }: { r: M3Result }) {
             <LineGlyph yang={yang} moving={Boolean(state)} />
             <span style={{ flex: 1 }}>Л{n} · {LINE_TITLES[n]}</span>
             <span style={{ flex: '0 0 44px', textAlign: 'right', color: C.muted }}>
-              {r.scores[`l${n}`]?.toFixed(2)}
+              {num(r.scores[`l${n}`])}
             </span>
             <span style={{
               flex: '0 0 190px', fontSize: 12,
@@ -219,21 +241,30 @@ export default function M3ReportPage() {
     </div></div>
   )
 
-  const { portfolio, summary, objects, investment_order, execution_order, disclaimers } = report
+  const {
+    portfolio, summary, objects, investment_order, execution_order,
+    analysis, disclaimers,
+  } = report
   const results = objects.map(o => o.result)
   const byId = Object.fromEntries(results.map(r => [r.object_id, r]))
+  // Название компании вводится перед диагностикой и живёт на портфеле.
+  // Отдельного поля пока нет — оно появится миграцией; до тех пор берём
+  // название портфеля, ровно как это делает company_name_for на сервере.
+  const company = portfolio.title || 'Компания'
 
   return (
     <div style={S.page}><div style={S.stage}>
       <header style={S.header}>
-        <div style={S.brand}>64DAO · Метод 03 · Матрица силы</div>
-        <h1 style={S.h1}>Распределение ресурсов между направлениями</h1>
-        <div style={S.sub}>{portfolio.title || 'Портфель без названия'}</div>
+        <div style={S.brand}>64DAO · Метод 3</div>
+        <h1 style={S.h1}>Матрица силы · {company}</h1>
+        {portfolio.title && portfolio.title !== company && (
+          <div style={S.sub}>{portfolio.title}</div>
+        )}
         <div style={S.meta}>
           <span>Направлений: {summary.objects}</span>
           <span>Сумма позиций: {summary.sum_positions} из {summary.sum_positions_max}</span>
           <span>Подвижных линий: {summary.turbulence}</span>
-          <span>Δ: {summary.delta > 0 ? `+${summary.delta}` : summary.delta}</span>
+          <span>Δ: {signed(summary.delta)}</span>
           {portfolio.calculated_at && (
             <span>Рассчитано: {new Date(portfolio.calculated_at).toLocaleDateString('ru-RU')}</span>
           )}
@@ -285,9 +316,49 @@ export default function M3ReportPage() {
         взвешенная координата по отраслевому пресету. Занято разных ячеек:{' '}
         {summary.distinct_cells} из 9.
         {summary.spearman !== null && (
-          ` Согласие расчёта с вашим порядком приоритета: ${summary.spearman.toFixed(2)}.`
+          ` Согласие расчёта с вашим порядком приоритета: ${num(summary.spearman)}.`
         )}
       </p>
+
+      {/*
+        Таблица отвечает на вопрос, который по кругам не прочитать: какая у
+        направления конфигурация линий. Две точки в одной ячейке могут иметь
+        противоположные вердикты.
+      */}
+      <table style={S.table}>
+        <thead>
+          <tr>
+            <th style={S.th}>№</th>
+            <th style={S.th}>Направление</th>
+            <th style={S.th}>Ячейка</th>
+            <th style={S.th}>Код</th>
+            <th style={{ ...S.th, ...S.tdNum }}>Текущая</th>
+            <th style={{ ...S.th, ...S.tdNum }}>Цель</th>
+            <th style={{ ...S.th, ...S.tdNum }}>Риск</th>
+            <th style={{ ...S.th, ...S.tdNum }}>Подв.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {results.map(r => (
+            <tr key={r.object_id}>
+              <td style={S.td}>{r.position}</td>
+              <td style={S.td}>{r.name}</td>
+              <td style={S.td}>{r.cell_label}</td>
+              <td style={{ ...S.td, ...S.code }}>{r.symbols}</td>
+              <td style={{ ...S.td, ...S.tdNum }}>{r.current_hex}</td>
+              <td style={{ ...S.td, ...S.tdNum, color: C.blue }}>
+                {r.target_hex ?? '—'}
+              </td>
+              <td style={{ ...S.td, ...S.tdNum, color: C.red }}>
+                {r.risk_hex ?? '—'}
+              </td>
+              <td style={{ ...S.td, ...S.tdNum }}>
+                {Object.keys(r.mobility).length}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
       <h2 style={S.h2}>
         <span style={S.num}>02</span>Разбор направлений — в порядке приоритета вложения
@@ -318,6 +389,23 @@ export default function M3ReportPage() {
             )}
           </div>
 
+          {(r.trajectory.target || r.trajectory.risk) && (
+            <div style={S.traj}>
+              {r.trajectory.target && (
+                <div>
+                  Целевое состояние: № {r.current_hex} → № {r.trajectory.target.to_hex},{' '}
+                  {r.trajectory.target.phrase}.
+                </div>
+              )}
+              {r.trajectory.risk && (
+                <div>
+                  Сценарий эрозии без закрепления: № {r.current_hex} →{' '}
+                  № {r.trajectory.risk.to_hex}, {r.trajectory.risk.phrase}.
+                </div>
+              )}
+            </div>
+          )}
+
           <Lines r={r} />
 
           {narrative.map(b => (
@@ -339,21 +427,83 @@ export default function M3ReportPage() {
               {r.flags.map(f => FLAG_LABELS[f] ?? f).join('; ')}.
             </div>
           )}
+
+          {/* Вердикт замыкает разбор — как в PDF. Считает его сервер. */}
+          <div style={S.verdict}>
+            <b style={{ fontWeight: 400, color: C.red }}>{r.verdict.verdict}.</b>{' '}
+            <span style={S.reason}>
+              Зона матрицы: {r.verdict.zone_ru} ({r.verdict.zone_en}).{' '}
+              {r.verdict.notes.join(' · ')}.
+            </span>
+          </div>
         </section>
       ))}
 
       <h2 style={S.h2}><span style={S.num}>03</span>Портфельные ограничения</h2>
       <p>
-        Сумма позиций {summary.sum_positions} из {summary.sum_positions_max}:
-        столько сильных линий во всём портфеле. Подвижных линий {summary.turbulence} —
-        это энергия перехода, доступная сейчас. Дельта {summary.delta > 0 ? `+${summary.delta}` : summary.delta}{' '}
-        — ожидаемое изменение зрелости, если проработать назревшее и не потерять достигнутое.
+        Раздел отвечает на вопрос, который нельзя задать, оценивая направления
+        по отдельности: какая слабость повторяется и, значит, принадлежит
+        компании, а не продукту.
       </p>
-      <p style={S.muted}>
-        Правило такта: не более двух направлений в активной трансформации
-        одновременно. Ограничение управленческого ресурса, а не денег —
-        запустив всё сразу, вы не закончите ничего.
-      </p>
+
+      <table style={S.table}>
+        <thead>
+          <tr>
+            <th style={S.th}>Линия</th>
+            <th style={S.th}>Фактор</th>
+            <th style={{ ...S.th, ...S.tdNum }}>Инь из {summary.objects}</th>
+            <th style={{ ...S.th, ...S.tdNum }}>Дельта линии</th>
+            <th style={S.th}>Прочтение</th>
+          </tr>
+        </thead>
+        <tbody>
+          {analysis.yin_table.map(row => (
+            <tr key={row.line}>
+              <td style={S.td}>Л{row.line}</td>
+              <td style={S.td}>{row.factor}</td>
+              <td style={{ ...S.td, ...S.tdNum }}>{row.yin}</td>
+              <td style={{ ...S.td, ...S.tdNum }}>{signed(row.delta_line)}</td>
+              <td style={S.td}>{row.reading}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {analysis.constraints.length > 0 ? analysis.constraints.map((c, i) => (
+        <div key={c.line} style={S.card}>
+          <span style={S.bannerTitle}>
+            Ограничение {i + 1} · {c.kind_title}
+          </span>
+          <p style={{ margin: 0 }}>{c.body}</p>
+        </div>
+      )) : (
+        <p style={S.muted}>
+          Ни одна слабость не повторяется у большинства направлений: общего
+          ограничения компании расчёт не фиксирует. Работать нужно
+          по направлениям.
+        </p>
+      )}
+
+      <table style={S.table}>
+        <thead>
+          <tr>
+            <th style={S.th}>Показатель</th>
+            <th style={{ ...S.th, ...S.tdNum }}>Значение</th>
+            <th style={S.th}>Прочтение</th>
+          </tr>
+        </thead>
+        <tbody>
+          {analysis.metrics.map(m => (
+            <tr key={m.name}>
+              <td style={S.td}>{m.name}</td>
+              <td style={{ ...S.td, ...S.tdNum }}>{m.value}</td>
+              <td style={S.td}>{m.reading}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <p style={S.muted}>{analysis.tact_note}</p>
       {summary.flags.length > 0 && (
         <div style={{ ...S.banner, ...S.bannerWarn }}>
           <span style={S.bannerTitle}>Портфельные флаги</span>
@@ -376,8 +526,9 @@ export default function M3ReportPage() {
             {investment_order.map(oid => (
               <li key={oid} style={{ margin: '5px 0' }}>
                 {objectById[oid]?.name ?? '—'}
-                <span style={{ color: C.muted, fontSize: 12.5 }}>
-                  {' '}· V {byId[oid]?.v_index.toFixed(4)}
+                <span style={S.reason}>
+                  {' '}· V {num(byId[oid]?.v_index, 4)}
+                  {byId[oid] && ` · ${byId[oid].verdict.verdict.toLowerCase()}`}
                 </span>
               </li>
             ))}
@@ -389,8 +540,9 @@ export default function M3ReportPage() {
             {execution_order.map(oid => (
               <li key={oid} style={{ margin: '5px 0' }}>
                 {objectById[oid]?.name ?? '—'}
-                <span style={{ color: C.muted, fontSize: 12.5 }}>
-                  {' '}· Z {byId[oid]?.z_index.toFixed(4)}
+                <span style={S.reason}>
+                  {' '}· Z {num(byId[oid]?.z_index, 4)}
+                  {byId[oid] && ` · ${byId[oid].execution_reason}`}
                 </span>
               </li>
             ))}

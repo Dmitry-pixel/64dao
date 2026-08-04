@@ -178,6 +178,57 @@ class M3ArbiterOut(BaseModel):
 
 
 # ── Результаты ────────────────────────────────────────────────────────────────
+class M3VerdictOut(BaseModel):
+    """Вердикт направления: зона GE/McKinsey, уточнённая подвижностью линий."""
+
+    zone_ru: str
+    zone_en: str
+    stance: str
+    mobility: str
+    verdict: str
+    notes: list[str]
+
+
+class M3TransitionMove(BaseModel):
+    """
+    Сдвиг по одной оси матрицы.
+
+    Поля называются from/to, потому что так они приходят из m3_verdict и так
+    читаются в JSON. `from` — ключевое слово Python, поэтому имя поля с
+    подчёркиванием, а наружу отдаётся алиас: FastAPI сериализует ответы
+    by_alias, так что в контракте остаётся «from».
+    """
+
+    model_config = {"populate_by_name": True}
+
+    axis: str
+    from_: CellLevel = Field(alias="from")
+    to: CellLevel
+    phrase: str
+
+
+class M3TransitionOut(BaseModel):
+    kind: Literal["target", "risk"]
+    from_hex: int
+    to_hex: int
+    from_cells: tuple[CellLevel, CellLevel]
+    to_cells: tuple[CellLevel, CellLevel]
+    moves: list[M3TransitionMove]
+    phrase: str
+
+
+class M3TrajectoryOut(BaseModel):
+    """
+    Куда уводит цель и куда сползает риск.
+
+    Обе ветки необязательны: подвижная линия может остаться внутри своей
+    триграммы и ячейку не сдвинуть — тогда печатать нечего.
+    """
+
+    target: M3TransitionOut | None = None
+    risk: M3TransitionOut | None = None
+
+
 class M3ResultOut(BaseModel):
     model_config = {"from_attributes": True}
 
@@ -207,6 +258,9 @@ class M3ResultOut(BaseModel):
     strong_line: int
     tensions: list[str]
     flags: list[str]
+    verdict: M3VerdictOut
+    trajectory: M3TrajectoryOut
+    execution_reason: str
 
 
 class M3PortfolioSummaryOut(BaseModel):
@@ -229,6 +283,56 @@ class M3NarrativeBlock(BaseModel):
     mistake: str | None = None
 
 
+class M3YinRow(BaseModel):
+    """
+    Строка профиля линии по портфелю.
+
+    Четыре числа, а не одно: «слабость у трёх из пяти» ещё не вывод, важно —
+    есть ли опора среди оставшихся и хватает ли подвижности на исправление.
+    delta_line — назревшие минус перегретые ПО ЭТОЙ ЛИНИИ, не путать с
+    дельтой портфеля в шапке и с дельтой направления в индексе V.
+    """
+
+    line: int
+    factor: str
+    yin: int
+    yin_ripe: int
+    yang: int
+    yang_hot: int
+    delta_line: int
+    total: int
+    strong_names: list[str]
+    reading: str
+
+
+class M3ConstraintOut(BaseModel):
+    line: int
+    factor: str
+    yin: int
+    yang: int
+    yang_hot: int
+    delta_line: int
+    total: int
+    kind: Literal["competence", "structural"]
+    kind_title: str
+    body: str
+
+
+class M3MetricReading(BaseModel):
+    name: str
+    value: str
+    reading: str
+
+
+class M3AnalysisOut(BaseModel):
+    """Раздел 03: ограничения уровня компании, а не направления."""
+
+    yin_table: list[M3YinRow]
+    constraints: list[M3ConstraintOut]
+    metrics: list[M3MetricReading]
+    tact_note: str
+
+
 class M3ObjectReport(BaseModel):
     result: M3ResultOut
     narrative: list[M3NarrativeBlock]
@@ -240,6 +344,7 @@ class M3ReportOut(BaseModel):
     objects: list[M3ObjectReport]
     investment_order: list[uuid.UUID]   # ранг V — приоритет вложения
     execution_order: list[uuid.UUID]    # ранг Z — очередь исполнения
+    analysis: M3AnalysisOut
     disclaimers: list[str]
 
 

@@ -151,6 +151,85 @@ export function calculate(id: string) {
 
 // ── Отчёт ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Вердикт, траектория и разбор портфеля приходят с сервера готовыми.
+ *
+ * Правило одно, а отчётов два — веб и PDF. Считать его здесь второй раз
+ * значит завести третью копию: две копии раскладки карты мы уже держим
+ * вручную, и это потолок. Клиент только отображает.
+ */
+export interface M3Verdict {
+  zone_ru: string
+  zone_en: string
+  stance: string
+  mobility: string
+  verdict: string
+  notes: string[]
+}
+
+export interface M3TransitionMove {
+  axis: 'strength' | 'attract'
+  from: 'low' | 'mid' | 'high'
+  to: 'low' | 'mid' | 'high'
+  phrase: string
+}
+
+export interface M3Transition {
+  kind: 'target' | 'risk'
+  from_hex: number
+  to_hex: number
+  from_cells: ['low' | 'mid' | 'high', 'low' | 'mid' | 'high']
+  to_cells: ['low' | 'mid' | 'high', 'low' | 'mid' | 'high']
+  moves: M3TransitionMove[]
+  phrase: string
+}
+
+export interface M3Trajectory {
+  // Обе ветки необязательны: подвижная линия может остаться внутри своей
+  // триграммы и ячейку не сдвинуть — тогда печатать нечего.
+  target: M3Transition | null
+  risk: M3Transition | null
+}
+
+export interface M3YinRow {
+  line: number
+  factor: string
+  yin: number
+  yin_ripe: number
+  yang: number
+  yang_hot: number
+  delta_line: number
+  total: number
+  strong_names: string[]
+  reading: string
+}
+
+export interface M3Constraint {
+  line: number
+  factor: string
+  yin: number
+  yang: number
+  yang_hot: number
+  delta_line: number
+  total: number
+  kind: 'competence' | 'structural'
+  kind_title: string
+  body: string
+}
+
+export interface M3MetricReading {
+  name: string
+  value: string
+  reading: string
+}
+
+export interface M3Analysis {
+  yin_table: M3YinRow[]
+  constraints: M3Constraint[]
+  metrics: M3MetricReading[]
+  tact_note: string
+}
+
 export interface M3Result {
   object_id: string
   name: string
@@ -178,6 +257,9 @@ export interface M3Result {
   strong_line: number
   tensions: string[]
   flags: string[]
+  verdict: M3Verdict
+  trajectory: M3Trajectory
+  execution_reason: string
 }
 
 export interface M3NarrativeBlock {
@@ -204,6 +286,7 @@ export interface M3Report {
   objects: { result: M3Result; narrative: M3NarrativeBlock[] }[]
   investment_order: string[]
   execution_order: string[]
+  analysis: M3Analysis
   disclaimers: string[]
 }
 
