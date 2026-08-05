@@ -381,3 +381,45 @@ def test_arrow_survives_clipping_when_enough_remains():
     assert clipped is not None
     assert clipped["x2"] == PAD_L + GRID
     assert clipped["x2"] - clipped["x1"] >= VECTOR_MIN
+
+
+# ── Ключи долей выручки ───────────────────────────────────────────────────────
+# Дефект живого отчёта: в PDF все круги рисовались одного минимального
+# размера, а в вебе — по доле выручки. Причина не в геометрии, а в типах
+# ключей: сборщик PDF строит доли из ORM (str(uuid)), а object_id в
+# результате расчёта остаётся uuid.UUID. Лукап молча не находил долю.
+
+def _one_object_case(object_id):
+    return [{
+        "object_id": object_id, "position": 1, "name": "Направление",
+        "cell_strength": "low", "cell_attract": "mid", "cell_label": "x",
+        "coord_strength": 2.0, "coord_attract": 2.0,
+        "target_lines": [4], "risk_lines": [5],
+    }]
+
+
+def test_share_lookup_survives_uuid_keys():
+    """Ключ-UUID и ключ-строка дают один и тот же радиус."""
+    import uuid as _uuid
+
+    oid = _uuid.uuid4()
+    by_str = layout(_one_object_case(oid), {str(oid): 45.0})
+    by_uuid = layout(_one_object_case(oid), {oid: 45.0})
+    assert by_str[oid].r == by_uuid[oid].r == radius(45.0)
+
+
+def test_map_svg_identical_for_both_key_types():
+    """Расхождение веба и PDF было видно именно на собранном SVG."""
+    import uuid as _uuid
+
+    oid = _uuid.uuid4()
+    assert (render_map_svg(_one_object_case(oid), {str(oid): 45.0})
+            == render_map_svg(_one_object_case(oid), {oid: 45.0}))
+
+
+def test_missing_share_still_falls_back_to_minimum():
+    """Доля неизвестна — минимальный радиус, а не исключение."""
+    import uuid as _uuid
+
+    oid = _uuid.uuid4()
+    assert layout(_one_object_case(oid), {})[oid].r == radius(None)

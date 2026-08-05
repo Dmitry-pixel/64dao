@@ -142,6 +142,15 @@ def layout(
     следующая пара видит уже сдвинутые координаты. Порт на неизменяемых
     структурах даёт другой результат.
     """
+    # Ключи долей приводим к строке. Веб-отчёт отдаёт их из JSON строками,
+    # сборщик PDF — из ORM, и там object_id остаётся uuid.UUID. Лукап по
+    # разнотипным ключам молча не находил долю, и в PDF ВСЕ круги рисовались
+    # минимальным радиусом 9 вместо 9–31: карта переставала показывать
+    # различие направлений по доле выручки. Вместе с радиусом сдвигалось
+    # начало вектора (gap = r + VECTOR_GAP), поэтому обрезка по рамке давала
+    # другой набор стрелок, и картинки веба и PDF расходились.
+    shares_by_id = {str(k): v for k, v in shares.items()}
+
     pts: dict[str, Placed] = {}
     for r in results:
         # Неизвестная сила трактуется как слабая — крайняя правая колонка.
@@ -150,7 +159,7 @@ def layout(
         pts[r["object_id"]] = Placed(
             x=PAD_L + in_cell(col, r["coord_strength"], reverse=True),
             y=PAD_T + GRID - in_cell(row, r["coord_attract"]),
-            r=radius(shares.get(r["object_id"])),
+            r=radius(shares_by_id.get(str(r["object_id"]))),
             col=col,
             row=row,
         )
