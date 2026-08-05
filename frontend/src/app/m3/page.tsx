@@ -1,7 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+// force-dynamic + Suspense: useSearchParams иначе не даёт странице
+// пререндериться статически (Next 14 App Router).
+export const dynamic = 'force-dynamic'
+
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import PortfolioForm from '@/components/m3/PortfolioForm'
 import {
   createPortfolio, listIndustries, listPortfolios, putObjects,
@@ -67,8 +71,12 @@ const STATUS_LABEL: Record<string, string> = {
 
 type Phase = 'loading' | 'list' | 'setup' | 'objects'
 
-export default function M3Page() {
+function M3PageInner() {
   const router = useRouter()
+  // Название компании приходит из /assessment: оно вводится ПЕРЕД
+  // диагностикой, как в Методах 1 и 2. Второй формы ввода здесь нет —
+  // поле ниже предзаполнено и остаётся редактируемым.
+  const companyParam = useSearchParams().get('company') || ''
 
   const [phase, setPhase] = useState<Phase>('loading')
   const [industries, setIndustries] = useState<M3Industry[]>([])
@@ -76,6 +84,7 @@ export default function M3Page() {
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const [title, setTitle] = useState('')
+  const [companyName, setCompanyName] = useState(companyParam)
   const [industryId, setIndustryId] = useState<number | null>(null)
   const [portfolio, setPortfolio] = useState<M3Portfolio | null>(null)
   const [busy, setBusy] = useState(false)
@@ -86,7 +95,10 @@ export default function M3Page() {
       .then(([inds, ports]) => {
         setIndustries(inds)
         setPortfolios(ports)
-        setPhase(ports.length ? 'list' : 'setup')
+        // Пришли из «Новой диагностики» — сразу форма нового портфеля:
+        // пользователь уже выбрал метод и ввёл название компании, список
+        // прошлых портфелей на этом шаге его не спрашивали.
+        setPhase(companyParam || !ports.length ? 'setup' : 'list')
       })
       .catch((e: any) => setLoadError(
         e?.status === 404
@@ -101,6 +113,7 @@ export default function M3Page() {
     try {
       const p = await createPortfolio({
         title: title.trim() || null,
+        company_name: companyName.trim() || null,
         industry_id: industryId,
       })
       setPortfolio(p)
@@ -150,7 +163,7 @@ export default function M3Page() {
 
       {portfolios.map(p => (
         <div key={p.id} style={P.listRow}>
-          <span>{p.title || 'Без названия'} · {p.objects.length} направлений</span>
+          <span>{p.company_name || p.title || 'Без названия'} · {p.objects.length} направлений</span>
           <span style={P.status}>{STATUS_LABEL[p.status] ?? p.status}</span>
           <button
             style={P.btnGhost}
@@ -181,6 +194,21 @@ export default function M3Page() {
         можно переопределить. Веса клиент не настраивает и не видит: они
         экспертные, и пересматриваются по мере накопления отчётов.
       </p>
+
+      <div style={{ ...P.field, marginBottom: 16 }}>
+        <label style={P.fieldLabel} htmlFor="company">Название компании</label>
+        <input
+          id="company"
+          style={P.input}
+          value={companyName}
+          maxLength={255}
+          placeholder="Например: ООО Ромашка"
+          onChange={e => setCompanyName(e.target.value)}
+        />
+        <span style={{ ...P.fieldLabel, fontSize: 11, opacity: 0.75 }}>
+          Идёт в заголовок отчёта.
+        </span>
+      </div>
 
       <div style={{ ...P.field, marginBottom: 16 }}>
         <label style={P.fieldLabel} htmlFor="title">Название портфеля</label>
@@ -242,5 +270,14 @@ export default function M3Page() {
         onCancel={() => setPhase('setup')}
       />
     </div></div>
+  )
+}
+
+
+export default function M3Page() {
+  return (
+    <Suspense fallback={null}>
+      <M3PageInner />
+    </Suspense>
   )
 }

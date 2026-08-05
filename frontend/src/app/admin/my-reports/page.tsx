@@ -4,7 +4,9 @@ import { FollowupBadge } from '@/components/FollowupBadge'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getMe, listAssessments, deleteAssessment, listContours, isMethod2, type ContourInfo } from '@/lib/api'
+import { getMe, listAssessments, deleteAssessment, listContours, isMethod2, getSiteMode, type ContourInfo } from '@/lib/api'
+import { listPortfolios, type M3Portfolio } from '@/lib/m3'
+import M3ReportCard, { m3RowDate } from '@/components/M3ReportCard'
 import { AdminNav, AdminSide, hexFor, hexNameFor } from '@/components/AdminNav'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
@@ -18,9 +20,15 @@ export default function AdminMyReportsPage() {
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [contours, setContours] = useState<ContourInfo[]>([])
   const [query, setQuery] = useState('')
+  const [m3, setM3] = useState<M3Portfolio[]>([])
 
   useEffect(() => {
     listContours().then(r => setContours(r.contours)).catch(() => setContours([]))
+    // Раздел Метода 3 при выключенном флаге отдаёт 404 на всё — сначала флаг.
+    getSiteMode()
+      .then(d => (d?.m3_enabled ? listPortfolios() : []))
+      .then(setM3)
+      .catch(() => setM3([]))
   }, [])
 
   useEffect(() => {
@@ -87,6 +95,20 @@ export default function AdminMyReportsPage() {
   const visible = assessments.filter((a: any) =>
     !a.is_followup || !a.parent_assessment_id || !ids.has(a.parent_assessment_id))
 
+  // Единый список Методов 1–3, порядок по дате. Поиск по ассессментам делает
+  // сервер, портфели фильтруются здесь: серверного поиска у Метода 3 нет.
+  const q = query.trim().toLowerCase()
+  const m3Visible = q
+    ? m3.filter(p => `${p.company_name ?? ''} ${p.title ?? ''}`.toLowerCase().includes(q))
+    : m3
+  type Row =
+    | { kind: 'a'; at: string; a: any }
+    | { kind: 'm3'; at: string; p: M3Portfolio }
+  const rows: Row[] = [
+    ...visible.map((a: any) => ({ kind: 'a' as const, at: a.created_at, a })),
+    ...m3Visible.map(p => ({ kind: 'm3' as const, at: m3RowDate(p), p })),
+  ].sort((x, y) => new Date(y.at).getTime() - new Date(x.at).getTime())
+
   return (
     <>
       <AdminNav current="my-reports" />
@@ -123,12 +145,12 @@ export default function AdminMyReportsPage() {
                 onClick={() => setQuery("")}>Сбросить</button>
             )}
           </div>
-          {assessments.length === 0 && query.trim() !== "" ? (
+          {rows.length === 0 && query.trim() !== "" ? (
             <div className="dash-empty">
               <h3>Ничего не найдено</h3>
               <p>По запросу «{query}» диагностик нет. Проверьте название компании.</p>
             </div>
-          ) : assessments.length === 0 ? (
+          ) : rows.length === 0 ? (
             <div className="dash-empty">
               <span style={{ fontSize: 52, fontFamily: 'Georgia,serif', color: 'var(--blue)', display: 'block', marginBottom: 18 }}>䷀</span>
               <h3>Пока нет диагностик</h3>
@@ -139,7 +161,12 @@ export default function AdminMyReportsPage() {
             </div>
           ) : (
             <div className="dash-list">
-              {visible.map((a, i) => (
+              {rows.map((row, i) => {
+                if (row.kind === 'm3') {
+                  return <M3ReportCard key={`m3-${row.p.id}`} p={row.p} n={i + 1} />
+                }
+                const a: any = row.a
+                return (
                 <div
                   key={a.id}
                   className="dash-card"
@@ -241,7 +268,8 @@ export default function AdminMyReportsPage() {
                     </button>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

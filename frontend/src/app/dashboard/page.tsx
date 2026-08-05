@@ -3,7 +3,10 @@ import { NestedFollowups } from '@/components/NestedFollowups'
 import { FollowupBadge } from '@/components/FollowupBadge'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getMe, listAssessments, deleteAssessment, logout, listContours, isMethod2, type AuthUser, type Assessment, type ContourInfo } from '@/lib/api'
+import { getMe, listAssessments, deleteAssessment, logout, listContours, isMethod2, getSiteMode, type AuthUser, type Assessment, type ContourInfo } from '@/lib/api'
+import { listPortfolios, type M3Portfolio } from '@/lib/m3'
+import M3ReportCard, { m3RowDate } from '@/components/M3ReportCard'
+import BuyDiagnostics from '@/components/BuyDiagnostics'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
 
 const finChar = (c?: string | null) =>
@@ -84,6 +87,8 @@ export default function DashboardPage() {
   const [grantExpires, setGrantExpires] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [contours, setContours] = useState<ContourInfo[]>([])
+  const [m3, setM3] = useState<M3Portfolio[]>([])
+  const [m3Enabled, setM3Enabled] = useState(false)
   const [query, setQuery] = useState("")
 
   useEffect(() => {
@@ -106,6 +111,16 @@ export default function DashboardPage() {
       .then(([u, a]) => { setUser(u); setAssessments(a) })
       .catch(() => router.push('/login'))
       .finally(() => setLoading(false))
+    // Портфели Метода 3 запрашиваются только при включённом разделе:
+    // выключенный отдаёт 404 на всё, и кабинет ловил бы его на каждом заходе.
+    getSiteMode()
+      .then(d => {
+        const on = Boolean(d?.m3_enabled)
+        setM3Enabled(on)
+        return on ? listPortfolios() : []
+      })
+      .then(setM3)
+      .catch(() => setM3([]))
     fetch('/api/payments/credits', { credentials: 'include' })
       .then(r => r.ok ? r.json() : { credits: 0 })
       .then(d => {
@@ -159,6 +174,24 @@ export default function DashboardPage() {
   const visible = assessments.filter((a: any) =>
     !a.is_followup || !a.parent_assessment_id || !ids.has(a.parent_assessment_id))
 
+  // Единый список: Методы 1–3 в одном порядке по дате. Поиск по названию
+  // компании для ассессментов делает сервер, портфели фильтруем здесь —
+  // отдельного серверного поиска у Метода 3 нет.
+  const q = query.trim().toLowerCase()
+  const m3Visible = q
+    ? m3.filter(p => `${p.company_name ?? ''} ${p.title ?? ''}`.toLowerCase().includes(q))
+    : m3
+  // Тип строки Методов 1 и 2 — Assessment, а не any: внутри карточки есть
+  // обращения вида passed_contours.find(...), и на any они теряют вывод
+  // типа параметра (TS7006).
+  type Row =
+    | { kind: 'a'; at: string; a: Assessment }
+    | { kind: 'm3'; at: string; p: M3Portfolio }
+  const rows: Row[] = [
+    ...visible.map((a: Assessment) => ({ kind: 'a' as const, at: a.created_at, a })),
+    ...m3Visible.map(p => ({ kind: 'm3' as const, at: m3RowDate(p), p })),
+  ].sort((x, y) => new Date(y.at).getTime() - new Date(x.at).getTime())
+
   return (
     <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
       {/* Навигация */}
@@ -207,7 +240,7 @@ export default function DashboardPage() {
         <div>
           <div style={S.listHeader}>
             <span style={S.labelRed}>Мои отчёты</span>
-            <span style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.4)' }}>{assessments.length} записей</span>
+            <span style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.4)' }}>{rows.length} записей</span>
           </div>
 
           <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
@@ -226,46 +259,31 @@ export default function DashboardPage() {
                 onClick={() => setQuery("")}>Сбросить</button>
             )}
           </div>
-          {assessments.length === 0 && query.trim() !== "" ? (
+          {rows.length === 0 && query.trim() !== "" ? (
             <div className="dash-empty">
               <h3>Ничего не найдено</h3>
               <p>По запросу «{query}» диагностик нет. Проверьте название компании.</p>
             </div>
-          ) : assessments.length === 0 ? (
+          ) : rows.length === 0 ? (
             <div style={S.emptyCard}>
               <div style={S.emptyHex}>䷿</div>
               <h3 style={S.emptyH3}>Пока нет диагностик</h3>
-              <p style={S.emptyText}>Метод 1 — 6 вопросов о состоянии компании. Метод 2 — оценка 9 блоков бизнес-модели. Результат: PDF-отчёт со стратегией.</p>
-              <div className="dash-method-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 8, textAlign: 'left' as const }}>
-                <div style={S.methodCard} onClick={() => router.push('/assessment?method=1')}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
-                    <span style={S.labelRed}>Метод 01 · Стратегия</span>
-                    <span style={{ fontFamily: 'serif', fontSize: 28, color: '#1e3a8a', opacity: 0.3 }}>䷿</span>
-                  </div>
-                  <h3 style={S.methodH3}>6 вопросов о состоянии компании</h3>
-                  <p style={S.methodDesc}>На каждом шаге выбираете A или B. На выходе — комбинация из 64, стадия жизненного цикла и ключевой сценарий.</p>
-                  <div style={S.methodFoot}>
-                    <span style={S.methodTime}>≈ 5 минут</span>
-                    <span style={S.methodGo}>Начать →</span>
-                  </div>
-                </div>
-                <div style={S.methodCard} onClick={() => router.push('/assessment?method=2')}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
-                    <span style={S.labelRed}>Метод 02 · Бизнес-модель</span>
-                    <span style={{ fontFamily: 'serif', fontSize: 28, color: '#1e3a8a', opacity: 0.3 }}>䷷</span>
-                  </div>
-                  <h3 style={S.methodH3}>Оценка 9 блоков бизнес-модели</h3>
-                  <p style={S.methodDesc}>Оцените каждый блок по шкале 1–5 и добавьте комментарий. Получите детальный анализ и рекомендации.</p>
-                  <div style={S.methodFoot}>
-                    <span style={S.methodTime}>≈ 15 минут</span>
-                    <span style={S.methodGo}>Начать →</span>
-                  </div>
-                </div>
-              </div>
+              <p style={S.emptyText}>Метод 1 — 6 вопросов о состоянии компании. Метод 2 — оценка 9 блоков бизнес-модели. Метод 3 — распределение ресурса между направлениями. Результат: PDF-отчёт.</p>
+              {/* Список методов живёт на одном экране — /assessment.
+                  Копия карточек здесь расходилась бы с ним при каждом
+                  добавлении метода (это уже случилось с Методом 3). */}
+              <button style={{ ...S.btnPrimary, marginTop: 6 }} onClick={() => router.push('/assessment')}>
+                Выбрать метод диагностики →
+              </button>
             </div>
           ) : (
             <div style={S.list}>
-              {visible.map((a, i) => (
+              {rows.map((row, i) => {
+                if (row.kind === 'm3') {
+                  return <M3ReportCard key={`m3-${row.p.id}`} p={row.p} n={i + 1} />
+                }
+                const a = row.a
+                return (
                 <div key={a.id} className="dash-card-mobile" style={{ ...S.card, cursor: (a.status === 'completed' || a.status === 'paid') ? 'pointer' : 'default' }}
                   onClick={() => (a.status === 'completed' || a.status === 'paid') && router.push(`/report/${a.id}`)}>
                   <div style={S.cardNum}>{String(i + 1).padStart(2, '0')}</div>
@@ -349,7 +367,8 @@ export default function DashboardPage() {
                     >Удалить</button>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -395,6 +414,8 @@ export default function DashboardPage() {
               <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.4)', lineHeight: 1.5 }}>Оплатите новую диагностику, чтобы получить доступ.</div>
             </div>
           )}
+
+          <BuyDiagnostics m3Enabled={m3Enabled} />
 
           <SupportForm />
           <div style={S.sideCard}>

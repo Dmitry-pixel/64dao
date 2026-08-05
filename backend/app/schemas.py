@@ -1,7 +1,7 @@
 import uuid
 import re
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
@@ -361,6 +361,9 @@ class LifecycleStageOut(BaseModel):
 class AccessGrantCreate(BaseModel):
     """Выдача доступа: квота и срок обязательны (решение D1/D2)."""
 
+    # Продукт гранта. Дефолт m12 — совместимость с формой админки до её
+    # обновления; гранта «на всё» нет, для обоих продуктов выдаются два.
+    product:    Literal["m12", "m3"] = "m12"
     quota:      int = Field(ge=1, le=50)
     expires_at: datetime
     reason:     str | None = Field(default=None, max_length=500)
@@ -376,6 +379,7 @@ class AccessGrantOut(BaseModel):
     user_id:       uuid.UUID
     user_email:    str | None = None
     user_name:     str | None = None
+    product:       str = "m12"
     quota:         int
     used:          int = 0
     remaining:     int = 0

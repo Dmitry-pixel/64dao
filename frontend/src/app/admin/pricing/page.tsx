@@ -17,19 +17,65 @@ interface PricingConfig {
   payment_note: string
 }
 
-const DEFAULT: PricingConfig = {
-  title: 'Полный отчёт 64 ДАО',
-  price: 14900,
-  currency: '₽',
-  description: 'разовая оплата · НДС не облагается',
-  features: [
-    { label: 'Диагностика', value: 'Метод 1 + Метод 2' },
-    { label: 'PDF-отчёт', value: 'Включён' },
-    { label: 'Онлайн-просмотр', value: 'Без ограничений' },
-    { label: 'Срок готовности', value: 'До 30 минут' },
-  ],
-  payment_enabled: false,
-  payment_note: 'Платёжный шлюз (ЮKassa / Тинькофф) подключим после тестирования сайта. Пока что отчёты доступны в демо-режиме без оплаты.',
+/** Продукты: m12 — Методы 1 и 2 по общей цене, m3 — Метод 3 по своей. */
+type Product = 'm12' | 'm3'
+type PricingAll = Record<Product, PricingConfig>
+
+const PRODUCT_TABS: { code: Product; label: string; hint: string }[] = [
+  { code: 'm12', label: 'Метод 1 + Метод 2', hint: 'Две диагностики по одной цене — так они и продаются.' },
+  { code: 'm3', label: 'Метод 3 · Матрица силы', hint: 'Отдельная цена: один портфель за заказ.' },
+]
+
+const NOTE = 'Оплата принимается картой и через СБП (Точка Банк). Сейчас идёт финальное тестирование платёжного шлюза — скоро включим приём платежей.'
+
+const DEFAULT: PricingAll = {
+  m12: {
+    title: 'Полный отчёт 64 ДАО',
+    price: 14900,
+    currency: '₽',
+    description: 'разовая оплата · НДС не облагается',
+    features: [
+      { label: 'Диагностика', value: 'Метод 1 + Метод 2' },
+      { label: 'PDF-отчёт', value: 'Включён' },
+      { label: 'Онлайн-просмотр', value: 'Без ограничений' },
+      { label: 'Срок готовности', value: 'До 30 минут' },
+    ],
+    payment_enabled: false,
+    payment_note: NOTE,
+  },
+  m3: {
+    title: 'Матрица силы · Метод 3',
+    price: 20000,
+    currency: '₽',
+    description: 'разовая оплата · НДС не облагается',
+    features: [
+      { label: 'Диагностика', value: 'Метод 3 · матрица силы' },
+      { label: 'Направлений в портфеле', value: 'От 3 до 8' },
+      { label: 'PDF-отчёт', value: 'Включён' },
+      { label: 'Онлайн-просмотр', value: 'Без ограничений' },
+    ],
+    payment_enabled: false,
+    payment_note: NOTE,
+  },
+}
+
+/**
+ * Ответ сервера -> два блока.
+ *
+ * Старый формат (тариф ключами верхнего уровня) читается как m12: на проде
+ * в pricing.json лежит именно он, пока админку не сохранили заново.
+ */
+function normalise(data: any): PricingAll {
+  if (data && typeof data === 'object' && data.m12) {
+    return {
+      m12: { ...DEFAULT.m12, ...data.m12 },
+      m3: { ...DEFAULT.m3, ...(data.m3 ?? {}) },
+    }
+  }
+  if (data && typeof data === 'object' && typeof data.price === 'number') {
+    return { m12: { ...DEFAULT.m12, ...data }, m3: { ...DEFAULT.m3 } }
+  }
+  return DEFAULT
 }
 
 export default function AdminPricingPage() {
@@ -37,7 +83,10 @@ export default function AdminPricingPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [cfg, setCfg] = useState<PricingConfig>(DEFAULT)
+  const [all, setAll] = useState<PricingAll>(DEFAULT)
+  const [tab, setTab] = useState<Product>('m12')
+
+  const cfg = all[tab]
 
   useEffect(() => {
     const init = async () => {
@@ -45,7 +94,7 @@ export default function AdminPricingPage() {
         const me = await getMe()
         if (me.role !== 'admin') { router.push('/dashboard'); return }
         const res = await fetch(`${API}/api/admin/pricing`, { credentials: 'include' })
-        if (res.ok) setCfg(await res.json())
+        if (res.ok) setAll(normalise(await res.json()))
       } catch {
         router.push('/login')
       } finally {
@@ -56,28 +105,39 @@ export default function AdminPricingPage() {
   }, [])
 
   const set = (key: keyof PricingConfig, value: any) =>
-    setCfg(prev => ({ ...prev, [key]: value }))
+    setAll(prev => ({ ...prev, [tab]: { ...prev[tab], [key]: value } }))
 
   const setFeature = (i: number, field: keyof Feature, value: string) =>
-    setCfg(prev => ({
+    setAll(prev => ({
       ...prev,
-      features: prev.features.map((f, idx) => idx === i ? { ...f, [field]: value } : f),
+      [tab]: {
+        ...prev[tab],
+        features: prev[tab].features.map((f, idx) => idx === i ? { ...f, [field]: value } : f),
+      },
     }))
 
   const addFeature = () =>
-    setCfg(prev => ({ ...prev, features: [...prev.features, { label: '', value: '' }] }))
+    setAll(prev => ({
+      ...prev,
+      [tab]: { ...prev[tab], features: [...prev[tab].features, { label: '', value: '' }] },
+    }))
 
   const removeFeature = (i: number) =>
-    setCfg(prev => ({ ...prev, features: prev.features.filter((_, idx) => idx !== i) }))
+    setAll(prev => ({
+      ...prev,
+      [tab]: { ...prev[tab], features: prev[tab].features.filter((_, idx) => idx !== i) },
+    }))
 
   const save = async () => {
     setSaving(true)
     try {
+      // Отправляются оба блока: PUT перезаписывает файл целиком, и отправка
+      // одной вкладки затёрла бы тариф другой.
       await fetch(`${API}/api/admin/pricing`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(cfg),
+        body: JSON.stringify(all),
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -99,6 +159,8 @@ export default function AdminPricingPage() {
     label: { display: 'block', fontFamily: 'sans-serif', fontSize: 11, color: 'var(--text-mute)', marginBottom: 5 },
     input: { width: '100%', padding: '9px 12px', border: '1px solid rgba(26,37,64,0.15)', borderRadius: 6, fontSize: 13, fontFamily: 'sans-serif', color: 'var(--text)', background: 'rgba(255,255,255,0.8)', outline: 'none', boxSizing: 'border-box' as const },
     btnGhost: { background: 'none', border: '1px solid rgba(26,37,64,0.2)', borderRadius: 6, padding: '8px 16px', fontFamily: 'sans-serif', cursor: 'pointer', color: 'var(--text)' },
+    tab: { background: 'none', border: '1px solid rgba(26,37,64,0.15)', borderRadius: 6, padding: '9px 18px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', color: 'var(--text)' },
+    tabOn: { background: 'var(--text)', color: '#fff', borderColor: 'var(--text)' },
     preview: { background: '#fff', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 12, padding: '28px 24px', display: 'flex', flexDirection: 'column' as const },
     previewEyebrow: { fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 3, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.4)', textAlign: 'center' as const, marginBottom: 10 },
     previewTitle: { fontFamily: 'Georgia,serif', fontSize: 22, fontWeight: 400, color: '#1a2540', textAlign: 'center' as const, margin: '0 0 14px' },
@@ -118,7 +180,7 @@ export default function AdminPricingPage() {
         <AdminSide current="pricing" />
         <div className="admin-main admin-main-pad" style={{ padding: '32px 40px' }}>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 16 }}>
             <div>
               <span className="label-red">Система</span>
               <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 28, fontWeight: 400, color: 'var(--text)', margin: '6px 0 0' }}>Тариф &amp; Цена</h1>
@@ -127,6 +189,18 @@ export default function AdminPricingPage() {
               {saving ? 'Сохраняем...' : saved ? 'Сохранено' : 'Сохранить'}
             </button>
           </div>
+
+          <div style={{ display: 'flex', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+            {PRODUCT_TABS.map(t => (
+              <button key={t.code} onClick={() => setTab(t.code)}
+                style={{ ...S.tab, ...(tab === t.code ? S.tabOn : {}) }}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <p style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)', margin: '0 0 22px' }}>
+            {PRODUCT_TABS.find(t => t.code === tab)?.hint} Сохранение записывает оба тарифа сразу.
+          </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 720 }}>
 
@@ -168,6 +242,10 @@ export default function AdminPricingPage() {
               </label>
               <label style={S.label}>Текст заглушки</label>
               <textarea style={{ ...S.input, height: 80, resize: 'vertical' as const }} value={cfg.payment_note} onChange={e => set('payment_note', e.target.value)} />
+              <p style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'var(--text-mute)', margin: '10px 0 0', lineHeight: 1.6 }}>
+                Флаг действует только на этот продукт. Пока он выключен, карточка метода
+                остаётся доступной, а на шаге оплаты показывается текст заглушки.
+              </p>
             </div>
 
             <div>

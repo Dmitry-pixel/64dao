@@ -249,7 +249,20 @@ class Order(Base):
 
     id:            Mapped[uuid.UUID]   = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
     user_id:       Mapped[uuid.UUID]   = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    assessment_id: Mapped[uuid.UUID]   = mapped_column(UUID(as_uuid=True), ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False)
+    # Продукт заказа: 'm12' — Метод 1 + Метод 2, 'm3' — Метод 3.
+    # Дефолта нет намеренно: пропущенный аргумент должен падать, а не молча
+    # создавать заказ не того продукта (цены разные, балансы раздельные).
+    product:       Mapped[str]         = mapped_column(String(10), nullable=False)
+    # Привязка необязательна: заказ — покупка кредита на продукт, связь
+    # с конкретной диагностикой проставляется в момент списания.
+    #
+    # Обратной ссылки на портфель здесь нет намеренно. Она образовала бы цикл
+    # внешних ключей orders <-> m3_portfolios (у портфеля уже есть order_id),
+    # на котором SQLAlchemy не может отсортировать таблицы: create_all и
+    # drop_all падают с CircularDependencyError. И она не нужна: расход
+    # Метода 3 считается по m3_portfolios.order_id — там же, где у Методов 1
+    # и 2 он считается по assessments.order_id.
+    assessment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("assessments.id", ondelete="CASCADE"), nullable=True)
     amount:        Mapped[float]       = mapped_column(Numeric(10, 2), nullable=False, default=5500.00)
     currency:      Mapped[str]         = mapped_column(String(3), nullable=False, default="RUB")
     status:        Mapped[str]         = mapped_column(String(20), nullable=False, default="pending")
@@ -263,10 +276,16 @@ class Order(Base):
 
     __table_args__ = (
         CheckConstraint("status IN ('pending','paid','failed','refunded')", name="chk_order_status"),
+        CheckConstraint("product IN ('m12','m3')", name="chk_order_product"),
+        # Заказ Метода 3 не может ссылаться на ассессмент: это разные
+        # продукты с разными ценами, и перепутанная привязка развела бы
+        # два баланса.
+        CheckConstraint("product <> 'm3' OR assessment_id IS NULL",
+                        name="chk_order_target"),
     )
 
     user:       Mapped["User"]       = relationship(back_populates="orders")
-    assessment: Mapped["Assessment"] = relationship(back_populates="orders", foreign_keys=[assessment_id])
+    assessment: Mapped["Assessment | None"] = relationship(back_populates="orders", foreign_keys=[assessment_id])
 
 
 # ── Sample-report leads (заявки на пример отчёта) ─────────────────────────────
@@ -345,6 +364,11 @@ class AccessGrant(Base):
 
     id:            Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
     user_id:       Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    # Продукт гранта. Грант «на всё» не вводится: он смешивает два кошелька
+    # и возвращает арбитраж, ради которого разделены платные кредиты.
+    # Партнёру с обоими продуктами выдаются два гранта — их видно и отзывать
+    # можно по отдельности.
+    product:       Mapped[str]       = mapped_column(String(10), nullable=False, default="m12")
     quota:         Mapped[int]       = mapped_column(Integer, nullable=False)
     starts_at:     Mapped[datetime]  = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     expires_at:    Mapped[datetime]  = mapped_column(DateTime(timezone=True), nullable=False)
@@ -358,6 +382,7 @@ class AccessGrant(Base):
     __table_args__ = (
         CheckConstraint("quota > 0", name="chk_grant_quota_positive"),
         CheckConstraint("expires_at > starts_at", name="chk_grant_period"),
+        CheckConstraint("product IN ('m12','m3')", name="chk_grant_product"),
     )
 
     # Два FK на users (user_id и created_by): без явного foreign_keys

@@ -156,11 +156,13 @@ async def create_assessment(
     # по followup_allowed/followup_used.
     if (enforce_credits_enabled() and body.status == "completed"
             and user.role != "admin" and primary is None):
-        grant = await pick_grant(db, user.id)
+        # Продукт указан явно: у Метода 3 свой кошелёк, и умолчание здесь
+        # читалось бы как «любая диагностика».
+        grant = await pick_grant(db, user.id, "m12")
         if grant is None:
             # Списываем с конкретного заказа: связь нужна и для учёта
             # остатка, и для точного отзыва доступа при возврате.
-            order = await pick_order(db, user.id)
+            order = await pick_order(db, user.id, "m12")
             if order is None:
                 raise HTTPException(
                     status_code=403,
@@ -374,7 +376,7 @@ async def generate_report_on_demand(
     if (enforce_credits_enabled() and assessment.status == "completed"
             and user.role != "admin" and assessment.grant_id is None
             and not assessment.is_followup):
-        credits = await calculate_credits(user.id, db)
+        credits = await calculate_credits(user.id, db, "m12")
         if credits <= 0:
             raise HTTPException(
                 status_code=403,

@@ -419,20 +419,48 @@ def isolated_pricing_file(monkeypatch, tmp_path):
 
 @pytest.mark.asyncio
 async def test_get_pricing_returns_defaults_when_file_missing(admin_client, isolated_pricing_file):
+    """Два тарифных блока: m12 — Методы 1 и 2, m3 — Метод 3 по своей цене."""
     resp = await admin_client.get("/api/admin/pricing")
     assert resp.status_code == 200
-    assert resp.json()["price"] == 14900
+    body = resp.json()
+    assert set(body) == {"m12", "m3"}
+    assert body["m12"]["price"] == 14900
+    assert body["m3"]["price"] == 20000
 
 
 @pytest.mark.asyncio
 async def test_update_pricing_writes_to_isolated_file(admin_client, isolated_pricing_file):
-    new_pricing = {"title": "Тест", "price": 9999, "currency": "₽"}
+    new_pricing = {
+        "m12": {"title": "Тест", "price": 9999, "currency": "₽"},
+        "m3": {"title": "Тест 3", "price": 21000, "currency": "₽"},
+    }
     resp = await admin_client.put("/api/admin/pricing", json=new_pricing)
     assert resp.status_code == 200
 
     assert isolated_pricing_file.exists()
     saved = json.loads(isolated_pricing_file.read_text(encoding="utf-8"))
-    assert saved["price"] == 9999
+    assert saved["m12"]["price"] == 9999
+    assert saved["m3"]["price"] == 21000
+    # Поля, которых не было в запросе, добираются из дефолтов кода —
+    # иначе один неполный PUT из админки обнулил бы условия оплаты.
+    assert saved["m12"]["payment_enabled"] is False
+    assert saved["m12"]["features"]
+
+
+@pytest.mark.asyncio
+async def test_update_pricing_accepts_legacy_flat_body(admin_client, isolated_pricing_file):
+    """Старый плоский формат читается как m12 и не затирает тариф Метода 3.
+
+    Админка обновляется отдельным деплоем: на время рассинхрона фронт может
+    прислать прежнее тело запроса.
+    """
+    resp = await admin_client.put(
+        "/api/admin/pricing", json={"title": "Старый формат", "price": 12345, "currency": "₽"})
+    assert resp.status_code == 200
+
+    saved = json.loads(isolated_pricing_file.read_text(encoding="utf-8"))
+    assert saved["m12"]["price"] == 12345
+    assert saved["m3"]["price"] == 20000
 
 
 @pytest.mark.asyncio

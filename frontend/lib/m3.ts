@@ -51,6 +51,8 @@ export interface M3Object extends M3ObjectIn {
 export interface M3Portfolio {
   id: string
   title: string | null
+  /** Название компании: вводится перед диагностикой, идёт в заголовок отчёта. */
+  company_name: string | null
   industry_id: number | null
   status: 'draft' | 'filled' | 'calculated'
   owner_ranks: number[] | null
@@ -59,7 +61,11 @@ export interface M3Portfolio {
   objects: M3Object[]
 }
 
-export function createPortfolio(data: { title?: string | null; industry_id?: number | null }) {
+export function createPortfolio(data: {
+  title?: string | null
+  company_name?: string | null
+  industry_id?: number | null
+}) {
   return request<M3Portfolio>('/api/m3/portfolios', {
     method: 'POST',
     body: JSON.stringify(data),

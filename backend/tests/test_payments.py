@@ -37,8 +37,9 @@ def mock_tochka(monkeypatch):
 
 @pytest.fixture
 def payment_enabled(monkeypatch):
-    monkeypatch.setattr(payments_router, "is_payment_enabled", lambda: True)
-    monkeypatch.setattr(payments_router, "current_price", lambda: 14900.0)
+    # Хелперы принимают продукт: у Метода 3 своя цена и свой флаг оплаты.
+    monkeypatch.setattr(payments_router, "is_payment_enabled", lambda product="m12": True)
+    monkeypatch.setattr(payments_router, "current_price", lambda product="m12": 14900.0)
 
 
 async def _make_assessment(db, user, status="completed", combination="AAABAA"):
@@ -49,7 +50,7 @@ async def _make_assessment(db, user, status="completed", combination="AAABAA"):
 
 
 async def _make_order(db, user, assessment, status="pending", operation_id="op-test-123"):
-    o = Order(user_id=user.id, assessment_id=assessment.id, amount=14900.00,
+    o = Order(user_id=user.id, product="m12", assessment_id=assessment.id, amount=14900.00,
               currency="RUB", status=status, tochka_operation_id=operation_id)
     db.add(o)
     await db.flush()
@@ -58,7 +59,7 @@ async def _make_order(db, user, assessment, status="pending", operation_id="op-t
 
 @pytest.mark.asyncio
 async def test_create_payment_disabled_returns_503(auth_client, monkeypatch):
-    monkeypatch.setattr(payments_router, "is_payment_enabled", lambda: False)
+    monkeypatch.setattr(payments_router, "is_payment_enabled", lambda product="m12": False)
     resp = await auth_client.post("/api/payments/create", params={"assessment_id": str(uuid.uuid4())})
     assert resp.status_code == 503
 

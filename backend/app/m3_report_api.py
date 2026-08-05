@@ -30,6 +30,7 @@ from app.m3_models import M3ChecklistStep, M3Portfolio, M3TradeoffDecision, M3We
 from app.m3_pdf import build_portfolio_report_html
 from app.models import User
 from app.pdf import generate_pdf
+from app.m3_access import ensure_result_access
 
 
 def company_name_for(portfolio: M3Portfolio, user: User) -> str:
@@ -37,12 +38,14 @@ def company_name_for(portfolio: M3Portfolio, user: User) -> str:
     Название компании для заголовка отчёта.
 
     По решению владельца оно вводится перед диагностикой, как в Методах 1 и 2,
-    и должно жить на портфеле. Поля `company_name` в m3_portfolios пока нет —
-    оно появится миграцией; до тех пор берём название портфеля, а затем профиль.
-    Цепочка временная и снимается вместе с миграцией.
+    и живёт на портфеле (колонка появилась миграцией 024).
+
+    Запасные звенья оставлены для портфелей, созданных до миграции: у них
+    названия компании никто не спрашивал, и «Компания» вместо осмысленного
+    заголовка была бы регрессом для уже выданных отчётов.
     """
     return (
-        getattr(portfolio, "company_name", None)
+        portfolio.company_name
         or portfolio.title
         or getattr(user, "company_name", None)
         or "Компания"
@@ -107,6 +110,7 @@ def register_download(
         from datetime import datetime, timezone
 
         portfolio = await owned(portfolio_id, user, db)
+        ensure_result_access(portfolio, user)
         try:
             context = await collect_report_context(db, portfolio, user)
         except svc.M3ServiceError as e:

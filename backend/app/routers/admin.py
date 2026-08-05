@@ -503,8 +503,14 @@ async def get_pricing(_: User = Depends(require_admin)):
 
 @router.put("/pricing")
 async def update_pricing(body: dict, _: User = Depends(require_admin)):
+    """Принимает {"m12": {...}, "m3": {...}}.
+
+    Старый плоский формат тоже принимается и читается как m12 — админка
+    обновляется отдельным деплоем, и на время рассинхрона фронт не должен
+    затирать тариф Метода 3. Нормализация — в write_pricing.
+    """
     write_pricing(body)
-    return {"ok": True}
+    return read_pricing()
 
 
 # ── Точка Банк: JWT-токен и Client ID (редактируются без пересборки) ─────────
@@ -812,7 +818,8 @@ async def admin_reset_contour(
 
 
 # ── Тестовый доступ: гранты на бесплатные диагностики ──────────────────────────
-# Квота + срок; расход считается по assessments.grant_id (app.access_grants).
+# Квота + срок + продукт; расход считается по assessments.grant_id (Методы 1
+# и 2) либо m3_portfolios.grant_id (Метод 3) — см. app.access_grants.
 # Сбой SMTP не откатывает выдачу: доступ уже выдан, письмо переотправляется
 # кнопкой (POST /access-grants/{id}/notify), факт отправки — в email_sent_at.
 
@@ -822,6 +829,7 @@ def _grant_out(grant: AccessGrant, state: dict, user: User | None = None) -> Acc
         user_id=grant.user_id,
         user_email=user.email if user else None,
         user_name=user.full_name if user else None,
+        product=grant.product,
         quota=grant.quota,
         used=state["used"],
         remaining=state["remaining"],
@@ -909,6 +917,7 @@ async def create_access_grant(
 
     grant = AccessGrant(
         user_id=user.id,
+        product=body.product,
         quota=body.quota,
         expires_at=expires_at,
         reason=body.reason,

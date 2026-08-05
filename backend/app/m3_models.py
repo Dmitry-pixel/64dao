@@ -39,6 +39,11 @@ class M3Portfolio(Base):
     id:          Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
     user_id:     Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     title:       Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Название компании вводится ПЕРЕД диагностикой, как в Методах 1 и 2,
+    # и не берётся из профиля: профиль может измениться после выдачи отчёта,
+    # а отчёт обязан остаться воспроизводимым. Отдельно от title: портфель
+    # может называться «Продуктовые направления 2026», компания — иначе.
+    company_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     industry_id: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     status:      Mapped[str]       = mapped_column(String(20), nullable=False, default="draft", server_default="draft")
     # Блок Р: шесть рыночных пунктов, заполняются один раз на портфель.
@@ -48,6 +53,12 @@ class M3Portfolio(Base):
     created_at:    Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:    Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     calculated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Чем оплачен расчёт. Симметрично assessments.order_id / grant_id:
+    # расход считается по факту привязки, а не счётчиком, поэтому возврат
+    # заказа возвращает квоту сам и счётчик не может разойтись с фактом.
+    order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="SET NULL"), nullable=True, index=True)
+    grant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("access_grants.id", ondelete="SET NULL"), nullable=True, index=True)
 
     __table_args__ = (
         CheckConstraint("status IN ('draft','filled','calculated')", name="chk_m3_portfolio_status"),

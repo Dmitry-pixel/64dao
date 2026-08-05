@@ -36,6 +36,41 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
   return res.json()
 }
 
+// ── Тарифы и флаги раздела ────────────────────────────────────────────────────
+
+export interface PricingProduct {
+  title: string
+  price: number
+  currency: string
+  description: string
+  features: { label: string; value: string }[]
+  payment_enabled: boolean
+  payment_note: string
+}
+
+export interface PricingResponse extends PricingProduct {
+  /** Тарифы по продуктам: m12 — Методы 1 и 2, m3 — Метод 3. */
+  products: Record<'m12' | 'm3', PricingProduct>
+}
+
+/**
+ * Публичный тариф. Плоские поля верхнего уровня — тариф m12: так отвечает
+ * бэкенд ради лендинга, который читает price/title напрямую.
+ */
+export function getPricing() {
+  return request<PricingResponse>('/api/pricing')
+}
+
+/**
+ * Режим сайта + флаг раздела Метода 3.
+ *
+ * Флаг нужен до запроса /api/m3/*: при выключенном разделе весь он отдаёт
+ * 404 (осознанное решение бэкенда), и кабинет ловил бы 404 на каждом заходе.
+ */
+export function getSiteMode() {
+  return request<{ enabled?: boolean; m3_enabled: boolean }>('/api/site-mode')
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export async function sendOTP(email: string) {

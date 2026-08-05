@@ -20,6 +20,9 @@ from app import m3_service as svc
 from app.auth import get_current_user, require_admin
 from app.config import get_settings
 from app.db import get_db
+from app.m3_access import (
+    attach_payment, ensure_result_access, reserve_payment,
+)
 from app.m3_models import (
     M3ChecklistStep, M3Content, M3Hint, M3Item, M3Object, M3Portfolio,
     M3TradeoffDecision, M3Weight,
@@ -105,7 +108,12 @@ async def create_portfolio(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    p = M3Portfolio(user_id=user.id, title=body.title, industry_id=body.industry_id)
+    # company_name отдельно от title: портфель может называться
+    # «Продуктовые направления 2026», а компания — иначе. В заголовок отчёта
+    # идёт именно название компании.
+    p = M3Portfolio(user_id=user.id, title=body.title,
+                    company_name=body.company_name,
+                    industry_id=body.industry_id)
     db.add(p)
     await db.flush()
     await db.refresh(p, ["objects"])
@@ -227,10 +235,15 @@ async def post_calculate(
     db: AsyncSession = Depends(get_db),
 ):
     p = await _owned(portfolio_id, user, db)
+    # Сначала выясняем, чем платим (403 при пустом балансе), потом считаем,
+    # и только на успешном расчёте отмечаем списание: неудачная валидация
+    # анкеты не должна съедать кредит.
+    grant, order = await reserve_payment(db, p, user)
     try:
         calc = await svc.calculate(db, p)
     except svc.M3ServiceError as e:
         raise _bad(e) from e
+    attach_payment(p, grant, order)
     return {
         "portfolio_id": p.id,
         "objects": len(calc["objects"]),
@@ -247,6 +260,7 @@ async def get_report(
     db: AsyncSession = Depends(get_db),
 ):
     p = await _owned(portfolio_id, user, db)
+    ensure_result_access(p, user)
     try:
         return await svc.build_report(db, p)
     except svc.M3ServiceError as e:

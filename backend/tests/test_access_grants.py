@@ -73,7 +73,7 @@ async def _paid_order(db, user):
                         status="draft", company_name="Оплаченная")
     db.add(filler)
     await db.flush()
-    order = Order(user_id=user.id, assessment_id=filler.id, amount=14900.00,
+    order = Order(user_id=user.id, product="m12", assessment_id=filler.id, amount=14900.00,
                   currency="RUB", status="paid")
     db.add(order)
     await db.flush()
@@ -180,9 +180,16 @@ async def test_refund_to_draft_returns_quota(auth_client, db_session, test_user,
 async def test_credits_breakdown_shape(auth_client, db_session, test_user):
     await _grant(db_session, test_user, quota=2, days=7)
     body = (await auth_client.get("/api/payments/credits")).json()
-    assert set(body) == {"credits", "paid_credits", "grant_credits", "grant_expires_at"}
+    # Поля m12 продублированы на верхнем уровне ради кабинета и админки,
+    # products — разбивка по продуктам (m12 и m3 считаются раздельно).
+    assert set(body) == {"credits", "paid_credits", "grant_credits",
+                         "grant_expires_at", "products"}
     assert body["grant_credits"] == 2
     assert body["grant_expires_at"] is not None
+    assert set(body["products"]) == {"m12", "m3"}
+    # Грант выдан на m12 — на балансе Метода 3 он не появляется.
+    assert body["products"]["m12"]["grant_credits"] == 2
+    assert body["products"]["m3"]["credits"] == 0
 
 
 # ── Админский API ─────────────────────────────────────────────────────────────

@@ -9,18 +9,40 @@ from sqlalchemy.orm import selectinload
 from app.auth import get_current_user, require_admin
 from app.db import get_db
 from app.models import Assessment, Order, User
+from app.m3_models import M3Portfolio
 from app.tochka_client import get_tochka_client, extract_operation
 from app.config import get_settings
 from app.tax_settings import get_tax_settings, set_vat_enabled, current_vat_type
 from app.pricing_store import current_price, is_payment_enabled
 from app.credits_settings import read_credits_settings, set_enforce_credits
-from app.access_grants import grant_credits, nearest_expiry
+from app.access_grants import (
+    grant_credits, nearest_expiry, M3_USED_STATUSES,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
+# Сколько диагностик даёт один оплаченный заказ.
+# Методы 1 и 2 продаются вместе: один заказ покрывает оба и повтор Метода 1.
 REPORTS_PER_ORDER = 2
+# Метод 3 — один портфель за заказ (решение владельца). Повтора у Метода 3
+# нет, поэтому и права на него заказ не даёт.
+M3_REPORTS_PER_ORDER = 1
+
+PRODUCTS = ("m12", "m3")
+DEFAULT_PRODUCT = "m12"
+
+
+def reports_per_order(product: str) -> int:
+    return M3_REPORTS_PER_ORDER if product == "m3" else REPORTS_PER_ORDER
+
+
+def _check_product(product: str) -> str:
+    if product not in PRODUCTS:
+        raise HTTPException(status_code=400,
+                            detail=f"Неизвестный продукт: {product}")
+    return product
 
 # Вебхука о возврате у Точки НЕ существует: банк шлёт вебхуки только об
 # успешных операциях, событий ровно пять (incomingPayment, outgoingPayment,
@@ -36,12 +58,41 @@ REFUND_STATUSES = {"REFUNDED", "REFUND", "REVERSED"}
 # Статусы, в которых диагностика считается израсходованной — тот же набор,
 # что в paid_credits и access_grants.USED_STATUSES.
 USED_STATUSES = ("completed", "paid")
+# Единица расхода Метода 3 — рассчитанный портфель (M3_USED_STATUSES из
+# access_grants). Импортируется, а не объявляется второй раз: разъехавшиеся
+# наборы статусов развели бы платный и грантовый контуры.
 
 
 def _is_refund_event(claims: dict) -> bool:
     if str(claims.get("isRefund", "")).lower() == "true":
         return True
     return str(claims.get("status") or "").upper() in REFUND_STATUSES
+
+
+async def _revoke_m3_order_access(db: AsyncSession, order: Order) -> dict:
+    """Отзыв доступа по возвращённому заказу Метода 3.
+
+    Портфели возвращаются в 'filled' — состояние «анкета заполнена, расчёта
+    нет». Это и закрытие доступа к отчёту, и корректность счётчика: расход
+    считается по рассчитанным портфелям, и оставленный 'calculated' портфель
+    возвращённого заказа вычитался бы из кредитов будущих покупок.
+
+    Снимок расчёта (m3_results) не удаляется: он детерминирован от ответов,
+    повторный расчёт после новой оплаты его перезапишет. Удалять — значит
+    терять историю без выигрыша.
+    """
+    rows = (await db.execute(
+        select(M3Portfolio).where(M3Portfolio.order_id == order.id)
+    )).scalars().all()
+    closed = 0
+    for portfolio in rows:
+        if portfolio.status in M3_USED_STATUSES:
+            portfolio.status = "filled"
+            portfolio.calculated_at = None
+            closed += 1
+    # Ключи те же, что у контура Методов 1 и 2: вызывающий код (вебхук,
+    # рефанд, сверка) один на оба продукта.
+    return {"assessments": closed, "followup_rights": 0, "portfolios": closed}
 
 
 async def revoke_order_access(db: AsyncSession, order: Order) -> dict:
@@ -66,9 +117,12 @@ async def revoke_order_access(db: AsyncSession, order: Order) -> dict:
     границей была компания: при нескольких платных заказах на одну компанию
     возврат одного закрывал доступ, оплаченный другим.
     """
+    if order.product == "m3":
+        return await _revoke_m3_order_access(db, order)
+
     a = order.assessment
     if a is None:
-        return {"assessments": 0, "followup_rights": 0}
+        return {"assessments": 0, "followup_rights": 0, "portfolios": 0}
 
     rows = list((await db.execute(
         select(Assessment).where(Assessment.order_id == order.id)
@@ -102,31 +156,47 @@ async def revoke_order_access(db: AsyncSession, order: Order) -> dict:
     return {"assessments": closed, "followup_rights": rights}
 
 
-async def pick_order(db: AsyncSession, user_id) -> Order | None:
-    """Оплаченный заказ с непотраченным остатком — им и оплатится диагностика.
+async def pick_order(db: AsyncSession, user_id,
+                     product: str = DEFAULT_PRODUCT) -> Order | None:
+    """Оплаченный заказ этого продукта с непотраченным остатком — им и
+    оплатится диагностика.
 
     Старейший первым. Аналог access_grants.pick_grant, только у платного
     кредита нет срока сгорания, поэтому порядок — по дате оплаты.
+
+    Фильтр по продукту обязателен: без него дешёвый кредит Методов 1 и 2
+    оплатил бы дорогой Метод 3.
     """
     orders = (await db.execute(
         select(Order)
-        .where(Order.user_id == user_id, Order.status == "paid")
+        .where(Order.user_id == user_id, Order.status == "paid",
+               Order.product == product)
         .order_by(func.coalesce(Order.paid_at, Order.created_at).asc(),
                   Order.id.asc())
     )).scalars().all()
     if not orders:
         return None
 
-    rows = await db.execute(
-        select(Assessment.order_id, func.count(Assessment.id))
-        .where(Assessment.order_id.in_([o.id for o in orders]),
-               Assessment.status.in_(USED_STATUSES),
-               Assessment.is_followup.is_(False))
-        .group_by(Assessment.order_id)
-    )
+    order_ids = [o.id for o in orders]
+    if product == "m3":
+        rows = await db.execute(
+            select(M3Portfolio.order_id, func.count(M3Portfolio.id))
+            .where(M3Portfolio.order_id.in_(order_ids),
+                   M3Portfolio.status.in_(M3_USED_STATUSES))
+            .group_by(M3Portfolio.order_id)
+        )
+    else:
+        rows = await db.execute(
+            select(Assessment.order_id, func.count(Assessment.id))
+            .where(Assessment.order_id.in_(order_ids),
+                   Assessment.status.in_(USED_STATUSES),
+                   Assessment.is_followup.is_(False))
+            .group_by(Assessment.order_id)
+        )
     used = {oid: cnt for oid, cnt in rows.all()}
+    limit = reports_per_order(product)
     for o in orders:
-        if used.get(o.id, 0) < REPORTS_PER_ORDER:
+        if used.get(o.id, 0) < limit:
             return o
     return None
 
@@ -137,62 +207,93 @@ async def pick_order(db: AsyncSession, user_id) -> Order | None:
 # создание платежа ушло бы на неверную сумму.
 
 
-async def paid_credits(user_id, db: AsyncSession) -> int:
+async def paid_credits(user_id, db: AsyncSession,
+                       product: str = DEFAULT_PRODUCT) -> int:
     """
-    Возвращает количество оплаченных, но ещё не использованных диагностик.
+    Оплаченные, но ещё не использованные диагностики одного продукта.
 
-    Логика (stub до подключения реальной оплаты):
-      credits = (paid orders * REPORTS_PER_ORDER) - completed/paid assessments
+    Логика:
+      credits = (оплаченные заказы продукта * reports_per_order)
+                - использованные единицы этого продукта
     Минимум 0 — не уходим в минус.
 
+    Балансы продуктов раздельные. Общий кошелёк при двух ценах даёт
+    арбитраж: кредит Методов 1 и 2 куплен дешевле, а потратить его можно
+    было бы на Метод 3.
+
     Общая функция: используется эндпоинтом /credits и проверкой доступа
-    при создании assessment / генерации отчёта (см. routers/assessments.py).
+    при создании assessment / расчёте портфеля (routers/assessments.py,
+    routers/m3.py).
     """
     paid_orders = await db.scalar(
         select(func.count(Order.id))
-        .where(Order.user_id == user_id, Order.status == "paid")
+        .where(Order.user_id == user_id, Order.status == "paid",
+               Order.product == product)
     ) or 0
 
-    used_assessments = await db.scalar(
-        select(func.count(Assessment.id))
-        .join(Order, Order.id == Assessment.order_id)
-        .where(
-            Order.user_id == user_id,
-            Order.status == "paid",
-            Assessment.status.in_(["completed", "paid"]),
-            # Повтор входит в стоимость основной диагностики и кредит не
-            # тратит. Иначе на один заказ приходится 2 прогона из трёх
-            # обещанных (Метод 1 + Метод 2 + повтор), и на третьем
-            # пользователь получает 403. Лимит повторов держится на
-            # followup_allowed/followup_used, а не на кредитах.
-            Assessment.is_followup.is_(False),
-        )
-    ) or 0
+    if product == "m3":
+        used = await db.scalar(
+            select(func.count(M3Portfolio.id))
+            .join(Order, Order.id == M3Portfolio.order_id)
+            .where(
+                Order.user_id == user_id,
+                Order.status == "paid",
+                M3Portfolio.status.in_(list(M3_USED_STATUSES)),
+            )
+        ) or 0
+    else:
+        used = await db.scalar(
+            select(func.count(Assessment.id))
+            .join(Order, Order.id == Assessment.order_id)
+            .where(
+                Order.user_id == user_id,
+                Order.status == "paid",
+                Assessment.status.in_(["completed", "paid"]),
+                # Повтор входит в стоимость основной диагностики и кредит не
+                # тратит. Иначе на один заказ приходится 2 прогона из трёх
+                # обещанных (Метод 1 + Метод 2 + повтор), и на третьем
+                # пользователь получает 403. Лимит повторов держится на
+                # followup_allowed/followup_used, а не на кредитах.
+                Assessment.is_followup.is_(False),
+            )
+        ) or 0
 
-    return max(0, paid_orders * REPORTS_PER_ORDER - used_assessments)
+    return max(0, paid_orders * reports_per_order(product) - used)
 
 
-async def calculate_credits(user_id, db: AsyncSession) -> int:
-    """Все доступные диагностики: оплаченные + выданные грантом.
+async def calculate_credits(user_id, db: AsyncSession,
+                            product: str = DEFAULT_PRODUCT) -> int:
+    """Все доступные диагностики продукта: оплаченные + выданные грантом.
 
     Имя сохранено ради существующих вызовов из routers/assessments.py.
     Там, где нужен именно платный остаток (ветка списания), вызывайте
     paid_credits(): грант списывается отдельно, через access_grants.
     """
-    return await paid_credits(user_id, db) + await grant_credits(db, user_id)
+    return (await paid_credits(user_id, db, product)
+            + await grant_credits(db, user_id, product))
 
 
-async def credits_breakdown(user_id, db: AsyncSession) -> dict:
-    """Разбивка для кабинета: платные, грантовые и дата сгорания гранта."""
-    paid = await paid_credits(user_id, db)
-    granted = await grant_credits(db, user_id)
-    expires = await nearest_expiry(db, user_id)
+async def _product_breakdown(user_id, db: AsyncSession, product: str) -> dict:
+    paid = await paid_credits(user_id, db, product)
+    granted = await grant_credits(db, user_id, product)
+    expires = await nearest_expiry(db, user_id, product)
     return {
         "credits": paid + granted,
         "paid_credits": paid,
         "grant_credits": granted,
         "grant_expires_at": expires.isoformat() if expires else None,
     }
+
+
+async def credits_breakdown(user_id, db: AsyncSession) -> dict:
+    """Разбивка для кабинета по обоим продуктам.
+
+    Поля m12 продублированы на верхнем уровне: кабинет и админка читают
+    credits/paid_credits/grant_credits напрямую, и ломать их отдельным
+    деплоем незачем. Дубль снимается, когда фронт переедет на products.
+    """
+    per_product = {p: await _product_breakdown(user_id, db, p) for p in PRODUCTS}
+    return {**per_product[DEFAULT_PRODUCT], "products": per_product}
 
 
 @router.get("/credits")
@@ -225,7 +326,10 @@ async def list_orders(
         a = o.assessment
         out.append({
             "id": str(o.id),
-            "assessment_id": str(o.assessment_id),
+            "product": o.product,
+            # У заказов Метода 3 и у купленных заранее кредитов привязки нет:
+            # str(None) вернул бы строку "None", и фронт принял бы её за id.
+            "assessment_id": str(o.assessment_id) if o.assessment_id else None,
             "amount": float(o.amount),
             "currency": o.currency,
             "status": o.status,
@@ -241,20 +345,55 @@ async def list_orders(
     return out
 
 
+# Наименование услуги в чеке (54-ФЗ) — по продукту. Из pricing.json не
+# берётся намеренно: заголовок тарифа правится в админке под витрину, а в
+# фискальном документе должна стоять услуга, а не рекламный заголовок.
+RECEIPT_NAME = {
+    "m12": "Стратегическая диагностика 64 DAO",
+    "m3": "Диагностика портфеля направлений 64 DAO (Метод 3)",
+}
+
+
 @router.post("/create")
 async def create_payment(
-    assessment_id: str,
+    product: str = DEFAULT_PRODUCT,
+    assessment_id: str | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if not is_payment_enabled():
+    """Создание платежа.
+
+    Заказ — покупка кредита на продукт. Привязка к диагностике
+    необязательна: из кабинета покупают заранее, до прохождения. Если
+    привязка передана, она проверяется на принадлежность пользователю —
+    иначе чужой id в query-параметре связал бы оплату с чужой записью.
+
+    У Метода 3 привязки нет вовсе: обратной ссылки orders -> m3_portfolios
+    в схеме нет (она образовала бы цикл внешних ключей), а списание
+    отмечается на портфеле, в m3_portfolios.order_id.
+
+    assessment_id остаётся первым необязательным параметром ради
+    существующего вызова фронта /api/payments/create?assessment_id=...
+    """
+    _check_product(product)
+    if product == "m3" and assessment_id:
+        raise HTTPException(status_code=400,
+                            detail="assessment_id недопустим для продукта m3")
+
+    if not is_payment_enabled(product):
         raise HTTPException(status_code=503, detail="Payment is currently disabled")
 
+    if assessment_id:
+        owner_ok = await db.scalar(
+            select(Assessment.user_id).where(Assessment.id == assessment_id))
+        if owner_ok != user.id:
+            raise HTTPException(status_code=404, detail="Диагностика не найдена")
     settings = get_settings()
-    price = current_price()
+    price = current_price(product)
 
     order = Order(
         user_id=user.id,
+        product=product,
         assessment_id=assessment_id,
         amount=price,
         currency="RUB",
@@ -270,7 +409,7 @@ async def create_payment(
     # флаг командой из app/tax_settings.py, без редеплоя.
     items = [
         {
-            "name": "Стратегическая диагностика 64 DAO",
+            "name": RECEIPT_NAME[product],
             "amount": float(order.amount),
             "quantity": 1,
             "vatType": current_vat_type(),
@@ -336,6 +475,7 @@ async def create_test_payment(
 
     order = Order(
         user_id=admin.id,
+        product="m12",
         assessment_id=test_assessment.id,
         amount=1.00,
         currency="RUB",

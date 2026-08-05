@@ -247,10 +247,10 @@ export default function M3ReportPage() {
   } = report
   const results = objects.map(o => o.result)
   const byId = Object.fromEntries(results.map(r => [r.object_id, r]))
-  // Название компании вводится перед диагностикой и живёт на портфеле.
-  // Отдельного поля пока нет — оно появится миграцией; до тех пор берём
-  // название портфеля, ровно как это делает company_name_for на сервере.
-  const company = portfolio.title || 'Компания'
+  // Цепочка та же, что в company_name_for на сервере: у портфелей,
+  // созданных до миграции 024, названия компании нет — берём название
+  // портфеля, иначе заголовок выданного ранее отчёта стал бы «Компания».
+  const company = portfolio.company_name || portfolio.title || 'Компания'
 
   return (
     <div style={S.page}><div style={S.stage}>
@@ -260,6 +260,18 @@ export default function M3ReportPage() {
         {portfolio.title && portfolio.title !== company && (
           <div style={S.sub}>{portfolio.title}</div>
         )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -8 }}>
+          <a
+            href={`/api/reports/m3/${portfolio.id}/download`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              fontFamily: 'sans-serif', fontSize: 13, color: '#fff',
+              background: '#1a2540', borderRadius: 6, padding: '9px 18px',
+              textDecoration: 'none',
+            }}
+          >Скачать PDF</a>
+        </div>
         <div style={S.meta}>
           <span>Направлений: {summary.objects}</span>
           <span>Сумма позиций: {summary.sum_positions} из {summary.sum_positions_max}</span>

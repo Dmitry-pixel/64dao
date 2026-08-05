@@ -29,6 +29,8 @@ MIN_COVERAGE = 80.0        # покрытие выручки портфелем
 # ── Портфель ──────────────────────────────────────────────────────────────────
 class M3PortfolioCreate(BaseModel):
     title: str | None = Field(default=None, max_length=255)
+    # Название компании вводится перед диагностикой, как в Методах 1 и 2.
+    company_name: str | None = Field(default=None, max_length=255)
     industry_id: int | None = Field(default=None, ge=1, le=18)
 
 
@@ -123,10 +125,16 @@ class M3PortfolioOut(BaseModel):
 
     id: uuid.UUID
     title: str | None
+    company_name: str | None = None
     industry_id: int | None
     status: str
     owner_ranks: list[int] | None
     created_at: datetime
+    # updated_at сюда НЕ добавлять. Колонка имеет onupdate=func.now(), после
+    # flush SQLAlchemy помечает её протухшей, и сериализация ответа лезет за
+    # свежим значением уже вне async-контекста: MissingGreenlet -> 500 на
+    # PUT owner-ranks. Единому списку отчётов в кабинете хватает
+    # calculated_at и created_at.
     calculated_at: datetime | None
     objects: list[M3ObjectOut] = []
 

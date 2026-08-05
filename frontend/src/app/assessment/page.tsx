@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic'
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { getBaseQuestions, getMe, getFinanceItems, type AuthUser, type BaseQuestion, type FinanceBlock } from '@/lib/api'
+import { getBaseQuestions, getMe, getFinanceItems, getPricing, getSiteMode, type AuthUser, type BaseQuestion, type FinanceBlock, type PricingResponse } from '@/lib/api'
 import ContourSurvey from '@/components/ContourSurvey'
 
 // Тексты вопросов приходят с сервера: app/method1_questions -> fin_content -> /api/method1/base-questions
@@ -32,9 +32,14 @@ function AssessmentInner() {
     : companyIdParam && methodParam ? 'method1'
     : methodParam === '1' ? 'company' : methodParam === '2' ? 'company' : 'choose'
   )
-  const [pendingMethod, setPendingMethod] = useState<'method1' | 'method2'>(
-    methodParam === '2' ? 'method2' : 'method1'
+  const [pendingMethod, setPendingMethod] = useState<'method1' | 'method2' | 'method3'>(
+    methodParam === '2' ? 'method2' : methodParam === '3' ? 'method3' : 'method1'
   )
+  // Тариф и флаг раздела Метода 3. Раздел при выключенном флаге отдаёт 404
+  // на всё, поэтому карточку показываем только по флагу, а не по ошибке
+  // запроса: 404 в консоли пользователя выглядит как поломка.
+  const [pricing, setPricing] = useState<PricingResponse | null>(null)
+  const [m3Enabled, setM3Enabled] = useState(false)
   const [companyName, setCompanyName] = useState(companyNameParam || '')
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Record<number, 'A' | 'B'>>({})
@@ -58,6 +63,13 @@ function AssessmentInner() {
   useEffect(() => {
     setSelected(answers[step] || null)
   }, [step, answers])
+
+  useEffect(() => {
+    // Цена и доступность раздела — не критичные данные: страница обязана
+    // работать и без них, поэтому ошибки глушатся, а не выносятся в alert.
+    getPricing().then(setPricing).catch(() => {})
+    getSiteMode().then(d => setM3Enabled(Boolean(d?.m3_enabled))).catch(() => {})
+  }, [])
 
   // Вопросы редактируются в админке, поэтому берутся с сервера, а не из сборки.
   useEffect(() => {
@@ -184,6 +196,29 @@ function AssessmentInner() {
     }
   }
 
+  const priceLabel = (code: 'm12' | 'm3'): string | null => {
+    const item = pricing?.products?.[code]
+    if (!item || !item.price) return null
+    return `${item.price.toLocaleString('ru-RU')} ${item.currency}`
+  }
+
+  /**
+   * Переход к выбранному методу после ввода названия компании.
+   *
+   * Метод 3 уходит на свою страницу, а не в этот же компонент: там своя
+   * форма портфеля (область, направления). Название компании передаётся
+   * параметром — второй формы ввода названия быть не должно.
+   */
+  function goToMethod() {
+    const name = companyName.trim()
+    if (!name) return
+    if (pendingMethod === 'method3') {
+      router.push(`/m3?company=${encodeURIComponent(name)}`)
+      return
+    }
+    setMode(pendingMethod)
+  }
+
   // Строим гексаграмму
   const hexLines = Array.from({ length: 6 }, (_, i) => {
     if (i >= step + 1) return 'empty'
@@ -243,7 +278,7 @@ function AssessmentInner() {
             <h3 style={S.methodH3}>6 вопросов о состоянии компании</h3>
             <p style={S.methodDesc}>На каждом шаге выбираете A или B. На выходе — комбинация из 64 (например, ABABBA), стадия жизненного цикла и ключевой сценарий.</p>
             <div style={S.methodFoot}>
-              <span style={S.methodTime}>≈ 5 минут</span>
+              <span style={S.methodTime}>≈ 5 минут{priceLabel('m12') ? ` · ${priceLabel('m12')}` : ''}</span>
               <span style={S.methodGo}>Начать →</span>
             </div>
           </div>
@@ -255,10 +290,24 @@ function AssessmentInner() {
             <h3 style={S.methodH3}>9 блоков по шкале 1–5</h3>
             <p style={S.methodDesc}>Оцените каждый блок Business Model Canvas: клиенты, ценность, каналы, ресурсы, доходы. Можно дополнять текстом.</p>
             <div style={S.methodFoot}>
-              <span style={S.methodTime}>≈ 10 минут</span>
+              <span style={S.methodTime}>≈ 10 минут{priceLabel('m12') ? ` · ${priceLabel('m12')}` : ''}</span>
               <span style={S.methodGo}>Начать →</span>
             </div>
           </div>
+          {m3Enabled && (
+            <div style={S.methodCard} onClick={() => { setPendingMethod('method3'); setMode('company') }}>
+              <div style={S.methodCardTop}>
+                <span style={S.labelRed}>Метод 03 · Матрица силы</span>
+                <span style={S.hexFaint}>䷪</span>
+              </div>
+              <h3 style={S.methodH3}>От 3 до 8 направлений бизнеса</h3>
+              <p style={S.methodDesc}>Метод отвечает, между какими направлениями и в каком порядке распределять ресурс. Методы 1 и 2 говорят, в каком состоянии компания, — этот говорит, куда направить деньги.</p>
+              <div style={S.methodFoot}>
+                <span style={S.methodTime}>≈ 30 минут{priceLabel('m3') ? ` · ${priceLabel('m3')}` : ''}</span>
+                <span style={S.methodGo}>Начать →</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -270,7 +319,9 @@ function AssessmentInner() {
       <NavBar />
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '80px 40px' }}>
         <span style={S.labelRed}>
-          {pendingMethod === 'method1' ? 'Метод 01 · Стратегия' : 'Метод 02 · Бизнес-модель'}
+          {pendingMethod === 'method1' ? 'Метод 01 · Стратегия'
+            : pendingMethod === 'method2' ? 'Метод 02 · Бизнес-модель'
+            : 'Метод 03 · Матрица силы'}
         </span>
         <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 32, fontWeight: 400, color: '#1a2540', margin: '10px 0 8px' }}>
           Название компании
@@ -284,7 +335,7 @@ function AssessmentInner() {
           placeholder="Например: ООО Ромашка"
           value={companyName}
           onChange={e => setCompanyName(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && companyName.trim()) setMode(pendingMethod) }}
+          onKeyDown={e => { if (e.key === 'Enter' && companyName.trim()) goToMethod() }}
           style={{
             width: '100%', boxSizing: 'border-box' as const,
             padding: '14px 18px', fontFamily: 'sans-serif', fontSize: 15,
@@ -298,7 +349,7 @@ function AssessmentInner() {
           <button
             style={{ ...S.btnPrimary, opacity: companyName.trim() ? 1 : 0.45 }}
             disabled={!companyName.trim()}
-            onClick={() => setMode(pendingMethod)}
+            onClick={goToMethod}
           >
             Продолжить →
           </button>
