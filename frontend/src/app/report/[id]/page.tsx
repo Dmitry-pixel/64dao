@@ -243,11 +243,19 @@ export default function ReportPage() {
           <div style={S.cover}>
             <div>
               <span style={S.labelRed}>{isMethod2Only ? 'Бизнес-модель 64 ДАО' : 'Стратегический отчёт 64 ДАО'}</span>
+              {/* Заголовок совпадает с PDF (app/pdf.py, cover_title): в вебе
+                  в h1 попадало strategy.title, то есть название стратегии, и
+                  «Стратегический профиль компании» не выводилось никогда —
+                  у опубликованной комбинации title заполнен всегда.
+                  Название стратегии не теряем: оно уходит подзаголовком. */}
               <h1 style={S.coverH1}>
                 {isMethod2Only
                   ? `Бизнес-модель · ${companyName}`
-                  : (strategy?.title || `Стратегическая диагностика · ${companyName}`)}
+                  : 'Стратегический профиль компании'}
               </h1>
+              {!isMethod2Only && strategy?.title && (
+                <div style={S.coverSub}>{strategy.title}</div>
+              )}
               <div style={S.coverMeta}>
                 {companyName}<br />
                 Подготовлен {createdAt}
@@ -465,6 +473,7 @@ const S: Record<string, React.CSSProperties> = {
   cover: { background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '36px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
   labelRed: { fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase' as const, color: '#c0392b', fontWeight: 600 },
   coverH1: { fontFamily: 'Georgia,serif', fontSize: 32, fontWeight: 400, color: '#1a2540', margin: '8px 0 12px' },
+  coverSub: { fontFamily: 'Georgia,serif', fontSize: 19, fontWeight: 400, color: 'rgba(26,37,64,0.7)', margin: '-4px 0 12px' },
   coverMeta: { fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.6)', lineHeight: 1.7 },
   hexXl: { fontFamily: 'serif', fontSize: 64, color: '#1e3a8a', lineHeight: 1 },
   combBadge: { fontFamily: 'monospace', fontSize: 13, color: 'rgba(26,37,64,0.5)', letterSpacing: 3, marginTop: 8 },
