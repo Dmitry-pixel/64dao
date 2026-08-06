@@ -93,7 +93,22 @@ def upgrade() -> None:
     op.add_column('strategies', sa.Column('hexagram_number', sa.Integer(), nullable=True))
     op.add_column('strategies', sa.Column('target_combination', sa.String(length=6), nullable=True))
     conn = op.get_bind()
-    stmt = sa.text('UPDATE strategies SET hexagram_number = :n, target_combination = :tc WHERE combination = :combo')
+    # Целевую комбинацию проставляем только если такая стратегия есть в
+    # каталоге. Иначе внешний ключ ниже падает: он ссылается на strategies
+    # саму на себя, а на боевой базе каталог из 64 записей заполнен через
+    # админку, вне миграций. На базе, поднятой с нуля, есть одна стратегия
+    # из ревизии 001 — и цепочка обрывалась здесь.
+    #
+    # На полном каталоге EXISTS истинен для всех строк, поэтому результат
+    # тот же, что был. На неполном цель остаётся NULL — колонка nullable
+    # намеренно, отчёт не падает на записи без цели (см. заголовок файла).
+    stmt = sa.text(
+        'UPDATE strategies SET hexagram_number = :n, '
+        '       target_combination = CASE WHEN EXISTS ('
+        '           SELECT 1 FROM strategies t WHERE t.combination = :tc'
+        '       ) THEN :tc ELSE NULL END '
+        ' WHERE combination = :combo'
+    )
     conn.execute(stmt, [{'combo': c, 'n': n, 'tc': t} for c, n, t in _ROWS])
     op.create_unique_constraint('uq_strategy_hexagram_number', 'strategies', ['hexagram_number'])
     op.create_check_constraint('ck_strategy_hexagram_number', 'strategies', 'hexagram_number BETWEEN 1 AND 64')

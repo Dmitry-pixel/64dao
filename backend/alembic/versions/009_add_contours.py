@@ -27,10 +27,32 @@ def upgrade() -> None:
                "WHERE jsonb_typeof(method2_data) = 'null'")
 
     # 2) Признак метода (Поправка П3).
-    # Колонка method VARCHAR(10) DEFAULT 'method1' и CHECK assessments_method_check
-    # ('method1'/'method2') уже существуют в БД: созданы вне alembic, в models.py
-    # отсутствуют, поэтому колонка никогда не заполнялась — все строки 'method1',
-    # включая диагностики Метода 2. Ничего не создаём, только засыпаем значения.
+    #
+    # Колонка method и CHECK assessments_method_check были созданы на боевой
+    # базе вне alembic, поэтому здесь их сознательно не создавали — только
+    # засыпали значения. На боевой базе это работало, а на чистой цепочка
+    # обрывалась ровно тут: UPDATE обращался к колонке, которой нет, и поднять
+    # схему с нуля было невозможно — ни при восстановлении из дампа, ни новому
+    # разработчику.
+    #
+    # Создаём идемпотентно: на базе, где колонка уже есть (все существующие
+    # установки), ALTER ничего не делает и повторный прогон безвреден.
+    # Тип, дефолт и имя CHECK — те же, что в models.py, иначе схема чистой
+    # базы разошлась бы с боевой.
+    op.execute("ALTER TABLE assessments ADD COLUMN IF NOT EXISTS "
+               "method VARCHAR(10) NOT NULL DEFAULT 'method1'")
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'assessments_method_check'
+            ) THEN
+                ALTER TABLE assessments ADD CONSTRAINT assessments_method_check
+                    CHECK (method IN ('method1','method2'));
+            END IF;
+        END $$;
+    """)
+
     op.execute(
         "UPDATE assessments SET method = 'method2' "
         "WHERE (method2_data IS NOT NULL AND method2_data <> '{}'::jsonb) "
