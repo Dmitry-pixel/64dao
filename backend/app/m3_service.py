@@ -496,6 +496,10 @@ async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
     )
     content = await load_content(db)
     by_id = {o.id: o for o in portfolio.objects}
+    # Ответы нужны ради колонки «Рынок» в разделе 00: сколько пунктов рынка
+    # направление переопределило своими. Снимок расчёта этого не хранит —
+    # он хранит результат, а не источник каждого балла.
+    _, object_answers = await collect_answers(db, portfolio)
 
     packed = []
     for r in results:
@@ -524,6 +528,8 @@ async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
             "v_rank": r.v_rank, "z_rank": r.z_rank,
             "weak_line": r.weak_line, "strong_line": r.strong_line,
             "tensions": list(r.tensions or []), "flags": list(r.flags or []),
+            "market_overrides": sc.market_override_count(
+                object_answers.get(r.object_id, {})),
         }
         enrich_result(
             item,

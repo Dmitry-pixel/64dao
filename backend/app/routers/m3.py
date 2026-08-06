@@ -143,6 +143,31 @@ async def get_portfolio(
     return await _owned(portfolio_id, user, db)
 
 
+@router.delete("/portfolios/{portfolio_id}", status_code=204)
+async def delete_portfolio(
+    portfolio_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Удаление портфеля вместе с направлениями, ответами и снимком расчёта:
+    всё это уходит каскадом по внешним ключам.
+
+    Файл PDF удалять не нужно: он собирается на каждый запрос скачивания во
+    временном каталоге и удаляется сразу после отдачи (m3_report_api).
+
+    ВНИМАНИЕ. Расход кредита считается по факту: сколько рассчитанных
+    портфелей привязано к оплаченным заказам. Удаление рассчитанного
+    портфеля возвращает кредит в баланс — ровно так же ведёт себя удаление
+    завершённой диагностики Методов 1 и 2. При включённой обязательной
+    оплате это позволяет пройти диагностику заново бесплатно. Поведение
+    осознанно оставлено одинаковым для всех методов; закрывать эту дыру
+    решено отдельной задачей и сразу везде.
+    """
+    p = await _owned(portfolio_id, user, db)
+    await db.delete(p)
+
+
 @router.put("/portfolios/{portfolio_id}/objects", response_model=M3PortfolioOut)
 async def put_objects(
     portfolio_id: uuid.UUID,

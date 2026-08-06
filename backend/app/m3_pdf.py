@@ -19,6 +19,7 @@ from __future__ import annotations
 import html as html_lib
 from typing import Any
 
+from app import m3_scoring as sc
 from app.m3_map import map_caption, render_map_svg
 from app.m3_portfolio import (
     constraints, delta_line_reading, metric_readings, tact_note, yin_table,
@@ -219,6 +220,21 @@ def data_status_banner(summary: dict[str, Any], flag_labels: dict[str, str]) -> 
 
 
 # ── 00 Исходные данные ────────────────────────────────────────────────────────
+def market_label(overrides: int) -> str:
+    """
+    Подпись колонки «Рынок»: чей рыночный слой пошёл в расчёт.
+
+    Подмена идёт попунктно, а не блоком целиком, поэтому частичное
+    переопределение — рабочее состояние, а не недозаполненность. Число в
+    скобках показывает глубину отличия; без него направление с одним
+    переопределённым пунктом читалось бы наравне с полностью своим.
+    """
+    if overrides <= 0:
+        return "Общий"
+    return f"Свой ({overrides} из {sc.MARKET_ITEMS_TOTAL})"
+
+
+
 def objects_section(
     objects: list[Any],
     market_by_object: dict[str, str] | None = None,
@@ -966,6 +982,15 @@ def build_portfolio_report_html(
     отчёт нечитаемым.
     """
     flag_labels = flag_labels or FLAG_LABELS
+    # Колонка «Рынок» собирается из самого отчёта: правило (что считать
+    # переопределением) живёт в расчёте, здесь только формулировка. Параметр
+    # оставлен ради тестов, которые проверяют разметку таблицы отдельно.
+    if market_by_object is None:
+        market_by_object = {
+            str(x["result"]["object_id"]): market_label(
+                x["result"].get("market_overrides", 0))
+            for x in report["objects"]
+        }
     portfolio_flag_labels = portfolio_flag_labels or PORTFOLIO_FLAG_LABELS
 
     portfolio = report["portfolio"]

@@ -47,6 +47,7 @@ OLD_YANG, OLD_YIN = "old_yang", "old_yin"
 LINES = (1, 2, 3, 4, 5, 6)
 
 # Пункт -> линия.
+MARKET_ITEMS_TOTAL = 6     # Р1…Р6 — столько пунктов у рыночного блока
 MARKET_ITEM_LINE: dict[str, int] = {f"{BLOCK_MARKET}{i}": (5 if i <= 3 else 6) for i in range(1, 7)}
 OVERRIDE_ITEM_LINE: dict[str, int] = {f"{k}{OVERRIDE}": v for k, v in MARKET_ITEM_LINE.items()}
 OBJECT_ITEM_LINE: dict[str, int] = {f"{BLOCK_OBJECT}{i}": (i + 1) // 2 for i in range(1, 9)}
@@ -164,6 +165,24 @@ def resolve_line_items(
     if arbiter is not None and object_answers.get(arbiter) is not None:
         out.append((arbiter, effective_value(arbiter, object_answers[arbiter])))
     return out
+
+
+def market_override_count(object_answers: dict[str, int | None]) -> int:
+    """
+    Сколько пунктов рынка направление переопределяет своими ответами (0–6).
+
+    Признак тот же, что и в resolve_line_items: ответ Р* существует и он не
+    «не знаю» (value IS NULL). Флаги скрининга не учитываются — они говорят,
+    что спросили, а не что ответили.
+
+    Живёт рядом с правилом подмены намеренно: колонка «Рынок» в отчёте
+    обязана описывать то, что сделал расчёт, а не то, что кажется похожим.
+    Две копии этого условия разошлись бы при первой правке.
+    """
+    return sum(
+        1 for i in range(1, MARKET_ITEMS_TOTAL + 1)
+        if object_answers.get(f"{BLOCK_MARKET}{i}{OVERRIDE}") is not None
+    )
 
 
 # ── 3–4. Балл линии и правило арбитра ─────────────────────────────────────────

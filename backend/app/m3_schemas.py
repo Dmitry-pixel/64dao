@@ -266,6 +266,10 @@ class M3ResultOut(BaseModel):
     strong_line: int
     tensions: list[str]
     flags: list[str]
+    # Сколько пунктов рынка направление переопределило своими ответами (0–6).
+    # Дефолт нужен старым снимкам: у отчётов, собранных до появления поля,
+    # его в словаре нет, и без дефолта отчёт перестал бы отдаваться.
+    market_overrides: int = 0
     verdict: M3VerdictOut
     trajectory: M3TrajectoryOut
     execution_reason: str

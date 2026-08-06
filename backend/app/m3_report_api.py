@@ -13,12 +13,16 @@ m3_results, а не пересчитывается, поэтому повтор�
 """
 from __future__ import annotations
 
+import logging
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any, Callable
+from uuid import uuid4
 
 from fastapi import Depends, HTTPException
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,6 +35,16 @@ from app.m3_pdf import build_portfolio_report_html
 from app.models import User
 from app.pdf import generate_pdf
 from app.m3_access import ensure_result_access
+
+
+def _unlink_quietly(path: Path) -> None:
+    """Убрать временный файл после отдачи. Ошибку только логируем: ответ уже
+    ушёл, а осиротевший файл в /tmp дешевле пятисотки на скачивании."""
+    try:
+        path.unlink(missing_ok=True)
+    except OSError as exc:
+        logging.getLogger(__name__).warning(
+            "Не удалось удалить временный PDF Метода 3 %s: %s", path, exc)
 
 
 def company_name_for(portfolio: M3Portfolio, user: User) -> str:
@@ -126,8 +140,10 @@ def register_download(
             config=context["config"],
         )
 
-        settings = get_settings()
-        path = Path(settings.uploads_dir) / str(user.id) / f"m3-{portfolio_id}.pdf"
+        # Файл собирается на каждый запрос и не хранится: копия в uploads
+        # только копилась бы. Удаляем фоновой задачей — раньше нельзя,
+        # FileResponse отдаёт тело уже после возврата из обработчика.
+        path = Path(tempfile.gettempdir()) / f"dao64-m3-{portfolio_id}-{uuid4().hex}.pdf"
         await generate_pdf(html, str(path))
 
         filename = f"64dao-matrica-sily-{portfolio_id}.pdf"
@@ -136,6 +152,7 @@ def register_download(
             media_type="application/pdf",
             filename=filename,
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            background=BackgroundTask(_unlink_quietly, path),
         )
 
     return download_m3_report

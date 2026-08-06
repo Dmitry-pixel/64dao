@@ -179,6 +179,19 @@ function Lines({ r }: { r: M3Result }) {
   )
 }
 
+/**
+ * Подпись колонки «Рынок»: чей рыночный слой пошёл в расчёт.
+ *
+ * Формулировка повторяет m3_pdf.market_label — веб и PDF показывают одно и
+ * то же. Правило (что считать переопределением) живёт в расчёте и приходит
+ * числом: подмена идёт попунктно, поэтому частичное переопределение —
+ * рабочее состояние, а не недозаполненность.
+ */
+function marketLabel(overrides: number): string {
+  return overrides <= 0 ? 'Общий' : `Свой (${overrides} из 6)`
+}
+
+
 export default function M3ReportPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
@@ -301,6 +314,7 @@ export default function M3ReportPage() {
             <th style={{ ...S.th, ...S.tdNum }}>Динамика</th>
             <th style={{ ...S.th, ...S.tdNum }}>Доля</th>
             <th style={S.th}>Прибыльность</th>
+            <th style={S.th}>Рынок</th>
           </tr>
         </thead>
         <tbody>
@@ -316,6 +330,7 @@ export default function M3ReportPage() {
                 {o.revenue_share === null ? '—' : `${o.revenue_share}%`}
               </td>
               <td style={S.td}>{PROFITABILITY_LABELS[o.profitability]}</td>
+              <td style={S.td}>{marketLabel(byId[o.id]?.market_overrides ?? 0)}</td>
             </tr>
           ))}
         </tbody>

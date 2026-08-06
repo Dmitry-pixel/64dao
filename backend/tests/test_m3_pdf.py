@@ -182,8 +182,9 @@ def test_objects_section_renders_control_case_row():
 def test_objects_section_hides_market_column_without_data():
     """
     Колонка «Рынок» требует знания, заполнены ли переопределения Р*. Флаг
-    скрининга говорит лишь о том, что вопрос задали. Пока m3_service не
-    отдаёт эти данные, столбца нет — он врал бы.
+    скрининга говорит лишь о том, что вопрос задали. Расчёт эти данные
+    отдаёт (m3_scoring.market_override_count), но сама сборщица таблицы
+    без словаря столбца не рисует: столбец, который врёт, хуже отсутствующего.
     """
     assert "Рынок" not in objects_section([_obj()])
 
@@ -944,3 +945,27 @@ def test_document_survives_portfolio_without_industry():
 def test_document_escapes_company_name_everywhere():
     html = _document(company_name="<script>alert(1)</script>")
     assert "<script>alert(1)</script>" not in html
+
+
+# ── Колонка «Рынок» ───────────────────────────────────────────────────────────
+from app.m3_pdf import market_label  # noqa: E402
+
+
+def test_market_label_wording():
+    """Формулировка одна на веб и PDF: расхождение читатель заметит сразу."""
+    assert market_label(0) == "Общий"
+    assert market_label(3) == "Свой (3 из 6)"
+    assert market_label(6) == "Свой (6 из 6)"
+
+
+def test_market_label_treats_zero_and_negative_as_common():
+    """Отрицательного числа быть не может, но подпись не должна ломаться."""
+    assert market_label(-1) == "Общий"
+
+
+def test_objects_section_prints_market_labels_when_given():
+    """Колонка появляется только с данными — решение не отменялось."""
+    obj = _obj()
+    html = objects_section([obj], {str(obj.id): market_label(3)})
+    assert "Рынок" in html
+    assert "Свой (3 из 6)" in html

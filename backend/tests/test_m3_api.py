@@ -807,3 +807,101 @@ class TestSnapshot:
         after = (await auth_client.get(f"{REPORTS}/{calculated['id']}")).json()
         assert before["summary"] == after["summary"]
         assert len(after["objects"]) == 5
+
+
+# ── Колонка «Рынок»: число переопределений доезжает до отчёта ─────────────────
+@pytest.mark.asyncio
+async def test_report_carries_market_overrides_of_control_case(auth_client, calculated):
+    """
+    Сквозная проверка: в контрольном кейсе второе направление отвечает на три
+    пункта Р*, пятое — на все шесть, остальные наследуют рынок портфеля.
+    Числа должны доехать от ответов до отчёта без потерь — именно из них
+    собирается колонка «Рынок» в разделе 00.
+    """
+    r = await auth_client.get(f"{REPORTS}/{calculated['id']}")
+    assert r.status_code == 200, r.text
+    by_position = {
+        o["result"]["position"]: o["result"]["market_overrides"]
+        for o in r.json()["objects"]
+    }
+    assert by_position == {1: 0, 2: 3, 3: 0, 4: 0, 5: 6}
+
+
+# ── Удаление портфеля ─────────────────────────────────────────────────────────
+class TestDelete:
+    @pytest.mark.asyncio
+    async def test_owner_deletes_portfolio(self, auth_client, calculated):
+        pid = calculated["id"]
+        r = await auth_client.delete(f"{M3}/portfolios/{pid}")
+        assert r.status_code == 204, r.text
+        assert (await auth_client.get(f"{M3}/portfolios/{pid}")).status_code == 404
+        assert (await auth_client.get(f"{REPORTS}/{pid}")).status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_calculated_portfolio_disappears_from_list(self, auth_client, calculated):
+        await auth_client.delete(f"{M3}/portfolios/{calculated['id']}")
+        r = await auth_client.get(f"{M3}/portfolios")
+        assert [p["id"] for p in r.json()] == []
+
+    @pytest.mark.asyncio
+    async def test_stranger_cannot_delete(self, auth_client, calculated, db_session,
+                                          test_user, test_admin):
+        """Чужой портфель не удаляется: проверка та же, что на чтении."""
+        from app.auth import hash_password
+        from app.models import User
+
+        other = User(
+            id=uuid.uuid4(), email=f"other-{uuid.uuid4().hex[:8]}@example.com",
+            password_hash=hash_password("Password123"), full_name="Чужой", role="user",
+        )
+        db_session.add(other)
+        await db_session.flush()
+
+        as_role(auth_client, other)
+        r = await auth_client.delete(f"{M3}/portfolios/{calculated['id']}")
+        assert r.status_code == 403
+
+        as_role(auth_client, test_user)
+        assert (await auth_client.get(f"{M3}/portfolios/{calculated['id']}")).status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_admin_deletes_any_portfolio(self, auth_client, calculated,
+                                               test_admin, test_user):
+        as_role(auth_client, test_admin)
+        r = await auth_client.delete(f"{M3}/portfolios/{calculated['id']}")
+        assert r.status_code == 204, r.text
+
+    @pytest.mark.asyncio
+    async def test_missing_portfolio_gives_404(self, auth_client, m3_on):
+        r = await auth_client.delete(f"{M3}/portfolios/{uuid.uuid4()}")
+        assert r.status_code == 404
+
+
+# ── PDF Метода 3 не хранится ──────────────────────────────────────────────────
+@pytest.mark.asyncio
+async def test_m3_pdf_is_removed_after_download(auth_client, calculated, monkeypatch):
+    """
+    Файл собирается на каждый запрос и удаляется после отдачи. Настоящий
+    Playwright здесь не нужен: проверяется судьба файла, а не его содержимое.
+    """
+    from pathlib import Path
+
+    import app.m3_report_api as report_api
+
+    written: list[Path] = []
+
+    async def _fake(html, output_path):
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"%PDF-1.4 m3")
+        written.append(path)
+
+    monkeypatch.setattr(report_api, "generate_pdf", _fake)
+
+    resp = await auth_client.get(f"{REPORTS}/{calculated['id']}/download")
+    assert resp.status_code == 200, resp.text
+    assert resp.content == b"%PDF-1.4 m3"
+
+    assert len(written) == 1
+    assert not written[0].exists(), "временный PDF должен удаляться после отдачи"
+    assert str(get_settings().uploads_dir) not in str(written[0])

@@ -386,9 +386,19 @@ async def generate_report_on_demand(
     html = await build_html_for_assessment(db, assessment, user, allow_draft=False)
 
     filename = f"{assessment_id}-{int(datetime.now().timestamp())}.pdf"
-    output_path = str(Path(settings.uploads_dir) / str(user.id) / filename)
+    output_path: str | None = None
 
-    await generate_pdf(html, output_path)
+    # При включённой пересборке на скачивании сохранённый файл не читается
+    # никогда: /api/reports/{id}/download собирает PDF заново из текущих
+    # данных. Поэтому здесь его не создаём — иначе uploads копит файлы,
+    # которые никому не нужны. Запись Report остаётся: она отмечает в
+    # кабинете, что отчёт готов, и связывает его с диагностикой.
+    #
+    # При выключенной пересборке поведение прежнее: файл нужен, его читает
+    # тот же эндпоинт скачивания.
+    if not settings.regenerate_pdf_on_download:
+        output_path = str(Path(settings.uploads_dir) / str(user.id) / filename)
+        await generate_pdf(html, output_path)
 
     report = Report(
         assessment_id=assessment_id,

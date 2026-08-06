@@ -4,7 +4,7 @@ import { FollowupBadge } from '@/components/FollowupBadge'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getMe, listAssessments, deleteAssessment, logout, listContours, isMethod2, getSiteMode, type AuthUser, type Assessment, type ContourInfo } from '@/lib/api'
-import { listPortfolios, type M3Portfolio } from '@/lib/m3'
+import { deletePortfolio, listPortfolios, type M3Portfolio } from '@/lib/m3'
 import M3ReportCard, { m3RowDate } from '@/components/M3ReportCard'
 import BuyDiagnostics from '@/components/BuyDiagnostics'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
@@ -85,7 +85,10 @@ export default function DashboardPage() {
   const [credits, setCredits] = useState<number>(0)
   const [grantCredits, setGrantCredits] = useState<number>(0)
   const [grantExpires, setGrantExpires] = useState<string | null>(null)
-  const [confirmId, setConfirmId] = useState<string | null>(null)
+  // Подтверждение удаления обслуживает два вида записей: диагностику
+  // Методов 1 и 2 и портфель Метода 3. Хранить только id недостаточно —
+  // удаляются они разными эндпоинтами.
+  const [confirm, setConfirm] = useState<{ id: string; kind: 'assessment' | 'm3' } | null>(null)
   const [contours, setContours] = useState<ContourInfo[]>([])
   const [m3, setM3] = useState<M3Portfolio[]>([])
   const [m3Enabled, setM3Enabled] = useState(false)
@@ -133,16 +136,21 @@ export default function DashboardPage() {
       .catch(() => setCredits(0))
   }, [router])
 
-  async function handleDelete(id: string) {
-    setDeletingId(id)
+  async function handleDelete(target: { id: string; kind: 'assessment' | 'm3' }) {
+    setDeletingId(target.id)
     try {
-      await deleteAssessment(id)
-      setAssessments(prev => prev.filter(a => a.id !== id))
+      if (target.kind === 'm3') {
+        await deletePortfolio(target.id)
+        setM3(prev => prev.filter(p => p.id !== target.id))
+      } else {
+        await deleteAssessment(target.id)
+        setAssessments(prev => prev.filter(a => a.id !== target.id))
+      }
     } catch {
       alert('Не удалось удалить. Попробуйте ещё раз.')
     } finally {
       setDeletingId(null)
-      setConfirmId(null)
+      setConfirm(null)
     }
   }
 
@@ -280,7 +288,15 @@ export default function DashboardPage() {
             <div style={S.list}>
               {rows.map((row, i) => {
                 if (row.kind === 'm3') {
-                  return <M3ReportCard key={`m3-${row.p.id}`} p={row.p} n={i + 1} />
+                  return (
+                    <M3ReportCard
+                      key={`m3-${row.p.id}`}
+                      p={row.p}
+                      n={i + 1}
+                      deleting={deletingId === row.p.id}
+                      onDelete={pf => setConfirm({ id: pf.id, kind: 'm3' })}
+                    />
+                  )
                 }
                 const a = row.a
                 return (
@@ -363,7 +379,7 @@ export default function DashboardPage() {
                     )}
                     <button
                       style={{ ...S.btnGhost, color: '#c0392b', borderColor: 'rgba(192,57,43,0.25)' }}
-                      onClick={e => { e.stopPropagation(); setConfirmId(a.id) }}
+                      onClick={e => { e.stopPropagation(); setConfirm({ id: a.id, kind: 'assessment' }) }}
                     >Удалить</button>
                   </div>
                 </div>
@@ -445,9 +461,9 @@ export default function DashboardPage() {
         </aside>
       </div>
       {/* Диалог подтверждения удаления */}
-      {confirmId && (
+      {confirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={() => setConfirmId(null)}>
+          onClick={() => setConfirm(null)}>
           <div style={{ background: '#fff', borderRadius: 10, padding: '32px 36px', maxWidth: 400, width: '90%', boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}
             onClick={e => e.stopPropagation()}>
             <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 400, color: '#1a2540', margin: '0 0 12px' }}>Удалить отчёт?</h3>
@@ -456,11 +472,11 @@ export default function DashboardPage() {
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button style={{ background: 'none', border: '1px solid rgba(26,37,64,0.2)', borderRadius: 6, padding: '9px 18px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', color: '#1a2540' }}
-                onClick={() => setConfirmId(null)}>Отмена</button>
-              <button style={{ background: '#c0392b', border: 'none', borderRadius: 6, padding: '9px 18px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', color: '#fff', fontWeight: 500, opacity: deletingId === confirmId ? 0.6 : 1 }}
-                disabled={deletingId === confirmId}
-                onClick={() => handleDelete(confirmId)}>
-                {deletingId === confirmId ? 'Удаляем…' : 'Да, удалить'}
+                onClick={() => setConfirm(null)}>Отмена</button>
+              <button style={{ background: '#c0392b', border: 'none', borderRadius: 6, padding: '9px 18px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', color: '#fff', fontWeight: 500, opacity: deletingId === confirm.id ? 0.6 : 1 }}
+                disabled={deletingId === confirm.id}
+                onClick={() => handleDelete(confirm)}>
+                {deletingId === confirm.id ? 'Удаляем…' : 'Да, удалить'}
               </button>
             </div>
           </div>

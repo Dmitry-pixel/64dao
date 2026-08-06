@@ -1,8 +1,12 @@
+import logging
+import tempfile
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy import select
+from starlette.background import BackgroundTask
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +20,19 @@ from app.routers.assessments import build_html_for_assessment, _ensure_result_ac
 settings = get_settings()
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
+
+
+def _unlink_quietly(path: Path) -> None:
+    """Убрать временный файл после отдачи.
+
+    Ошибку только логируем: ответ пользователю уже ушёл, и падать здесь
+    незачем — осиротевший файл в /tmp дешевле пятисотки на скачивании.
+    """
+    try:
+        path.unlink(missing_ok=True)
+    except OSError as exc:
+        logging.getLogger(__name__).warning(
+            "Не удалось удалить временный PDF %s: %s", path, exc)
 
 
 @router.get("/{report_id}/download")
@@ -46,20 +63,24 @@ async def download_report(
     # видит в /api/payments/orders, так что доступ переживал возврат денег.
     _ensure_result_access(report.assessment, user)
 
+    cleanup: BackgroundTask | None = None
+
     if settings.regenerate_pdf_on_download:
         owner = await db.scalar(select(User).where(User.id == report.user_id))
         if owner is None:
             raise HTTPException(status_code=404, detail="Владелец отчёта не найден")
 
         filename_new = report.pdf_filename or f"report-{report_id}.pdf"
-        path = Path(report.pdf_path) if report.pdf_path else (
-            Path(settings.uploads_dir) / str(report.user_id) / filename_new
-        )
+        # Пересобранный файл не храним: он всё равно строится заново на каждое
+        # скачивание, поэтому копия на диске только копится. Пишем во временный
+        # файл и удаляем после отдачи — раньше нельзя, FileResponse отдаёт тело
+        # уже после возврата из обработчика.
+        path = Path(tempfile.gettempdir()) / f"dao64-{report_id}-{uuid4().hex}.pdf"
+        cleanup = BackgroundTask(_unlink_quietly, path)
 
         # Пересобираем из текущих данных: отчёт всегда в актуальной вёрстке
         html = await build_html_for_assessment(db, report.assessment, owner, allow_draft=False)
         await generate_pdf(html, str(path))
-        report.pdf_path = str(path)
         report.pdf_filename = filename_new
         await db.flush()
     else:
@@ -78,4 +99,5 @@ async def download_report(
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
         },
+        background=cleanup,
     )

@@ -22,6 +22,7 @@ import pytest
 
 from app.hexagrams import HEXAGRAM_LIST, hexagram_by_code
 from app.m3_config import DEFAULT_M3_CONFIG, industry_weights, average_presets
+from app import m3_scoring as sc
 from app.m3_scoring import (
     BLOCK_ARBITER, BLOCK_MARKET, BLOCK_OBJECT, ITEM_LINE, REVERSE_ITEMS,
     InvalidAnswerError, LineUndefinedError, PortfolioSizeError,
@@ -493,3 +494,36 @@ class TestHelpers:
     def test_tension_p6_needs_old_yang_on_line3(self):
         assert "P6" in tensions("AAAAAA", {3: "old_yang"})
         assert "P6" not in tensions("AAAAAA", {3: "old_yin"})
+
+
+# ── Колонка «Рынок»: чей рыночный слой пошёл в расчёт ─────────────────────────
+
+def test_market_override_count_matches_resolution_rule():
+    """Считается тем же признаком, что и подмена: ответ есть и не «не знаю»."""
+    answers = {"Р1*": 3, "Р2*": 2, "Р3*": 1}
+    assert sc.market_override_count(answers) == 3
+
+
+def test_market_override_count_ignores_dont_know():
+    """value IS NULL — «не знаю»: resolve_line_items такой ответ не подменяет,
+    значит и колонка не должна называть направление переопределённым."""
+    assert sc.market_override_count({"Р1*": None, "Р2*": 4}) == 1
+
+
+def test_market_override_count_ignores_portfolio_answers():
+    """Пункты без звёздочки — общий блок портфеля, не переопределение."""
+    assert sc.market_override_count({"Р1": 3, "Р2": 4}) == 0
+
+
+def test_market_override_count_full_set():
+    full = {f"Р{i}*": 2 for i in range(1, 7)}
+    assert sc.market_override_count(full) == sc.MARKET_ITEMS_TOTAL
+
+
+def test_partial_override_actually_changes_line_score():
+    """Проверка, что частичное переопределение — рабочее состояние, а не
+    недозаполненность: один ответ Р* уже меняет балл линии."""
+    portfolio = {"Р1": 1, "Р2": 1, "Р3": 1}
+    without = sc.line_score(5, portfolio, {})
+    with_one = sc.line_score(5, portfolio, {"Р1*": 4})
+    assert with_one > without

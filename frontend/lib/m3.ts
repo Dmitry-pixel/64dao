@@ -76,6 +76,11 @@ export function listPortfolios() {
   return request<M3Portfolio[]>('/api/m3/portfolios')
 }
 
+/** Удаляет портфель вместе с ответами, снимком расчёта и файлом PDF. */
+export function deletePortfolio(id: string) {
+  return request<void>(`/api/m3/portfolios/${id}`, { method: 'DELETE' })
+}
+
 export function getPortfolio(id: string) {
   return request<M3Portfolio>(`/api/m3/portfolios/${id}`)
 }
@@ -263,6 +268,8 @@ export interface M3Result {
   strong_line: number
   tensions: string[]
   flags: string[]
+  /** Сколько пунктов рынка направление переопределило своими ответами (0–6). */
+  market_overrides: number
   verdict: M3Verdict
   trajectory: M3Trajectory
   execution_reason: string

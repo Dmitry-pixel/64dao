@@ -26,7 +26,15 @@ export function m3RowDate(p: M3Portfolio): string {
   return p.calculated_at || p.created_at
 }
 
-export default function M3ReportCard({ p, n }: { p: M3Portfolio; n: number }) {
+export default function M3ReportCard(
+  { p, n, onDelete, deleting = false }: {
+    p: M3Portfolio
+    n: number
+    /** Не передан — кнопки удаления нет: страница сама решает, показывать ли её. */
+    onDelete?: (portfolio: M3Portfolio) => void
+    deleting?: boolean
+  },
+) {
   const router = useRouter()
   const done = p.status === 'calculated'
   const name = p.company_name || p.title || '—'
@@ -94,6 +102,18 @@ export default function M3ReportCard({ p, n }: { p: M3Portfolio; n: number }) {
               borderRadius: 6, padding: '6px 12px', cursor: 'pointer',
             }}
           >Продолжить →</button>
+        )}
+        {onDelete && (
+          <button
+            onClick={e => { e.stopPropagation(); onDelete(p) }}
+            disabled={deleting}
+            style={{
+              fontFamily: 'sans-serif', fontSize: 12, color: '#c0392b',
+              background: 'none', border: '1px solid rgba(192,57,43,0.25)',
+              borderRadius: 6, padding: '6px 12px', cursor: 'pointer',
+              opacity: deleting ? 0.6 : 1,
+            }}
+          >{deleting ? 'Удаляем…' : 'Удалить'}</button>
         )}
       </div>
     </div>
