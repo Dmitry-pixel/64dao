@@ -195,8 +195,15 @@ async def test_delete_assessment_owner_succeeds(auth_client, db_session, test_us
     resp = await auth_client.delete(f"/api/assessments/{assessment_id}")
     assert resp.status_code == 204
 
-    gone = await db_session.scalar(select(Assessment).where(Assessment.id == assessment_id))
-    assert gone is None
+    # Строка остаётся, но помечена удалённой: расход кредита считается по
+    # факту её существования, и стирание возвращало бы оплаченный прогон
+    # в баланс. Для пользователя запись исчезает.
+    row = await db_session.scalar(select(Assessment).where(Assessment.id == assessment_id))
+    assert row is not None
+    assert row.deleted_at is not None
+
+    assert (await auth_client.get(f"/api/assessments/{assessment_id}")).status_code == 404
+    assert (await auth_client.get("/api/assessments")).json() == []
 
 
 @pytest.mark.asyncio

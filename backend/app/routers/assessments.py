@@ -133,6 +133,9 @@ async def create_assessment(
                 Assessment.status.in_(("completed", "paid")),
                 Assessment.is_followup.is_(False),
                 Assessment.method == "method1",
+                # Удалённая первичная диагностика не даёт права на повтор:
+                # для пользователя её нет.
+                Assessment.deleted_at.is_(None),
             )
             .order_by(Assessment.created_at)
             .limit(1)
@@ -238,7 +241,8 @@ async def list_assessments(
     # сканирование дешевле его поддержки.
     stmt = (
         select(Assessment)
-        .where(Assessment.user_id == user.id)
+        .where(Assessment.user_id == user.id,
+               Assessment.deleted_at.is_(None))
         .options(selectinload(Assessment.reports))
         .order_by(Assessment.created_at.desc())
     )
@@ -291,7 +295,8 @@ async def get_assessment(
 ):
     result = await db.execute(
         select(Assessment)
-        .where(Assessment.id == assessment_id)
+        .where(Assessment.id == assessment_id,
+               Assessment.deleted_at.is_(None))
         .options(selectinload(Assessment.reports))
     )
     assessment = result.scalar_one_or_none()
@@ -324,7 +329,8 @@ async def delete_assessment(
 ):
     result = await db.execute(
         select(Assessment)
-        .where(Assessment.id == assessment_id)
+        .where(Assessment.id == assessment_id,
+               Assessment.deleted_at.is_(None))
         .options(selectinload(Assessment.reports))
     )
     assessment = result.scalar_one_or_none()
@@ -344,7 +350,16 @@ async def delete_assessment(
                     "Could not delete PDF file %s: %s", report.pdf_path, exc
                 )
 
-    await db.delete(assessment)
+    # Помечаем, а не стираем. Расход кредита считается по факту существования
+    # завершённой диагностики: стирание возвращало бы оплаченный прогон в
+    # баланс, и при включённой обязательной оплате диагностику можно было бы
+    # проходить заново без ограничений. Из кабинета запись исчезает, файлы
+    # отчётов удалены выше — для пользователя разницы нет.
+    #
+    # Возврат денег кредит по-прежнему возвращает: там меняется статус
+    # диагностики, а не факт её существования.
+    if assessment.deleted_at is None:
+        assessment.deleted_at = datetime.now(timezone.utc)
 
 
 @router.post("/{assessment_id}/generate-report", response_model=ReportOut)
@@ -357,7 +372,8 @@ async def generate_report_on_demand(
 
     result = await db.execute(
         select(Assessment)
-        .where(Assessment.id == assessment_id)
+        .where(Assessment.id == assessment_id,
+               Assessment.deleted_at.is_(None))
         .options(selectinload(Assessment.reports))
     )
     assessment = result.scalar_one_or_none()
@@ -421,7 +437,8 @@ async def stream_pdf_on_demand(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Assessment).where(Assessment.id == assessment_id)
+        select(Assessment).where(Assessment.id == assessment_id,
+                                 Assessment.deleted_at.is_(None))
     )
     assessment = result.scalar_one_or_none()
 
@@ -463,7 +480,8 @@ async def get_assessment_strategy(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Assessment).where(Assessment.id == assessment_id)
+        select(Assessment).where(Assessment.id == assessment_id,
+                                 Assessment.deleted_at.is_(None))
     )
     assessment = result.scalar_one_or_none()
 
@@ -495,7 +513,9 @@ async def get_finance_interpretation(
 ):
     """Собранная интерпретация финблока для браузерного HTML-отчёта.
     Возвращает has_finance=False для legacy-диагностик без финансовых данных."""
-    result = await db.execute(select(Assessment).where(Assessment.id == assessment_id))
+    result = await db.execute(
+        select(Assessment).where(Assessment.id == assessment_id,
+                                 Assessment.deleted_at.is_(None)))
     assessment = result.scalar_one_or_none()
     if not assessment:
         raise HTTPException(status_code=404, detail="Диагностика не найдена")
@@ -536,7 +556,8 @@ async def submit_contour(
         raise HTTPException(status_code=404, detail="Контур недоступен")
 
     assessment = await db.scalar(
-        select(Assessment).where(Assessment.id == assessment_id)
+        select(Assessment).where(Assessment.id == assessment_id,
+                                 Assessment.deleted_at.is_(None))
     )
     if not assessment:
         raise HTTPException(status_code=404, detail="Диагностика не найдена")

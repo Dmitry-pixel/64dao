@@ -31,7 +31,8 @@ class ToggleBody(BaseModel):
 
 
 async def _owned_assessment(assessment_id: str, user: User, db: AsyncSession) -> Assessment:
-    a = await db.scalar(select(Assessment).where(Assessment.id == assessment_id))
+    a = await db.scalar(select(Assessment).where(
+        Assessment.id == assessment_id, Assessment.deleted_at.is_(None)))
     if not a:
         raise HTTPException(status_code=404, detail="Диагностика не найдена")
     if a.user_id != user.id and user.role != "admin":

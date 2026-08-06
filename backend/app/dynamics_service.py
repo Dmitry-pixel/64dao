@@ -13,7 +13,11 @@ async def company_snapshots(db: AsyncSession, company_id) -> list[dict]:
     assessments = (await db.execute(
         select(Assessment)
         .where(Assessment.company_id == company_id,
-               Assessment.status.in_(('completed', 'paid')))
+               Assessment.status.in_(('completed', 'paid')),
+               # Удалённая диагностика не участвует в динамике: для
+               # пользователя её нет, а в графике она выглядела бы точкой,
+               # которую нельзя открыть.
+               Assessment.deleted_at.is_(None))
         .order_by(Assessment.created_at)
     )).scalars().all()
 

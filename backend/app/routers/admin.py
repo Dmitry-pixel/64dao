@@ -72,6 +72,9 @@ async def get_stats(
 
     recent_assessments_res = await db.execute(
         select(Assessment)
+        # Удалённые не показываем и в админке: она смотрит на то же, что
+        # видит пользователь, иначе цифры на дашборде разойдутся с кабинетом.
+        .where(Assessment.deleted_at.is_(None))
         .options(selectinload(Assessment.reports))
         .order_by(Assessment.created_at.desc())
         .limit(5)
@@ -408,6 +411,7 @@ async def list_all_assessments(
 ):
     result = await db.execute(
         select(Assessment)
+        .where(Assessment.deleted_at.is_(None))
         .options(selectinload(Assessment.reports))
         .order_by(Assessment.created_at.desc())
         .limit(100)

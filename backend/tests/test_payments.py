@@ -505,3 +505,58 @@ async def test_refund_revokes_only_its_own_order(admin_client, db_session, test_
     await db_session.refresh(second)
     assert first.status == "draft"
     assert second.status == "completed"
+
+
+# ── Удаление не возвращает кредит ─────────────────────────────────────────────
+# Расход считается по факту существования записи. Пока удаление стирало
+# строку, оплаченный прогон возвращался в баланс, и при включённой
+# обязательной оплате диагностику можно было проходить заново без конца.
+
+@pytest.mark.asyncio
+async def test_deleting_assessment_does_not_return_credit(auth_client, db_session, test_user):
+    a = await _make_assessment(db_session, test_user)
+    order = await _make_order(db_session, test_user, a, status="paid")
+    a.order_id = order.id
+    await db_session.flush()
+
+    before = (await auth_client.get("/api/payments/credits")).json()["paid_credits"]
+
+    resp = await auth_client.delete(f"/api/assessments/{a.id}")
+    assert resp.status_code == 204, resp.text
+
+    after = (await auth_client.get("/api/payments/credits")).json()["paid_credits"]
+    assert after == before, "удаление не должно возвращать оплаченный прогон"
+
+
+@pytest.mark.asyncio
+async def test_deleted_assessment_disappears_from_list(auth_client, db_session, test_user):
+    a = await _make_assessment(db_session, test_user)
+
+    await auth_client.delete(f"/api/assessments/{a.id}")
+
+    listed = (await auth_client.get("/api/assessments")).json()
+    assert [x["id"] for x in listed] == []
+    assert (await auth_client.get(f"/api/assessments/{a.id}")).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_refund_returns_credit_even_after_deletion(auth_client, db_session, test_user):
+    """Возврат денег кредит возвращает: там меняется статус диагностики, а не
+    факт её существования. Это обещание пользователю, а не дыра."""
+    from app.routers.payments import revoke_order_access
+
+    a = await _make_assessment(db_session, test_user)
+    order = await _make_order(db_session, test_user, a, status="paid")
+    a.order_id = order.id
+    await db_session.flush()
+    await db_session.refresh(order, ["assessment"])
+
+    await auth_client.delete(f"/api/assessments/{a.id}")
+    assert (await auth_client.get("/api/payments/credits")).json()["paid_credits"] == 1
+
+    order.status = "refunded"
+    await revoke_order_access(db_session, order)
+    await db_session.flush()
+
+    assert a.status == "draft"
+    assert (await auth_client.get("/api/payments/credits")).json()["paid_credits"] == 0

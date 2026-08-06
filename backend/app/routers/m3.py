@@ -10,6 +10,7 @@
 и снимать флаг отдельным действием — как enforce_credits.
 """
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -64,7 +65,13 @@ async def _owned(portfolio_id: uuid.UUID, user: User, db: AsyncSession) -> M3Por
     p = await db.scalar(
         select(M3Portfolio)
         .options(selectinload(M3Portfolio.objects))
-        .where(M3Portfolio.id == portfolio_id)
+        # Удалённый портфель для пользователя не существует. Проверка стоит
+        # в одном месте, а не в каждом эндпоинте: через _owned проходят все
+        # обращения к портфелю — анкета, расчёт, отчёт, скачивание.
+        # Учёт кредитов сюда не ходит: он считает по своим запросам, и
+        # помеченный портфель для него по-прежнему израсходован.
+        .where(M3Portfolio.id == portfolio_id,
+               M3Portfolio.deleted_at.is_(None))
     )
     if not p:
         raise HTTPException(status_code=404, detail="Портфель не найден")
@@ -128,7 +135,8 @@ async def list_portfolios(
     rows = (await db.execute(
         select(M3Portfolio)
         .options(selectinload(M3Portfolio.objects))
-        .where(M3Portfolio.user_id == user.id)
+        .where(M3Portfolio.user_id == user.id,
+               M3Portfolio.deleted_at.is_(None))
         .order_by(M3Portfolio.created_at.desc())
     )).scalars().all()
     return list(rows)
@@ -156,16 +164,14 @@ async def delete_portfolio(
     Файл PDF удалять не нужно: он собирается на каждый запрос скачивания во
     временном каталоге и удаляется сразу после отдачи (m3_report_api).
 
-    ВНИМАНИЕ. Расход кредита считается по факту: сколько рассчитанных
-    портфелей привязано к оплаченным заказам. Удаление рассчитанного
-    портфеля возвращает кредит в баланс — ровно так же ведёт себя удаление
-    завершённой диагностики Методов 1 и 2. При включённой обязательной
-    оплате это позволяет пройти диагностику заново бесплатно. Поведение
-    осознанно оставлено одинаковым для всех методов; закрывать эту дыру
-    решено отдельной задачей и сразу везде.
+    Запись помечается удалённой, а не стирается: расход кредита считается по
+    факту существования рассчитанного портфеля, и стирание возвращало бы
+    оплаченную диагностику в баланс. Из кабинета портфель исчезает, все
+    обращения к нему дают 404 (проверка в _owned).
     """
     p = await _owned(portfolio_id, user, db)
-    await db.delete(p)
+    if p.deleted_at is None:
+        p.deleted_at = datetime.now(timezone.utc)
 
 
 @router.put("/portfolios/{portfolio_id}/objects", response_model=M3PortfolioOut)

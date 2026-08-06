@@ -53,6 +53,9 @@ class M3Portfolio(Base):
     created_at:    Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:    Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     calculated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # См. Assessment.deleted_at: удаление скрывает запись, но факт расчёта
+    # остаётся — иначе удаление возвращало бы оплаченную диагностику.
+    deleted_at:    Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Чем оплачен расчёт. Симметрично assessments.order_id / grant_id:
     # расход считается по факту привязки, а не счётчиком, поэтому возврат

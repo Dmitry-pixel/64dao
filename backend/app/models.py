@@ -188,6 +188,10 @@ class Assessment(Base):
     status:              Mapped[str]       = mapped_column(String(20), nullable=False, default="draft")
     created_at:          Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at:          Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    # Удаление скрывает запись, а не стирает: расход кредита считается по
+    # факту её существования, и стирание возвращало бы оплаченную диагностику
+    # в баланс. Из кабинета запись исчезает, файл PDF удаляется.
+    deleted_at:          Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         CheckConstraint("status IN ('draft','completed','paid')", name="chk_assessment_status"),

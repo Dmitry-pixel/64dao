@@ -213,3 +213,54 @@ async def test_create_payment_rejects_assessment_for_m3(auth_client, monkeypatch
 async def test_create_payment_rejects_unknown_product(auth_client):
     r = await auth_client.post("/api/payments/create?product=m99")
     assert r.status_code == 400
+
+
+# ── Удаление не возвращает кредит ─────────────────────────────────────────────
+@pytest.mark.asyncio
+async def test_deleting_calculated_portfolio_does_not_return_credit(
+    auth_client, filled, db_session, test_user, enforce_on,
+):
+    """Один заказ — один рассчитанный портфель. Если бы удаление возвращало
+    кредит, за одну покупку можно было бы считать сколько угодно портфелей."""
+    await _paid_order(db_session, test_user, "m3")
+    assert (await auth_client.post(f"{M3}/portfolios/{filled['id']}/calculate")).status_code == 200
+    assert (await auth_client.get("/api/payments/credits")).json()["products"]["m3"]["credits"] == 0
+
+    assert (await auth_client.delete(f"{M3}/portfolios/{filled['id']}")).status_code == 204
+
+    credits = (await auth_client.get("/api/payments/credits")).json()
+    assert credits["products"]["m3"]["credits"] == 0, "удаление не возвращает кредит"
+
+
+@pytest.mark.asyncio
+async def test_deleted_portfolio_is_gone_for_the_user(auth_client, filled, db_session):
+    """Для пользователя удалённый портфель не существует: ни в списке, ни по
+    прямой ссылке, ни в отчёте."""
+    await auth_client.delete(f"{M3}/portfolios/{filled['id']}")
+
+    assert (await auth_client.get(f"{M3}/portfolios")).json() == []
+    assert (await auth_client.get(f"{M3}/portfolios/{filled['id']}")).status_code == 404
+    assert (await auth_client.get(f"{REPORTS}/{filled['id']}")).status_code == 404
+
+    row = await _portfolio_row(db_session, filled["id"])
+    assert row is not None and row.deleted_at is not None, "строка остаётся для учёта"
+
+
+@pytest.mark.asyncio
+async def test_refund_still_frees_m3_credit_after_deletion(
+    auth_client, filled, db_session, test_user, enforce_on,
+):
+    """Возврат денег освобождает кредит и у удалённого портфеля: деньги
+    вернули — значит диагностика не оплачена."""
+    from app.routers.payments import revoke_order_access
+
+    order = await _paid_order(db_session, test_user, "m3")
+    await auth_client.post(f"{M3}/portfolios/{filled['id']}/calculate")
+    await auth_client.delete(f"{M3}/portfolios/{filled['id']}")
+
+    order.status = "refunded"
+    await revoke_order_access(db_session, order)
+    await db_session.flush()
+
+    row = await _portfolio_row(db_session, filled["id"])
+    assert row.status == "filled"
