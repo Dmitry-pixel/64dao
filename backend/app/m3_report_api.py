@@ -31,7 +31,9 @@ from app.auth import get_current_user
 from app.config import get_settings
 from app.db import get_db
 from app.m3_models import M3ChecklistStep, M3Portfolio, M3TradeoffDecision, M3Weight
-from app.m3_pdf import build_portfolio_report_html
+from app.m3_pdf import (
+    PDF_MARGIN, build_portfolio_report_html, footer_template, header_template,
+)
 from app.models import User
 from app.pdf import generate_pdf
 from app.m3_access import ensure_result_access
@@ -144,7 +146,12 @@ def register_download(
         # только копилась бы. Удаляем фоновой задачей — раньше нельзя,
         # FileResponse отдаёт тело уже после возврата из обработчика.
         path = Path(tempfile.gettempdir()) / f"dao64-m3-{portfolio_id}-{uuid4().hex}.pdf"
-        await generate_pdf(html, str(path))
+        await generate_pdf(
+            html, str(path),
+            header_html=header_template(context["company_name"]),
+            footer_html=footer_template(),
+            margin=PDF_MARGIN,
+        )
 
         filename = f"64dao-matrica-sily-{portfolio_id}.pdf"
         return FileResponse(

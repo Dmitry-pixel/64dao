@@ -890,7 +890,9 @@ async def test_m3_pdf_is_removed_after_download(auth_client, calculated, monkeyp
 
     written: list[Path] = []
 
-    async def _fake(html, output_path):
+    async def _fake(html, output_path, **kwargs):
+        # kwargs — печатные колонтитулы и поля страницы: подмена должна
+        # принимать их, иначе тест ловит не судьбу файла, а свою сигнатуру.
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"%PDF-1.4 m3")

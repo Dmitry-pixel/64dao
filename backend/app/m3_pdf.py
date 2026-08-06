@@ -86,31 +86,61 @@ def signed(value: int | None) -> str:
 
 
 # ── Каркас страницы ───────────────────────────────────────────────────────────
-def page(body: str, company_name: str, note: str, first: bool = False) -> str:
+def page(body: str, first: bool = False) -> str:
     """
-    Лист A4 с шапкой и подвалом. Разрыв страницы ставится перед листом, а не
-    после: иначе последний лист тянет за собой пустую страницу.
+    Раздел документа. Разрыв страницы ставится перед разделом, а не после:
+    иначе последний тянет за собой пустую страницу.
+
+    Колонтитулов внутри нет намеренно. Свёрстанные блоком, они не умеют
+    повторяться: в разделе на пять страниц шапка рисовалась один раз сверху,
+    подвал один раз снизу, страницы между ними оставались голыми, а подвал,
+    не поместившийся на последнюю, утягивал за собой пустую страницу.
+    Теперь колонтитулы печатает браузер — см. header_template/footer_template.
     """
     brk = "" if first else "page-break-before:always;"
-    return f"""<div style="padding:38px 46px;background:{BG};{brk}">
-<div style="display:flex;justify-content:space-between;align-items:center;
-padding-bottom:12px;border-bottom:1px solid {LINE};margin-bottom:22px;">
-<span style="font-size:11px;font-weight:bold;color:{RED};font-family:Arial,sans-serif;letter-spacing:2px;">64DAO</span>
-<span style="font-size:10px;color:{MUTED};font-family:Arial,sans-serif;">{e(company_name)} · {e(note)}</span>
-</div>
-{body}
-<div style="margin-top:28px;padding-top:12px;border-top:1px solid {LINE};
-display:flex;justify-content:space-between;font-family:Arial,sans-serif;
-font-size:10px;color:{MUTED};">
-<span>64dao.ru</span><span>© 2024 64DAO — Конфиденциально</span>
-</div></div>"""
+    return f'<div style="padding:0 40px;background:{BG};{brk}">{body}</div>'
+
+
+def header_template(company_name: str) -> str:
+    """
+    Печатный колонтитул. Живёт в поле страницы, повторяется на каждой.
+
+    Шрифт задаётся явно и в пунктах: собственный CSS документа сюда не
+    доходит, а по умолчанию браузер печатает колонтитул десятым кеглем
+    системным шрифтом.
+    """
+    return (
+        f'<div style="width:100%;font-size:8pt;font-family:Arial,sans-serif;'
+        f'color:{MUTED};padding:0 12mm;display:flex;justify-content:space-between;'
+        f'border-bottom:0.5pt solid {LINE};padding-bottom:2mm;">'
+        f'<span style="font-weight:bold;color:{RED};letter-spacing:1pt;">64DAO</span>'
+        f'<span>{e(company_name)}</span></div>'
+    )
+
+
+def footer_template() -> str:
+    """Подвал с номером страницы: в документе на дюжину листов он нужнее,
+    чем повтор адреса сайта на каждой."""
+    return (
+        f'<div style="width:100%;font-size:8pt;font-family:Arial,sans-serif;'
+        f'color:{MUTED};padding:0 12mm;display:flex;justify-content:space-between;'
+        f'border-top:0.5pt solid {LINE};padding-top:2mm;">'
+        f'<span>64dao.ru · © 2024 64DAO — Конфиденциально</span>'
+        f'<span><span class="pageNumber"></span> / <span class="totalPages"></span></span>'
+        f'</div>'
+    )
+
+
+# Поля под печатные колонтитулы. Боковых нет: фон страницы должен доходить
+# до края, а отступ содержимого задаёт сам раздел.
+PDF_MARGIN = {"top": "16mm", "right": "0", "bottom": "14mm", "left": "0"}
 
 
 def section_title(number: str, title: str) -> str:
     return (
         f'<h2 style="font-size:13px;letter-spacing:0.10em;text-transform:uppercase;'
         f'font-weight:normal;color:{MUTED};border-bottom:1px solid {LINE};'
-        f'padding-bottom:7px;margin:34px 0 18px;font-family:{SERIF};">'
+        f'padding-bottom:6px;margin:20px 0 13px;font-family:{SERIF};">'
         f'<span style="color:{RED};margin-right:10px;">{e(number)}</span>{e(title)}</h2>'
     )
 
@@ -119,8 +149,8 @@ def banner(title: str, body: str, warn: bool = False) -> str:
     color = RED if warn else BLUE
     return (
         f'<div style="border-left:3px solid {color};background:{PAPER};'
-        f'padding:13px 17px;margin:16px 0;font-size:13px;font-family:{SERIF};'
-        f'line-height:1.65;page-break-inside:avoid;">'
+        f'padding:8px 12px;margin:8px 0;font-size:13px;font-family:{SERIF};'
+        f'line-height:1.5;page-break-inside:avoid;">'
         f'<span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;'
         f'color:{MUTED};display:block;margin-bottom:5px;">{e(title)}</span>{body}</div>'
     )
@@ -398,14 +428,14 @@ def lines_block(result: dict[str, Any]) -> str:
         rows += (
             f'<tr><td style="width:76px;padding:3px 10px 3px 0;">'
             f"{line_glyph(yang, bool(state))}</td>"
-            f'<td style="padding:3px 0;font-size:13px;">Л{n} · {e(LINE_TITLES[n])}</td>'
+            f'<td style="padding:2px 0;font-size:13px;">Л{n} · {e(LINE_TITLES[n])}</td>'
             f'<td style="padding:3px 0;font-size:13px;text-align:right;width:46px;'
             f'color:{MUTED};">{num(score, 2)}</td>'
             f'<td style="padding:3px 0 3px 14px;font-size:12px;width:160px;'
             f'color:{RED if state else MUTED};">{e(label)}</td></tr>'
         )
     return (
-        f'<table style="width:100%;border-collapse:collapse;margin:14px 0;'
+        f'<table style="width:100%;border-collapse:collapse;margin:10px 0;'
         f'font-family:{SERIF};page-break-inside:avoid;"><tbody>{rows}</tbody></table>'
     )
 
@@ -463,8 +493,9 @@ def route_block(steps: list[Any], result: dict[str, Any]) -> str:
     if not steps:
         return (
             '<h4 style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;'
+            'page-break-after:avoid;'
             f'color:{MUTED};font-weight:normal;margin:20px 0 8px;">Маршрут</h4>'
-            f'<p style="font-size:13px;margin:8px 0;font-family:{SERIF};">'
+            f'<p style="font-size:13px;margin:5px 0;font-family:{SERIF};">'
             "Подвижных линий нет — маршрут не строится. Флаг «ограничение "
             "стабильно».</p>"
         )
@@ -478,7 +509,7 @@ def route_block(steps: list[Any], result: dict[str, Any]) -> str:
         budget = "" if not getattr(s, "needs_budget", False) else (
             f'<span style="color:{MUTED};"> · требует бюджета</span>')
         items += (
-            f'<li style="margin:10px 0;font-size:13px;">'
+            f'<li style="margin:5px 0;font-size:13px;line-height:1.48;page-break-inside:avoid;">'
             f'<span style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;'
             f'color:{RED};display:block;margin-bottom:3px;">{e(head)}</span>'
             f"{e(getattr(s, 'step_text', ''))}{budget}</li>"
@@ -493,13 +524,14 @@ def route_block(steps: list[Any], result: dict[str, Any]) -> str:
         move = trajectory(result, kind)
         tail = f", {move['phrase']}" if move else ""
         transition += (
-            f'<p style="font-size:12px;color:{MUTED};margin:8px 0;">'
+            f'<p style="font-size:12px;color:{MUTED};margin:5px 0;">'
             f'{lead}: № {e(result["current_hex"])} → № {e(to_hex)}{e(tail)}.</p>'
         )
 
     return (
         '<h4 style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;'
-        f'color:{MUTED};font-weight:normal;margin:20px 0 8px;">Маршрут и пакеты</h4>'
+            'page-break-after:avoid;'
+        f'color:{MUTED};font-weight:normal;margin:9px 0 4px;">Маршрут и пакеты</h4>'
         f'<ul style="margin:8px 0;padding-left:20px;font-family:{SERIF};">{items}</ul>'
         + transition
     )
@@ -512,7 +544,7 @@ def verdict_block(verdict: dict[str, Any]) -> str:
     """
     notes = " · ".join(verdict["notes"])
     return (
-        f'<div style="border-top:1px solid {LINE};margin-top:18px;padding-top:13px;'
+        f'<div style="border-top:1px solid {LINE};margin-top:11px;padding-top:9px;'
         f'font-size:14px;font-family:{SERIF};page-break-inside:avoid;">'
         f'<b style="font-weight:normal;color:{RED};">{e(verdict["verdict"])}.</b> '
         f'<span style="color:{MUTED};font-size:12.5px;">Зона матрицы: '
@@ -542,8 +574,9 @@ def object_card(
         body += (
             '<div style="page-break-inside:avoid;">'
             '<h4 style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;'
-            f'color:{MUTED};font-weight:normal;margin:18px 0 8px;">{e(block["title"])}</h4>'
-            f'<p style="font-size:13.5px;margin:8px 0;line-height:1.7;'
+            'page-break-after:avoid;'
+            f'color:{MUTED};font-weight:normal;margin:9px 0 4px;">{e(block["title"])}</h4>'
+            f'<p style="font-size:13.5px;margin:4px 0;line-height:1.48;'
             f'font-family:{SERIF};">{e(block["body"])}</p></div>'
         )
         if block.get("mistake"):
@@ -551,36 +584,54 @@ def object_card(
 
     if tensions:
         items = "".join(
-            f'<li style="margin:6px 0;font-size:13px;">'
+            f'<li style="margin:4px 0;font-size:13px;line-height:1.48;page-break-inside:avoid;">'
             f'<b style="font-weight:normal;color:{RED};">{e(t["key"])}</b> '
             f'{e(t["body"])}</li>'
             for t in tensions
         )
         body += (
             '<h4 style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;'
-            f'color:{MUTED};font-weight:normal;margin:20px 0 8px;">Напряжения</h4>'
+            'page-break-after:avoid;'
+            f'color:{MUTED};font-weight:normal;margin:9px 0 4px;">Напряжения</h4>'
             f'<ul style="margin:8px 0;padding-left:20px;font-family:{SERIF};">{items}</ul>'
         )
 
-    body += route_block(steps, result)
-
+    # Маршрут, оговорки и вердикт — итог карточки: «что делать» и «вывод».
+    # Они склеены в один неделимый блок. Если карточка не помещается на
+    # странице (у направления с тремя напряжениями текст длиннее полосы —
+    # это содержание, а не оформление), разрыв падает перед этим блоком, и
+    # на следующую страницу уезжает цельный кусок. Раньше уезжал один
+    # вердикт в две строки и читался как начало нового направления.
+    tail = route_block(steps, result)
     if result.get("flags"):
         text = "; ".join(FLAG_LABELS.get(f, f) for f in result["flags"])
-        body += banner("Оговорки по данным направления", e(text) + ".", warn=True)
+        tail += banner("Оговорки по данным направления", e(text) + ".", warn=True)
 
-    # Запрета разрыва на самой карточке нет намеренно: она выше листа, и
-    # avoid заставлял браузер сначала перенести её целиком — первый лист
-    # оставался пустым, а карточка всё равно ломалась. Разрыв запрещён
-    # только у неделимых кусков внутри: строки линий, баннеры, вердикт.
-    return (
-        f'<section style="background:{PAPER};border:1px solid {LINE};'
-        f'padding:20px 22px;margin:0 0 16px;font-family:{SERIF};">'
+    # Шапка держится вместе со строками линий: заголовок направления,
+    # оторванный от своей таблицы, читается как чужой.
+    head = (
+        '<div style="page-break-inside:avoid;">'
         + heading
         + facts_line(result, obj)
         + hexagram_line(result)
         + lines_block(result)
+        + "</div>"
+    )
+    # Запрета разрыва на самой карточке нет. Замер показал: карточки в
+    # контрольном портфеле — от 938 до 1122 пикселей при полосе набора в
+    # 1010. Три из пяти выше полосы, и запрет их не спасает: браузер всё
+    # равно обязан разорвать блок, который не помещается на странице, — но
+    # сначала гонит его на новую, оставляя предыдущую полупустой.
+    #
+    # Поэтому разрыв разрешён, но управляем: неделимы шапка со строками
+    # линий, каждый блок разбора, пункты списков и хвост «маршрут + вердикт».
+    # Разрыв падает между ними.
+    return (
+        f'<section style="background:{PAPER};border:1px solid {LINE};'
+        f'padding:13px 16px;margin:0 0 12px;font-family:{SERIF};">'
+        + head
         + body
-        + verdict_block(verdict)
+        + f'<div style="page-break-inside:avoid;">{tail}{verdict_block(verdict)}</div>'
         + "</section>"
     )
 
@@ -773,6 +824,7 @@ def decision_section(
 
     invest = (
         '<h4 style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;'
+            'page-break-after:avoid;'
         f'color:{MUTED};font-weight:normal;margin:22px 0 6px;">'
         "Приоритет вложения — где деньги дадут больший эффект</h4>"
         + _rank_table(investment_order, results_by_id, "v_index", "Вердикт",
@@ -781,6 +833,7 @@ def decision_section(
 
     execute = (
         '<h4 style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;'
+            'page-break-after:avoid;'
         f'color:{MUTED};font-weight:normal;margin:22px 0 6px;">'
         "Очередь исполнения — с чего начинать и что защищать</h4>"
         + _rank_table(
@@ -862,6 +915,7 @@ def decision_section(
 
     checklist = (
         '<h4 style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;'
+            'page-break-after:avoid;'
         f'color:{MUTED};font-weight:normal;margin:24px 0 6px;">Чек-лист по волнам</h4>'
         + checklist_table(steps, objects_by_id, generated_at)
     )
@@ -1016,32 +1070,38 @@ def build_portfolio_report_html(
             sorted(getattr(portfolio, "objects", []), key=lambda o: getattr(o, "position", 0)),
             market_by_object,
         ),
-        company_name, "исходные данные", first=True,
+        first=True,
     ))
 
     sheets.append(page(
         map_section(results, shares, summary),
-        company_name, "карта портфеля",
     ))
 
-    for index, item in enumerate(objects):
-        result = item["result"]
-        title = section_title(
-            "02", "Разбор направлений — в порядке приоритета вложения"
-        ) if index == 0 else ""
-        sheets.append(page(
-            title + object_card(
-                result, item["narrative"],
-                objects_by_id.get(str(result["object_id"])),
-                steps_by_object.get(str(result["object_id"]), []),
-                verdict_for(result),
-            ),
-            company_name, f'направление {result["position"]}',
-        ))
+    # Карточки идут подряд одним листом, а не по листу на направление.
+    # Прежнее правило стоило пяти страниц из семнадцати: содержимое карточки
+    # — 837 пикселей при листе в 1123, но с зазорами секция вырастала до
+    # 1082–1200 и утягивала второй лист с хвостом в 300–500 знаков.
+    #
+    # Разрыв теперь падает между блоками карточки: у неделимых кусков —
+    # таблицы линий, баннеров, вердикта, шапки — стоит page-break-inside:avoid.
+    # На самой карточке запрета нет и быть не может: она выше листа, и запрет
+    # заставлял браузер переносить её целиком (первый лист оставался пустым,
+    # а карточка всё равно ломалась).
+    cards = "".join(
+        (section_title("02", "Разбор направлений — в порядке приоритета вложения")
+         if index == 0 else "")
+        + object_card(
+            item["result"], item["narrative"],
+            objects_by_id.get(str(item["result"]["object_id"])),
+            steps_by_object.get(str(item["result"]["object_id"]), []),
+            verdict_for(item["result"]),
+        )
+        for index, item in enumerate(objects)
+    )
+    sheets.append(page(cards))
 
     sheets.append(page(
         constraints_section(results, summary),
-        company_name, "портфельные ограничения",
     ))
 
     sheets.append(page(
@@ -1052,7 +1112,6 @@ def build_portfolio_report_html(
             steps, decision, generated_at,
             verdicts_held=bool(summary.get("verdicts_held")),
         ),
-        company_name, "решение о распределении",
     ))
 
     sheets.append(page(
@@ -1060,7 +1119,6 @@ def build_portfolio_report_html(
             objects, summary, report.get("disclaimers") or [],
             flag_labels, portfolio_flag_labels, config,
         ),
-        company_name, "оговорки",
     ))
 
     return f"""<!DOCTYPE html>

@@ -124,24 +124,47 @@ def _hexagram_svg(combination: str, size: int = 110, color: str = "#1a2540") -> 
 
 
 # ── PDF generation ────────────────────────────────────────────────────────────
-async def generate_pdf(html_content: str, output_path: str) -> str:
+async def generate_pdf(
+    html_content: str,
+    output_path: str,
+    header_html: str | None = None,
+    footer_html: str | None = None,
+    margin: dict[str, str] | None = None,
+) -> str:
     """
     Рендерит HTML в PDF через Playwright.
     Возвращает путь к созданному файлу.
+
+    header_html/footer_html — печатные колонтитулы браузера. Они не участвуют
+    в потоке документа и повторяются на КАЖДОЙ странице. Колонтитул, свёрстанный
+    обычным блоком, повторяться не умеет: в многостраничном разделе он рисуется
+    один раз, а если не помещается — утягивает за собой пустую страницу.
+    Так и было в отчёте Метода 3.
+
+    Колонтитулы требуют ненулевых полей: браузер печатает их именно в поле.
+    Поэтому margin передаётся вместе с ними, иначе они не появятся.
     """
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
     browser = await _get_browser()
     page = await browser.new_page()
 
+    options: dict = {
+        "path": output_path,
+        "format": "A4",
+        "print_background": True,
+        "margin": margin or {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+    }
+    if header_html or footer_html:
+        options["display_header_footer"] = True
+        # Пустой шаблон обязателен: без него браузер печатает свой
+        # собственный — с датой и адресом страницы.
+        options["header_template"] = header_html or "<span></span>"
+        options["footer_template"] = footer_html or "<span></span>"
+
     try:
         await page.set_content(html_content, wait_until="domcontentloaded")
-        await page.pdf(
-            path=output_path,
-            format="A4",
-            print_background=True,
-            margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
-        )
+        await page.pdf(**options)
     finally:
         await page.close()
 

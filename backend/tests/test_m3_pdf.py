@@ -14,8 +14,9 @@ from types import SimpleNamespace
 import pytest
 
 from app.m3_pdf import (
-    banner, data_status_banner, map_section, num, objects_section, page,
-    report_header, section_title, signed, signed_percent, table,
+    banner, data_status_banner, footer_template, header_template, map_section,
+    num, objects_section, page, report_header, section_title, signed,
+    signed_percent, table,
 )
 
 PORTFOLIO_FLAG_LABELS = {
@@ -248,16 +249,33 @@ def test_map_section_survives_missing_share():
 
 # ── Каркас ────────────────────────────────────────────────────────────────────
 def test_first_page_has_no_page_break_before_it():
-    """Разрыв перед первым листом дал бы пустую страницу в начале документа."""
-    assert "page-break-before" not in page("<p></p>", "Компания", "стр. 1", first=True)
-    assert "page-break-before" in page("<p></p>", "Компания", "стр. 2")
+    """Разрыв перед первым разделом дал бы пустую страницу в начале."""
+    assert "page-break-before" not in page("<p></p>", first=True)
+    assert "page-break-before" in page("<p></p>")
 
 
-def test_page_shows_company_and_note_in_running_head():
-    html = page("<p></p>", "ООО «Ромашка»", "карта портфеля", first=True)
-    assert "ООО «Ромашка»" in html
-    assert "карта портфеля" in html
-    assert "Конфиденциально" in html
+def test_page_carries_no_running_head_of_its_own():
+    """
+    Колонтитул, свёрстанный блоком, не умеет повторяться: в разделе на пять
+    страниц он рисовался один раз, страницы между оставались голыми, а
+    подвал, не поместившийся на последнюю, утягивал пустую страницу.
+    Теперь его печатает браузер.
+    """
+    html = page("<p>тело</p>", first=True)
+    assert "Конфиденциально" not in html
+    assert "64DAO" not in html
+    assert "тело" in html
+
+
+def test_print_templates_carry_company_and_page_numbers():
+    head = header_template("ООО «Ромашка»")
+    foot = footer_template()
+    assert "ООО «Ромашка»" in head
+    assert "Конфиденциально" in foot
+    assert 'class="pageNumber"' in foot and 'class="totalPages"' in foot
+    # Кегль в пунктах: CSS документа в колонтитул не доходит, а по умолчанию
+    # браузер печатает его своим шрифтом.
+    assert "pt;" in head and "pt;" in foot
 
 
 def test_table_aligns_numeric_columns_right():
@@ -889,10 +907,35 @@ def test_document_keeps_the_sample_section_order():
     assert positions == sorted(positions), "порядок разделов разошёлся с образцом"
 
 
-def test_each_direction_gets_its_own_sheet():
-    """Направление начинается с нового листа: три направления — три разрыва."""
+def test_directions_share_one_flowing_sheet():
+    """
+    Раньше каждое направление начиналось с нового листа. Это стоило пяти
+    страниц из семнадцати: содержимое карточки — 837 пикселей при листе в
+    1123, но с зазорами секция вырастала и утягивала второй лист с хвостом
+    в 300–500 знаков. Правило снято по решению владельца.
+
+    Теперь карточки идут подряд одним листом, а разрыв падает между их
+    блоками — за это отвечают тесты ниже.
+    """
     html = _document()
-    assert html.count("· направление ") == 3, "в колонтитуле по разу на направление"
+    assert html.count("Разбор направлений") == 1
+    assert html.count("page-break-before") == 5, "по разрыву на раздел, а не на направление"
+
+
+def test_card_head_stays_with_its_lines():
+    """Заголовок направления, оторванный от таблицы линий, читается как
+    чужой: шапка и строки линий держатся вместе."""
+    html = _document()
+    head = html.index("1 · Салонный канал B2B")
+    avoid = html.rindex("page-break-inside:avoid;", 0, head)
+    assert head - avoid < 200, "шапка карточки не обёрнута запретом разрыва"
+
+
+def test_subheadings_do_not_dangle_at_the_page_bottom():
+    """Подзаголовок внизу листа, оторванный от своего абзаца, — типичная
+    беда потока. page-break-after:avoid держит их вместе."""
+    html = _document()
+    assert html.count("page-break-after:avoid;") >= 3
 
 
 def test_section_title_is_printed_once_not_on_every_sheet():
@@ -906,15 +949,71 @@ def test_section_title_is_printed_once_not_on_every_sheet():
 
 def test_direction_card_does_not_forbid_breaking_inside_itself():
     """
-    Карточка выше листа. Запрет разрыва заставлял браузер переносить её
-    целиком — первый лист оставался пустым, а карточка всё равно ломалась.
-    Разрыв запрещён только неделимым кускам внутри.
+    Замер контрольного портфеля: карточки от 938 до 1122 пикселей при полосе
+    набора в 1010. Три из пяти выше полосы — это длина текста, а не отступы.
+
+    Запрет разрыва их не спасает: браузер обязан разорвать блок, который не
+    помещается, но сначала гонит его на новую страницу, оставляя предыдущую
+    полупустой. Поэтому разрыв разрешён, а управляется он неделимыми кусками
+    внутри — их проверяют тесты ниже.
     """
     html = object_card(_full_result(), NARRATIVE, _obj(oid="o5"), [_step()],
                        verdict_for(_full_result()))
     section = html[:html.index(">")]
     assert "page-break-inside" not in section
-    assert "page-break-inside:avoid" in html, "внутренние блоки защищены"
+
+
+def _enclosing_styles(html: str, needle: str) -> list[str]:
+    """Стили всех элементов, внутри которых лежит текст needle — от корня.
+
+    Проверять запрет разрыва подстроками нельзя: у пунктов списка и у самого
+    вердикта есть собственные запреты, и поиск «нет ли avoid между ними»
+    ловит их, а не общую обёртку. Нужна структура, поэтому разбор.
+    """
+    from html.parser import HTMLParser
+
+    class Finder(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.stack: list[str] = []
+            self.found: list[str] | None = None
+
+        def handle_starttag(self, tag, attrs):
+            if tag in ("br", "img", "meta", "input"):
+                return
+            self.stack.append(dict(attrs).get("style", ""))
+
+        def handle_endtag(self, tag):
+            if tag in ("br", "img", "meta", "input"):
+                return
+            if self.stack:
+                self.stack.pop()
+
+        def handle_data(self, data):
+            if self.found is None and needle in data:
+                self.found = list(self.stack)
+
+    f = Finder()
+    f.feed(html)
+    return f.found or []
+
+
+def test_route_and_verdict_move_together():
+    """
+    Итог карточки — «что делать» и «вывод». Если разрыв всё же случается,
+    уезжать должен цельный кусок: раньше на следующую страницу уходил один
+    вердикт в две строки и читался как начало нового направления.
+    """
+    html = object_card(_full_result(), NARRATIVE, _obj(oid="o5"), [_step()],
+                       verdict_for(_full_result()))
+
+    route = _enclosing_styles(html, "Маршрут и пакеты")
+    verdict = _enclosing_styles(html, "Зона матрицы")
+    assert route and verdict, "не нашли ни маршрут, ни вердикт"
+
+    common = [a for a, b in zip(route, verdict) if a == b]
+    assert any("page-break-inside:avoid" in style for style in common), (
+        "маршрут и вердикт должны лежать в общей обёртке с запретом разрыва")
 
 
 def test_first_sheet_has_no_page_break_before_it():
