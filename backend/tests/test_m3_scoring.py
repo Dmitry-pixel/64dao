@@ -105,7 +105,7 @@ EXPECTED = [
      "v": 0.5350, "z": 0.0720, "vr": 3, "zr": 3},
     {"name": "Обучение мастеров",
      "scores": [1.00, 3.00, 2.00, 3.00, 2.67, 3.33],
-     "symbols": "BABAAA", "hex": 6, "cell": "low_high",
+     "symbols": "BABAAA", "hex": 6, "cell": "mid_high",
      "cs": 2.15, "ca": 3.00, "target": 10, "risk": None,
      "v": 0.6192, "z": 0.0300, "vr": 1, "zr": 5},
 ]
@@ -169,6 +169,85 @@ class TestItemCodes:
     def test_invalid_raw_rejected(self, bad):
         with pytest.raises(InvalidAnswerError):
             effective_value(f"{BLOCK_OBJECT}1", bad)
+
+
+# ── Уровень ячейки: сумма весов, а не число Ян ────────────────────────────────
+class TestCellLevel:
+    """
+    §10.1 передачи. Ячейку задаёт сумма отраслевых весов линий-Ян внутри оси.
+    Проверяется и правило, и то, что оно не переехало по смыслу.
+    """
+
+    IT = industry_weights(1)          # Л1 25 · Л2 45 · Л3 30
+    UNIVERSAL = industry_weights(18)  # 34/33/33 — нейтральный пресет
+
+    @pytest.mark.parametrize("symbols,axis,expected,total", [
+        # Сильный продукт в IT (вес 45) поднимает ось до средней.
+        ("BABBBB", "strength", "mid", 45),
+        # Сильные каналы (вес 30) — не поднимают: одной линии не хватает.
+        ("BBABBB", "strength", "low", 30),
+        # Продукт плюс каналы: 75 из 100.
+        ("BAABBB", "strength", "mid", 75),
+        # Все три — всегда высокая.
+        ("AAABBB", "strength", "high", 100),
+        # Ни одной — всегда низкая.
+        ("BBBBBB", "strength", "low", 0),
+    ])
+    def test_it_preset(self, symbols, axis, expected, total):
+        d = sc.cell_detail(symbols, axis, self.IT)
+        assert (d["level"], d["sum"]) == (expected, total)
+
+    @pytest.mark.parametrize("mask", list(itertools.product("BA", repeat=3)))
+    def test_universal_preset_reproduces_old_rule(self, mask):
+        """
+        Универсальный пресет обязан вести себя как прежнее правило «по числу
+        Ян»: 0-1 низкая, 2 средняя, 3 высокая. Порог 67 сломал бы это, 68 и 80
+        нет. Тест держит пороги: сдвинув их, его придётся осознанно менять.
+        """
+        old_rule = {0: "low", 1: "low", 2: "mid", 3: "high"}
+        for axis, part in (("strength", "".join(mask) + "BBB"),
+                           ("attract", "BBB" + "".join(mask))):
+            got = sc.cell_of(part, axis, self.UNIVERSAL)
+            assert got == old_rule[mask.count("A")], (axis, mask)
+
+    @pytest.mark.parametrize("industry", list(DEFAULT_M3_CONFIG["industry_presets"]))
+    def test_monotonic_edges_hold_for_every_preset(self, industry):
+        """Ноль Ян — всегда низкая, три Ян — всегда высокая, два — никогда
+        не низкая (минимальная пара по всем пресетам 45, порог 35)."""
+        w = industry_weights(industry)
+        for axis in ("strength", "attract"):
+            assert sc.cell_of("BBBBBB", axis, w) == "low"
+            assert sc.cell_of("AAAAAA", axis, w) == "high"
+        for mask in itertools.product("BA", repeat=3):
+            if mask.count("A") != 2:
+                continue
+            assert sc.cell_of("".join(mask) + "BBB", "strength", w) != "low"
+            assert sc.cell_of("BBB" + "".join(mask), "attract", w) != "low"
+
+    def test_breakdown_names_the_lines(self):
+        """Карточка направления печатает вывод ячейки — значит расчёт обязан
+        его отдать, а не заставлять отчёт считать второй раз (§10.1a)."""
+        d = sc.cell_detail("BAABBB", "strength", self.IT)
+        assert d["lines"] == [{"line": 2, "weight": 45}, {"line": 3, "weight": 30}]
+        assert d["total"] == 100
+
+    def test_attract_axis_reads_upper_trigram(self):
+        d = sc.cell_detail("BBBABB", "attract", self.IT)
+        assert d["lines"] == [{"line": 4, "weight": 35}]
+
+    def test_unknown_axis_raises(self):
+        with pytest.raises(sc.M3ScoringError):
+            sc.cell_detail("AAAAAA", "market", self.IT)
+
+    def test_industry_preset_now_reaches_the_verdict(self):
+        """
+        Смысл всей правки. Одна и та же конфигурация линий в двух отраслях
+        даёт разные ячейки, потому что вес продукта в них разный.
+        Прежнее правило выдавало обеим одно и то же.
+        """
+        it = sc.cell_of("BABBBB", "strength", industry_weights(1))      # Л2 45
+        energy = sc.cell_of("BABBBB", "strength", industry_weights(12))  # Л2 15
+        assert (it, energy) == ("mid", "low")
 
 
 # ── 2. Контрольный кейс целиком ───────────────────────────────────────────────

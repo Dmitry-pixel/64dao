@@ -79,8 +79,11 @@ VALID_RAW = (1, 2, 3, 4)
 
 PROFITABILITY = ("profitable", "marginal", "unprofitable", "unknown")
 
-# Ячейки матрицы: число Ян в триграмме -> уровень.
-CELL_BY_YANG = {0: "low", 1: "low", 2: "mid", 3: "high"}
+# Уровень ячейки задаётся суммой отраслевых весов линий-Ян в триграмме.
+# Пороги — в конфиге (cell_weight_thresholds), см. §10.1 передачи.
+# Прежнее правило считало Ян, не глядя на веса, и отраслевой пресет
+# на вердикт не влиял вовсе: вердикт берётся из ячейки.
+AXIS_LINES: dict[str, tuple[int, int, int]] = {"strength": (1, 2, 3), "attract": (4, 5, 6)}
 CELL_LABEL_RU = {"low": "Низкая", "mid": "Средняя", "high": "Высокая"}
 
 
@@ -256,10 +259,48 @@ def mobility_of(score: float, config: dict | None = None) -> str | None:
 
 
 # ── 9–10. Ячейка и координата ─────────────────────────────────────────────────
-def cell_of(symbols: str, axis: str) -> str:
-    """axis: 'strength' — нижняя триграмма Л1Л2Л3; 'attract' — верхняя Л4Л5Л6."""
-    part = symbols[0:3] if axis == "strength" else symbols[3:6]
-    return CELL_BY_YANG[part.count(YANG)]
+def cell_detail(
+    symbols: str,
+    axis: str,
+    weights: dict[str, int],
+    config: dict | None = None,
+) -> dict:
+    """
+    Уровень ячейки по оси и его вывод.
+
+    axis: 'strength' — нижняя триграмма Л1Л2Л3; 'attract' — верхняя Л4Л5Л6.
+
+    Уровень — по сумме весов тех линий оси, что дали Ян. Не по их числу:
+    веса внутри оси дают 100, и линия с весом 45 значит для позиции больше,
+    чем линия с весом 25. Считая головы, расчёт объявлял сильный продукт в IT
+    равным сильным каналам, а отраслевой пресет не доходил до вердикта.
+
+    Возвращает и разбор, а не только уровень: карточка направления обязана
+    показать, из чего уровень получился (§10.1a). Второй раз то же самое
+    в слое отчёта не считается — разошлись бы.
+    """
+    cfg = config or DEFAULT_M3_CONFIG
+    if axis not in AXIS_LINES:
+        raise M3ScoringError(f"Неизвестная ось ячейки: {axis!r}")
+    low, high = cfg["cell_weight_thresholds"]
+
+    lines = AXIS_LINES[axis]
+    yang = [{"line": n, "weight": weights[f"L{n}"]}
+            for n in lines if symbols[n - 1] == YANG]
+    total = sum(weights[f"L{n}"] for n in lines)
+    got = sum(w["weight"] for w in yang)
+
+    level = "low" if got < low else ("mid" if got < high else "high")
+    return {"level": level, "sum": got, "total": total, "lines": yang}
+
+
+def cell_of(
+    symbols: str,
+    axis: str,
+    weights: dict[str, int],
+    config: dict | None = None,
+) -> str:
+    return cell_detail(symbols, axis, weights, config)["level"]
 
 
 def coordinate(scores: dict[int, float], weights: dict[str, int], axis: str) -> float:
@@ -524,8 +565,10 @@ def score_object(
     if veto_applied and mobility.get(1) == OLD_YANG:
         flags.append("VETO_MOBILITY_CONFLICT")
 
-    cell_strength = cell_of(symbols, "strength")
-    cell_attract = cell_of(symbols, "attract")
+    detail_strength = cell_detail(symbols, "strength", weights, cfg)
+    detail_attract = cell_detail(symbols, "attract", weights, cfg)
+    cell_strength = detail_strength["level"]
+    cell_attract = detail_attract["level"]
 
     return {
         "object_id": obj.get("id"),
@@ -541,6 +584,7 @@ def score_object(
         "cell_attract": cell_attract,
         "cell_key": f"{cell_strength}_{cell_attract}",
         "cell_label": f"{CELL_LABEL_RU[cell_strength]} / {CELL_LABEL_RU[cell_attract]}",
+        "cell_breakdown": {"strength": detail_strength, "attract": detail_attract},
         "coord_strength": coord_strength,
         "coord_attract": coord_attract,
         "current_hex": current_hex,
