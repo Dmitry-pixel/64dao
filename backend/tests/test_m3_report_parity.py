@@ -17,8 +17,11 @@ from types import SimpleNamespace
 
 import pytest
 
+from app import m3_scoring as sc
+from app.m3_config import industry_weights
 from app.m3_pdf import build_portfolio_report_html
 from app.m3_service import enrich_result
+from app.m3_verdict import cell_breakdown_text
 
 # Подвижность обязана согласовываться с символами: старый Инь бывает только
 # на слабой линии, старый Ян — только на сильной. Набор подобран так, чтобы
@@ -53,6 +56,13 @@ def _result(index, case):
         "v_index": 0.5, "z_index": 0.5, "v_rank": index, "z_rank": index,
         "weak_line": 5, "strong_line": 1,
         "tensions": [], "flags": [],
+        # Вывод ячейки собирается так же, как в build_report: разбор из
+        # символов и весов, уровень — из снимка.
+        "cell_breakdown": {
+            axis: {**sc.cell_detail(symbols, axis, industry_weights(1)),
+                   "level": level}
+            for axis, level in (("strength", cells[0]), ("attract", cells[1]))
+        },
     }
 
 
@@ -247,3 +257,29 @@ def test_missing_share_does_not_break_execution_reason():
     result = enrich_result(_result(1, CASES[0]), None)
     assert result["execution_reason"]
     assert "%" not in result["execution_reason"]
+
+
+def test_cell_breakdown_printed_for_every_direction(report, html):
+    """
+    Строка вывода ячейки печатается всегда, а не только при расхождении
+    с баллами: иначе клиент не поймёт, почему у одного направления
+    пояснение есть, а у другого нет (§10.1a).
+
+    Текст в вебе собирает `cellBreakdownText` из frontend/lib/m3.ts —
+    отдельная реализация той же формулировки, как у market_label.
+    Сравнить их автоматически нельзя, поэтому тест пиньтует точную строку
+    с питоновской стороны: разойдясь, вторая сторона будет видна глазом.
+    """
+    for item in report["objects"]:
+        result = item["result"]
+        for axis in ("strength", "attract"):
+            expected = cell_breakdown_text(axis, result["cell_breakdown"][axis])
+            assert expected in html, (result["name"], axis, expected)
+
+
+def test_cell_breakdown_absent_for_old_snapshots():
+    """У снимков до ревизии 030 весов нет — блока быть не должно, а не
+    заглушки с нулями."""
+    from app.m3_pdf import cell_breakdown_block
+    assert cell_breakdown_block({"cell_breakdown": None}) == ""
+    assert cell_breakdown_block({}) == ""

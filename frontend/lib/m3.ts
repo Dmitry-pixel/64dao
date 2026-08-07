@@ -252,6 +252,12 @@ export interface M3Result {
   cell_attract: 'low' | 'mid' | 'high'
   cell_key: string
   cell_label: string
+  // Вывод ячейки: какие линии дали Ян и на какую сумму весов.
+  // Отсутствует у снимков до ревизии 030 — весов в них нет.
+  cell_breakdown?: {
+    strength: M3CellAxis
+    attract: M3CellAxis
+  } | null
   coord_strength: number
   coord_attract: number
   current_hex: number
@@ -355,6 +361,34 @@ export const OBJECTS_MIN = 3
 export const OBJECTS_MAX = 8
 export const MIN_SHARE = 3
 export const MIN_COVERAGE = 80
+
+export type M3CellAxis = {
+  level: 'low' | 'mid' | 'high'
+  sum: number
+  total: number
+  lines: { line: number; weight: number }[]
+}
+
+export const CELL_NOM: Record<string, string> = {
+  low: 'низкая', mid: 'средняя', high: 'высокая',
+}
+
+const AXIS_SHORT: Record<string, string> = { strength: 'Сила', attract: 'Рынок' }
+
+/**
+ * Как получился уровень оси: «Сила: Ян на Л2 (45) + Л3 (30) = 75 из 100 →
+ * высокая».
+ *
+ * Формулировка повторяет m3_verdict.cell_breakdown_text — веб и PDF
+ * показывают одно и то же. При правке менять обе; расхождение ловит
+ * test_m3_report_parity.
+ */
+export function cellBreakdownText(axis: 'strength' | 'attract', d: M3CellAxis): string {
+  const got = d.lines.length
+    ? `Ян на ${d.lines.map(w => `Л${w.line} (${w.weight})`).join(' + ')} = ${d.sum}`
+    : `Ян нет — ${d.sum}`
+  return `${AXIS_SHORT[axis]}: ${got} из ${d.total} → ${CELL_NOM[d.level]}`
+}
 
 export const LINE_TITLES: Record<number, string> = {
   1: 'Ресурсы и юнит-экономика',

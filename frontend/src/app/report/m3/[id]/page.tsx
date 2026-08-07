@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import M3Checklist from '@/components/m3/M3Checklist'
 import PortfolioMap from '@/components/m3/PortfolioMap'
 import {
-  LINE_TITLES, PROFITABILITY_LABELS,
+  LINE_TITLES, PROFITABILITY_LABELS, cellBreakdownText,
   getChecklist, getReport, postTradeoff, toggleChecklistStep,
   type M3ChecklistStep, type M3Report, type M3Result, type M3TradeoffIn,
 } from '@/lib/m3'
@@ -149,6 +149,23 @@ function LineGlyph({ yang, moving }: { yang: boolean; moving: boolean }) {
             <i style={{ position: 'absolute', top: 0, height: 9, left: 38, width: 28, background: bg, display: 'block' }} />
           </>}
     </span>
+  )
+}
+
+/**
+ * Вывод ячейки под таблицей линий. Печатается всегда, а не только когда
+ * расходится с баллами: иначе клиент не поймёт, почему у одного направления
+ * пояснение есть, а у другого нет. Заодно делает отраслевой пресет видимым.
+ */
+function CellBreakdown({ r }: { r: M3Result }) {
+  const b = r.cell_breakdown
+  if (!b) return null
+  return (
+    <div style={{ margin: '-8px 0 16px', fontSize: 12, color: C.muted }}>
+      {(['strength', 'attract'] as const).map(axis => (
+        <div key={axis} style={{ margin: '2px 0' }}>{cellBreakdownText(axis, b[axis])}</div>
+      ))}
+    </div>
   )
 }
 
@@ -434,6 +451,7 @@ export default function M3ReportPage() {
           )}
 
           <Lines r={r} />
+          <CellBreakdown r={r} />
 
           {narrative.map(b => (
             <div key={`${b.kind}-${b.key}`}>

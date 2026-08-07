@@ -282,6 +282,33 @@ AXIS_STRENGTH = "конкурентоспособность бизнеса"
 AXIS_ATTRACT = "привлекательность рынка"
 
 
+AXIS_SHORT = {"strength": "Сила", "attract": "Рынок"}
+
+
+def cell_breakdown_text(axis: str, detail: dict[str, Any]) -> str:
+    """
+    Как получился уровень оси: «Сила: Ян на Л2 (45) + Л3 (30) = 75 из 100 →
+    высокая» (§10.1a).
+
+    Строка отвечает на вопрос, который до неё висел в отчёте без ответа:
+    почему направление с линией 4,00 стоит в низкой ячейке. Ответ — вес
+    этого фактора в отрасли, и он печатается числом, проверяемым по
+    таблице линий выше.
+
+    Формулировка продублирована в веб-отчёте (`report/m3/[id]/page.tsx`,
+    cellBreakdownText) — так же, как market_label. При правке менять обе;
+    расхождение ловит test_m3_report_parity.
+    """
+    lines = detail.get("lines") or []
+    if lines:
+        parts = " + ".join(f"Л{w['line']} ({w['weight']})" for w in lines)
+        got = f"Ян на {parts} = {detail['sum']}"
+    else:
+        got = f"Ян нет — {detail['sum']}"
+    return (f"{AXIS_SHORT[axis]}: {got} из {detail['total']} → "
+            f"{CELL_NOM[detail['level']]}")
+
+
 def cell_label(cell_strength: str, cell_attract: str) -> str:
     """
     Подпись ячейки матрицы: «Низкая конкурентоспособность бизнеса /

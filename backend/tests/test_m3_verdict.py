@@ -308,3 +308,28 @@ def test_cell_label_does_not_call_the_x_axis_an_environment():
 def test_cell_label_rejects_unknown_level():
     with pytest.raises(ValueError):
         cell_label("unknown", "high")
+
+
+# ── Вывод ячейки (§10.1a) ─────────────────────────────────────────────────────
+from app import m3_verdict as vd  # noqa: E402
+
+
+class TestCellBreakdownText:
+    """
+    Формулировка зафиксирована точной строкой. Она продублирована в
+    frontend/lib/m3.ts (cellBreakdownText), автоматически их не сверить —
+    поэтому пиньтуем питоновскую сторону, чтобы правка была заметна.
+    """
+
+    def test_two_yang_lines(self):
+        d = {"level": "high", "sum": 75, "total": 100,
+             "lines": [{"line": 2, "weight": 45}, {"line": 3, "weight": 30}]}
+        assert vd.cell_breakdown_text("strength", d) == (
+            "Сила: Ян на Л2 (45) + Л3 (30) = 75 из 100 → высокая"
+        )
+
+    def test_no_yang_lines(self):
+        d = {"level": "low", "sum": 0, "total": 100, "lines": []}
+        assert vd.cell_breakdown_text("attract", d) == (
+            "Рынок: Ян нет — 0 из 100 → низкая"
+        )

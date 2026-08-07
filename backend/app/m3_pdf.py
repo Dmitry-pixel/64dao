@@ -24,7 +24,9 @@ from app.m3_map import map_caption, render_map_svg
 from app.m3_portfolio import (
     constraints, delta_line_reading, metric_readings, tact_note, yin_table,
 )
-from app.m3_verdict import cell_label, execution_reason, verdict_for
+from app.m3_verdict import (
+    cell_breakdown_text, cell_label, execution_reason, verdict_for,
+)
 from app.m3_verdict import transition as trajectory
 
 # ── Палитра образца ───────────────────────────────────────────────────────────
@@ -440,6 +442,29 @@ def lines_block(result: dict[str, Any]) -> str:
     )
 
 
+def cell_breakdown_block(result: dict[str, Any]) -> str:
+    """
+    Вывод ячейки под таблицей линий. Печатается всегда, а не только когда
+    расходится с баллами: иначе клиент не поймёт, почему у одного
+    направления пояснение есть, а у другого нет. Заодно делает отраслевой
+    пресет видимым — до этого выбор области на входе нигде не всплывал.
+
+    У снимков до ревизии 030 весов нет, и блока не будет: достраивать их
+    задним числом значит выдумать данные.
+    """
+    breakdown = result.get("cell_breakdown")
+    if not breakdown:
+        return ""
+    rows = "".join(
+        f'<div style="margin:2px 0;">{e(cell_breakdown_text(axis, breakdown[axis]))}</div>'
+        for axis in ("strength", "attract") if breakdown.get(axis)
+    )
+    return (
+        f'<div style="font-size:12px;color:{MUTED};margin:-4px 0 10px;'
+        f'font-family:{SERIF};page-break-inside:avoid;">{rows}</div>'
+    )
+
+
 def hexagram_line(result: dict[str, Any]) -> str:
     """Код, текущая гексаграмма и оба вектора одной строкой."""
     parts = [
@@ -615,6 +640,7 @@ def object_card(
         + facts_line(result, obj)
         + hexagram_line(result)
         + lines_block(result)
+        + cell_breakdown_block(result)
         + "</div>"
     )
     # Запрета разрыва на самой карточке нет. Замер показал: карточки в
