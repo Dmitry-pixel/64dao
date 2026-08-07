@@ -272,6 +272,12 @@ class M3Result(Base):
     symbols:  Mapped[str]  = mapped_column(String(6), nullable=False)
     mobility: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
+    # Отраслевые веса, по которым считались ячейка и координата. Хранятся,
+    # а не пересчитываются по industry_id: пресеты правятся в админке, и
+    # пересчёт менял бы старые отчёты задним числом. Nullable — у снимков
+    # до ревизии 030 весов нет, такие отчёты не печатают вывод ячейки.
+    weights: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
     cell_strength: Mapped[str] = mapped_column(String(4), nullable=False)
     cell_attract:  Mapped[str] = mapped_column(String(4), nullable=False)
     coord_strength: Mapped[float] = mapped_column(Numeric(3, 2), nullable=False)

@@ -335,7 +335,7 @@ async def calculate(db: AsyncSession, portfolio: M3Portfolio) -> dict:
             portfolio_id=portfolio.id, object_id=r["object_id"],
             l1=r["scores"]["l1"], l2=r["scores"]["l2"], l3=r["scores"]["l3"],
             l4=r["scores"]["l4"], l5=r["scores"]["l5"], l6=r["scores"]["l6"],
-            symbols=r["symbols"], mobility=r["mobility"],
+            symbols=r["symbols"], mobility=r["mobility"], weights=r["weights"],
             cell_strength=r["cell_strength"], cell_attract=r["cell_attract"],
             coord_strength=r["coord_strength"], coord_attract=r["coord_attract"],
             current_hex=r["current_hex"],
@@ -531,6 +531,21 @@ async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
             "market_overrides": sc.market_override_count(
                 object_answers.get(r.object_id, {})),
         }
+        if r.weights:
+            # Вывод ячейки для карточки (§10.1a). Считается из снимка, а не
+            # заново из анкеты: symbols и weights уже зафиксированы.
+            #
+            # Уровень берётся из снимка, а не из свежего расчёта: пороги
+            # лежат в конфиге и могут смениться после того, как отчёт был
+            # рассчитан. Расходиться должна сумма с порогом, а не отчёт
+            # сам с собой.
+            breakdown = {}
+            for axis, level in (("strength", r.cell_strength),
+                                ("attract", r.cell_attract)):
+                d = sc.cell_detail(code, axis, r.weights)
+                d["level"] = level
+                breakdown[axis] = d
+            item["cell_breakdown"] = breakdown
         enrich_result(
             item,
             float(o.revenue_share) if o.revenue_share is not None else None,

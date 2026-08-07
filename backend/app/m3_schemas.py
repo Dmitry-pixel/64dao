@@ -237,6 +237,24 @@ class M3TrajectoryOut(BaseModel):
     risk: M3TransitionOut | None = None
 
 
+class M3CellLineOut(BaseModel):
+    line: int
+    weight: int
+
+
+class M3CellAxisOut(BaseModel):
+    """Вывод уровня по одной оси: какие линии дали Ян и на какую сумму весов."""
+    level: CellLevel
+    sum: int
+    total: int
+    lines: list[M3CellLineOut]
+
+
+class M3CellBreakdownOut(BaseModel):
+    strength: M3CellAxisOut
+    attract: M3CellAxisOut
+
+
 class M3ResultOut(BaseModel):
     model_config = {"from_attributes": True}
 
@@ -270,6 +288,9 @@ class M3ResultOut(BaseModel):
     # Дефолт нужен старым снимкам: у отчётов, собранных до появления поля,
     # его в словаре нет, и без дефолта отчёт перестал бы отдаваться.
     market_overrides: int = 0
+    # Вывод ячейки. None у снимков до ревизии 030: весов в них нет,
+    # и достраивать их задним числом значит выдумать данные.
+    cell_breakdown: M3CellBreakdownOut | None = None
     verdict: M3VerdictOut
     trajectory: M3TrajectoryOut
     execution_reason: str
