@@ -22,7 +22,8 @@ from typing import Any
 from app import m3_scoring as sc
 from app.m3_map import map_caption, render_map_svg
 from app.m3_portfolio import (
-    constraints, delta_line_reading, metric_readings, tact_note, yin_table,
+    constraints, delta_line_reading, metric_readings, rank_comparison,
+    rank_comparison_reading, tact_note, yin_table,
 )
 from app.m3_verdict import (
     cell_breakdown_text, cell_label, execution_reason, verdict_for,
@@ -230,12 +231,18 @@ def data_status_banner(summary: dict[str, Any], flag_labels: dict[str, str]) -> 
     и маршруты в отчёте есть, распределение ресурса — нет.
     """
     spearman = summary.get("spearman")
+    # Величина расхождения печатается в обеих ветках. Раньше Спирмен выводился
+    # только там, где проверки пройдены, — то есть молчал ровно тогда, когда
+    # расхождение и было. Читатель видел название флага и не мог отличить
+    # «почти согласны» от «противоположны».
+    rho = ("" if spearman is None
+           else f" Ранговая корреляция с вашим порядком — {num(spearman, 2)}.")
     if summary.get("verdicts_held"):
         flags = "; ".join(flag_labels.get(f, f) for f in summary.get("flags") or [])
         return banner(
             "Вердикты аллокации удержаны",
             f"Сработал портфельный флаг качества данных: {e(flags)}. "
-            "Диагноз и маршруты ниже приведены, распределение ресурса — нет.",
+            f"Диагноз и маршруты ниже приведены, распределение ресурса — нет.{rho}",
             warn=True,
         )
     agreement = ""
@@ -356,7 +363,7 @@ def map_section(
         + f'<div style="font-size:12px;color:{MUTED};line-height:1.7;margin-top:8px;'
         f'max-width:430px;font-family:{SERIF};">{e(caption)}</div></div>'
         + f'<p style="font-size:12px;color:{MUTED};line-height:1.7;font-family:{SERIF};">'
-        f"Ячейку задаёт число сильных линий в триграмме, положение внутри ячейки — "
+        f"Ячейку задаёт сумма отраслевых весов сильных линий в триграмме, положение внутри ячейки — "
         f"взвешенная координата по отраслевому пресету. {e(cells_note)}</p>"
         + table(
             [("№", False), ("Направление", False), ("Ячейка", False), ("Код", False),
@@ -511,9 +518,10 @@ def route_block(steps: list[Any], result: dict[str, Any]) -> str:
     второй его копии в отчёте быть не должно.
 
     Целевое состояние печатается номером гексаграммы и переходом по матрице.
-    Ячейка целевой и рисковой гексаграмм считается точно: её задаёт число Ян
-    в триграмме, а символы получаются инверсией известных линий. Догадки
-    здесь нет — см. m3_verdict.transition.
+    Ячейка целевой и рисковой гексаграмм считается точно: её задаёт то же
+    правило, что и текущую (сумма отраслевых весов линий-Ян), а символы
+    получаются инверсией известных линий. Догадки здесь нет —
+    см. m3_verdict.transition.
     """
     if not steps:
         return (
@@ -826,6 +834,42 @@ def checklist_table(
     return html + stamp
 
 
+def rank_comparison_block(results: list[dict[str, Any]], summary: dict[str, Any]) -> str:
+    """
+    Ваш порядок против расчётного.
+
+    Раньше расхождение существовало одной строкой в шапке и удерживало
+    вердикты аллокации. Собственник не видел ни своего порядка, ни величины
+    расхождения, ни направлений, на которых оно сидит, — при том что это
+    самый содержательный результат диагностики.
+    """
+    cmp = rank_comparison(results, summary.get("owner_ranks"))
+    if not cmp:
+        return ""
+    rows = [
+        [
+            f'{e(r["position"])} · {e(r["name"])}',
+            e(r["owner_rank"]),
+            e(r["v_rank"]),
+            "—" if r["gap"] == 0 else e(f'{r["gap"]:+d}'),
+        ]
+        for r in cmp["rows"]
+    ]
+    return (
+        '<h4 style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;'
+        'page-break-after:avoid;'
+        f'color:{MUTED};font-weight:normal;margin:22px 0 6px;">'
+        "Ваш порядок против расчётного</h4>"
+        + table(
+            [("Направление", False), ("Вы", True), ("Расчёт", True), ("Δ", True)],
+            rows,
+        )
+        + f'<p style="font-size:13px;line-height:1.65;margin:8px 0 0;'
+        f'font-family:{SERIF};color:{MUTED};">'
+        f'{e(rank_comparison_reading(cmp, summary.get("spearman")))}</p>'
+    )
+
+
 def decision_section(
     results_by_id: dict[str, dict[str, Any]],
     objects_by_id: dict[str, Any],
@@ -835,6 +879,8 @@ def decision_section(
     decision: Any | None,
     generated_at: Any = None,
     verdicts_held: bool = False,
+    results: list[dict[str, Any]] | None = None,
+    summary: dict[str, Any] | None = None,
 ) -> str:
     """
     Два списка отвечают на разные вопросы, и их расхождение — результат,
@@ -847,6 +893,9 @@ def decision_section(
         "потерять и что горит. Их расхождение не дефект: направление с крупной "
         "долей выручки защищают первым, а вкладывать в него не обязательно.</p>"
     )
+
+    comparison = (rank_comparison_block(results, summary)
+                  if results is not None and summary is not None else "")
 
     invest = (
         '<h4 style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;'
@@ -948,7 +997,9 @@ def decision_section(
 
     return (
         section_title("04", "Решение о распределении ресурсов")
-        + intro + invest + execute + tradeoff + held + decided + checklist
+        # Сравнение идёт перед списками: оно объясняет, почему расчётный
+        # порядок может выглядеть неожиданно, и читается до, а не после.
+        + intro + comparison + invest + execute + tradeoff + held + decided + checklist
     )
 
 
@@ -1137,6 +1188,7 @@ def build_portfolio_report_html(
             [str(x) for x in report["execution_order"]],
             steps, decision, generated_at,
             verdicts_held=bool(summary.get("verdicts_held")),
+            results=results, summary=summary,
         ),
     ))
 

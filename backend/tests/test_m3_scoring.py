@@ -606,3 +606,31 @@ def test_partial_override_actually_changes_line_score():
     without = sc.line_score(5, portfolio, {})
     with_one = sc.line_score(5, portfolio, {"Р1*": 4})
     assert with_one > without
+
+
+# ── Что удерживает вердикты аллокации (§10.14) ────────────────────────────────
+class TestVerdictHolding:
+    """
+    RANK_MISMATCH вердикты не удерживает. Расхождение порядка собственника
+    с расчётом данные не портит — оно и есть результат диагностики. Удерживая
+    на нём вердикты, отчёт говорил бы только тогда, когда и так согласен.
+    """
+
+    def test_rank_mismatch_alone_does_not_hold(self):
+        assert "RANK_MISMATCH" not in sc.HOLDING_FLAGS
+
+    @pytest.mark.parametrize("flag", ["UNIFORM_PORTFOLIO", "SELF_INFLATION"])
+    def test_data_quality_flags_do_hold(self, flag):
+        assert flag in sc.HOLDING_FLAGS
+
+    def test_control_case_keeps_verdicts_with_mismatched_ranks(self):
+        """
+        Контрольный кейс с намеренно перевёрнутым порядком: флаг срабатывает,
+        вердикты остаются.
+        """
+        case = {**CONTROL_CASE, "owner_ranks": [5, 4, 3, 2, 1]}
+        out = calculate(case)["portfolio"]
+        assert out["spearman"] is not None
+        if "RANK_MISMATCH" in out["flags"]:
+            assert out["verdicts_held"] is False
+        assert out["owner_ranks"] == [5, 4, 3, 2, 1]

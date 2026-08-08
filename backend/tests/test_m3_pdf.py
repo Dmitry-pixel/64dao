@@ -310,6 +310,7 @@ from app.m3_pdf import (  # noqa: E402
     hexagram_line, line_glyph, lines_block, object_card, route_block,
     verdict_block,
 )
+from app.m3_config import industry_weights  # noqa: E402
 from app.m3_verdict import verdict_for  # noqa: E402
 
 
@@ -325,6 +326,10 @@ def _full_result(**over):
         "scores": {"l1": 1.0, "l2": 3.0, "l3": 2.0, "l4": 3.0, "l5": 2.67, "l6": 3.33},
         "v_index": 0.619, "z_index": 0.030, "v_rank": 1, "z_rank": 5,
         "weak_line": 1, "strong_line": 6, "tensions": ["P1", "P3"], "flags": [],
+        # Ячейки образца («низкая/высокая» для BABAAA) считались по числу Ян.
+        # Универсальный пресет 18 воспроизводит это правило точно; отраслевые
+        # веса проверяются отдельно, в test_m3_scoring и test_m3_verdict.
+        "weights": industry_weights(18),
     }
     base.update(over)
     return base
@@ -399,8 +404,9 @@ def test_route_uses_checklist_steps_not_a_second_copy():
 def test_route_states_target_transition_with_zone_move():
     """
     Образец: «Целевое состояние: № 6 → № 10, конкурентная сила переходит из
-    низкой в среднюю». Ячейка целевой гексаграммы считается точно — её
-    задаёт число Ян в триграмме, а символы получаются инверсией старых Инь.
+    низкой в среднюю». Ячейка целевой гексаграммы считается точно — её задаёт
+    то же правило, что и текущую (сумма отраслевых весов линий-Ян), а символы
+    получаются инверсией старых Инь.
     """
     html = route_block([_step()], _full_result())
     assert "№ 6 → № 10" in html

@@ -234,11 +234,31 @@ export interface M3MetricReading {
   reading: string
 }
 
+export interface M3RankRow {
+  position: number
+  name: string
+  owner_rank: number
+  v_rank: number
+  gap: number
+}
+
+export interface M3RankComparison {
+  rows: M3RankRow[]
+  agreed: number
+  total: number
+  disputed: M3RankRow[]
+  /** Прочтение собирается на бэкенде: у формулировки уже есть потребитель
+   *  в PDF, и вторая копия здесь разошлась бы с ним. */
+  reading: string
+}
+
 export interface M3Analysis {
   yin_table: M3YinRow[]
   constraints: M3Constraint[]
   metrics: M3MetricReading[]
   tact_note: string
+  /** null, если порядок не назван: сравнивать нечего. */
+  rank_comparison: M3RankComparison | null
 }
 
 export interface M3Result {

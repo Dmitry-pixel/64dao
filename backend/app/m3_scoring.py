@@ -87,6 +87,20 @@ AXIS_LINES: dict[str, tuple[int, int, int]] = {"strength": (1, 2, 3), "attract":
 CELL_LABEL_RU = {"low": "Низкая", "mid": "Средняя", "high": "Высокая"}
 
 
+# Какие портфельные флаги удерживают вердикты аллокации.
+#
+# UNIFORM_PORTFOLIO и SELF_INFLATION говорят, что анкете нельзя верить:
+# одинаковые клетки у всех направлений и сплошь завышенные баллы означают,
+# что заполняли не глядя. На таких данных распределять деньги нельзя.
+#
+# RANK_MISMATCH здесь намеренно НЕТ. Расхождение порядка собственника
+# с расчётом данные не портит — оно и есть содержательный результат
+# диагностики. Удерживая на нём вердикты, отчёт говорил бы только тогда,
+# когда и так согласен с собственником, то есть никогда не спорил бы.
+# Расхождение показывается разделом (m3_portfolio.rank_comparison).
+HOLDING_FLAGS = ("UNIFORM_PORTFOLIO", "SELF_INFLATION")
+
+
 class M3ScoringError(ValueError):
     """Базовая ошибка расчётного ядра Метода 3."""
 
@@ -658,6 +672,7 @@ def score_portfolio(
 
     return {
         "objects": n,
+        "owner_ranks": list(owner_ranks) if owner_ranks else None,
         "sum_positions": sum_positions,
         "sum_positions_max": 6 * n,
         "turbulence": turbulence,
@@ -669,7 +684,7 @@ def score_portfolio(
         "inflated_share": r2(inflated_share),
         "spread_share": r2(spread_share),
         "flags": flags,
-        "verdicts_held": bool(flags),
+        "verdicts_held": any(f in HOLDING_FLAGS for f in flags),
     }
 
 

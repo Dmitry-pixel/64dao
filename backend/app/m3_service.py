@@ -480,6 +480,20 @@ def enrich_result(item: dict, share: float | None) -> dict:
     return item
 
 
+def _rank_comparison_payload(results: list[dict], summary: dict) -> dict | None:
+    """
+    Сравнение порядка собственника с расчётным плюс готовое прочтение.
+
+    Текст собирается здесь, а не в вебе: у формулировки уже есть один
+    потребитель в PDF, и третья её копия на TypeScript разошлась бы —
+    ровно так, как это вышло с cellBreakdownText.
+    """
+    cmp = pf.rank_comparison(results, summary.get("owner_ranks"))
+    if not cmp:
+        return None
+    return {**cmp, "reading": pf.rank_comparison_reading(cmp, summary.get("spearman"))}
+
+
 async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
     """
     Отчёт собирается из сохранённого снимка, а не пересчитывается: выданный
@@ -513,6 +527,10 @@ async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
             "object_id": r.object_id, "name": o.name, "position": o.position,
             "scores": {f"l{i}": float(getattr(r, f"l{i}")) for i in range(1, 7)},
             "symbols": code, "mobility": r.mobility or {},
+            # Веса нужны не только выводу ячейки: m3_verdict.transition
+            # пересчитывает по ним ячейки перехода. Без них переход
+            # не строится вовсе — тихо, для всех направлений сразу.
+            "weights": r.weights,
             "cell_strength": r.cell_strength, "cell_attract": r.cell_attract,
             "cell_key": cell_key,
             # Формулировка одна на оба отчёта — из m3_verdict, а не из
@@ -575,6 +593,10 @@ async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
         "delta": summary.delta if summary else 0,
         "distinct_cells": summary.distinct_cells if summary else 0,
         "spearman": float(summary.spearman) if summary and summary.spearman is not None else None,
+        # Порядок собственника нужен разделу расхождения. Раньше он влиял на
+        # отчёт (через флаг), но в отчёт не попадал — увидеть, что именно
+        # назвали, было невозможно.
+        "owner_ranks": list(portfolio.owner_ranks or []) or None,
         "flags": list(summary.flags or []) if summary else [],
         "verdicts_held": bool(summary and summary.verdicts_held),
     }
@@ -588,6 +610,7 @@ async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
         "constraints": pf.constraints(results_only),
         "metrics": pf.metric_readings(summary_out),
         "tact_note": pf.tact_note(results_only, summary_out),
+        "rank_comparison": _rank_comparison_payload(results_only, summary_out),
     }
 
     return {

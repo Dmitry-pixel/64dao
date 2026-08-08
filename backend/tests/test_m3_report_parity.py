@@ -46,6 +46,7 @@ def _result(index, case):
         "object_id": f"o{index}", "position": index, "name": name,
         "scores": {f"l{i}": 2.5 for i in range(1, 7)},
         "symbols": symbols, "mobility": mobility,
+        "weights": industry_weights(1),
         "cell_strength": cells[0], "cell_attract": cells[1],
         "cell_key": f"{cells[0]}_{cells[1]}",
         "cell_label": "подпись подставляется сервисом",

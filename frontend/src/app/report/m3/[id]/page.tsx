@@ -359,7 +359,7 @@ export default function M3ReportPage() {
       <h2 style={S.h2}><span style={S.num}>01</span>Карта портфеля</h2>
       <PortfolioMap results={results} shares={shares} />
       <p style={S.muted}>
-        Ячейку задаёт число сильных линий в триграмме, положение внутри ячейки —
+        Ячейку задаёт сумма отраслевых весов сильных линий, положение внутри ячейки —
         взвешенная координата по отраслевому пресету. Занято разных ячеек:{' '}
         {summary.distinct_cells} из 9.
         {summary.spearman !== null && (
@@ -566,6 +566,35 @@ export default function M3ReportPage() {
         потерять и что горит. Их расхождение не дефект: направление с крупной
         долей выручки надо защищать первым, но вкладывать в него — не обязательно.
       </p>
+
+      {analysis.rank_comparison && (
+        <>
+          <h4 style={S.h4}>Ваш порядок против расчётного</h4>
+          <table style={S.table}>
+            <thead>
+              <tr>
+                <th style={S.th}>Направление</th>
+                <th style={{ ...S.th, ...S.tdNum }}>Вы</th>
+                <th style={{ ...S.th, ...S.tdNum }}>Расчёт</th>
+                <th style={{ ...S.th, ...S.tdNum }}>Δ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analysis.rank_comparison.rows.map(r => (
+                <tr key={r.position}>
+                  <td style={S.td}>{r.position} · {r.name}</td>
+                  <td style={{ ...S.td, ...S.tdNum }}>{r.owner_rank}</td>
+                  <td style={{ ...S.td, ...S.tdNum }}>{r.v_rank}</td>
+                  <td style={{ ...S.td, ...S.tdNum }}>
+                    {r.gap === 0 ? '—' : (r.gap > 0 ? `+${r.gap}` : r.gap)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p style={S.muted}>{analysis.rank_comparison.reading}</p>
+        </>
+      )}
 
       <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 300px' }}>

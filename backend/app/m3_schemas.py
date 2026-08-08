@@ -304,6 +304,7 @@ class M3PortfolioSummaryOut(BaseModel):
     delta: int
     distinct_cells: int
     spearman: float | None
+    owner_ranks: list[int] | None = None
     flags: list[str]
     verdicts_held: bool
 
@@ -357,6 +358,24 @@ class M3MetricReading(BaseModel):
     reading: str
 
 
+class M3RankRow(BaseModel):
+    position: int
+    name: str
+    owner_rank: int
+    v_rank: int
+    gap: int
+
+
+class M3RankComparison(BaseModel):
+    """Порядок собственника против расчётного приоритета вложения."""
+
+    rows: list[M3RankRow]
+    agreed: int
+    total: int
+    disputed: list[M3RankRow]
+    reading: str
+
+
 class M3AnalysisOut(BaseModel):
     """Раздел 03: ограничения уровня компании, а не направления."""
 
@@ -364,6 +383,8 @@ class M3AnalysisOut(BaseModel):
     constraints: list[M3ConstraintOut]
     metrics: list[M3MetricReading]
     tact_note: str
+    # None, если порядок не назван: сравнивать нечего.
+    rank_comparison: M3RankComparison | None = None
 
 
 class M3ObjectReport(BaseModel):

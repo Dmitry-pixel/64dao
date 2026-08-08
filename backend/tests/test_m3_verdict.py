@@ -127,7 +127,13 @@ def test_mobility_note_always_present():
 
 
 # ── Траектория по матрице ─────────────────────────────────────────────────────
+from app.m3_config import industry_weights  # noqa: E402
 from app.m3_verdict import cells_of, symbols_after, transition  # noqa: E402
+
+# Ячейки образца считались по числу Ян. Универсальный пресет 18 (34/33/33)
+# воспроизводит это правило точно — на нём формулировки образца и держатся,
+# а отраслевые веса проверяются отдельно, в test_m3_scoring.
+UNIVERSAL = industry_weights(18)
 
 # Пять направлений образца: символы, текущая ячейка по его подписи,
 # подвижные линии и номера гексаграмм.
@@ -140,21 +146,23 @@ SAMPLE_TRAJECTORY = [
 ]
 
 
-def _traj(symbols, current, tl, th, rl, rh):
+def _traj(symbols, current, tl, th, rl, rh, weights=None):
     return {"symbols": symbols, "current_hex": current,
             "target_lines": list(tl), "target_hex": th,
-            "risk_lines": list(rl), "risk_hex": rh}
+            "risk_lines": list(rl), "risk_hex": rh,
+            "weights": weights or UNIVERSAL}
 
 
 @pytest.mark.parametrize("name,symbols,cells,cur,tl,th,rl,rh", SAMPLE_TRAJECTORY)
 def test_current_cell_derived_from_symbols_matches_sample(
         name, symbols, cells, cur, tl, th, rl, rh):
     """
-    Ячейка выводится из символов числом Ян в триграмме. Тест сверяет вывод
-    с подписями образца и заодно страхует от расхождения с m3_scoring:
-    если правило там изменится, тест упадёт, а не начнёт врать в отчёте.
+    Ячейка выводится из символов через то же правило, что и в расчёте
+    (m3_scoring.cell_of). Тест сверяет вывод с подписями образца и страхует
+    от расхождения: разойдясь, они поставили бы в один абзац отчёта две
+    несовместимые ячейки одного направления.
     """
-    assert cells_of(symbols) == cells, name
+    assert cells_of(symbols, UNIVERSAL) == cells, name
 
 
 def test_symbols_after_inverts_only_named_lines():
@@ -210,7 +218,28 @@ def test_no_transition_when_zone_does_not_move():
 
 def test_cells_of_rejects_wrong_length():
     with pytest.raises(ValueError):
-        cells_of("AAA")
+        cells_of("AAA", UNIVERSAL)
+
+
+def test_transition_is_silent_without_weights():
+    """
+    Снимок до ревизии 030 весов не хранит. Считать ячейку перехода по старому
+    правилу нельзя — в одном абзаце оказались бы две несовместимые ячейки.
+    """
+    old_snapshot = {"symbols": "BABAAA", "current_hex": 6,
+                    "target_lines": [1], "target_hex": 10,
+                    "risk_lines": [], "risk_hex": None}
+    assert transition(old_snapshot, "target") is None
+
+
+def test_industry_weights_can_move_the_transition_cell():
+    """
+    Правило теперь весовое, и это видно: один Ян на Л1 при весе 45
+    («Производство») даёт среднюю силу, а при универсальном пресете — низкую.
+    """
+    prod = industry_weights(2)
+    assert cells_of("ABBBBB", prod)[0] == "mid"
+    assert cells_of("ABBBBB", UNIVERSAL)[0] == "low"
 
 
 # ── Очередь исполнения ────────────────────────────────────────────────────────

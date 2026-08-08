@@ -25,6 +25,8 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from app import m3_scoring as sc
+
 Stance = Literal["invest", "protect", "build", "hold", "limited", "harvest", "exit"]
 Mobility = Literal["both", "target", "risk", "stable"]
 
@@ -144,14 +146,16 @@ def verdict_for(result: dict[str, Any]) -> dict[str, Any]:
 
 
 # ── Траектория: в какую ячейку матрицы уводит цель и куда сползает риск ───────
-# Ячейку задаёт число Ян в триграмме, а не координата: нижняя триграмма
-# (линии 1–3) — конкурентная сила, верхняя (4–6) — привлекательность рынка.
-# Символы целевой гексаграммы получаются инверсией старых Инь, рисковой —
-# инверсией старых Ян, поэтому их ячейки считаются точно, без допущений.
+# Ячейку задаёт триграмма, а не координата: нижняя (линии 1–3) — конкурентная
+# сила, верхняя (4–6) — привлекательность рынка. Символы целевой гексаграммы
+# получаются инверсией старых Инь, рисковой — инверсией старых Ян, поэтому их
+# ячейки считаются точно, без допущений.
 #
-# Проверено на образце: текущие ячейки всех пяти направлений совпали с
-# подписями, и все три перехода воспроизвели его формулировки.
-TRIGRAM_CELL = {3: "high", 2: "mid", 1: "low", 0: "low"}
+# Правило свёртки — общее с расчётом (m3_scoring.cell_of): сумма отраслевых
+# весов линий-Ян. Своя копия здесь считала по числу Ян и после перехода на
+# веса разошлась бы с карточкой: одно направление получило бы в шапке одну
+# ячейку, а в тексте перехода — другую. `before` пересчитывает ТЕКУЩУЮ ячейку,
+# так что расхождение было бы видно прямо в одном абзаце.
 
 CELL_NOM = {"low": "низкая", "mid": "средняя", "high": "высокая"}
 CELL_GEN = {"low": "низкой", "mid": "средней", "high": "высокой"}
@@ -162,13 +166,17 @@ _ORDER = {"low": 0, "mid": 1, "high": 2}
 AXIS_NAMES = {"strength": "конкурентная сила", "attract": "привлекательность рынка"}
 
 
-def cells_of(symbols: str) -> tuple[str, str]:
+def cells_of(
+    symbols: str,
+    weights: dict[str, int],
+    config: dict | None = None,
+) -> tuple[str, str]:
     """(ячейка по силе, ячейка по привлекательности) из шести символов."""
     if len(symbols) != 6:
         raise ValueError(f"Ожидалось шесть символов, получено {len(symbols)!r}")
     return (
-        TRIGRAM_CELL[symbols[:3].count("A")],
-        TRIGRAM_CELL[symbols[3:].count("A")],
+        sc.cell_of(symbols, "strength", weights, config),
+        sc.cell_of(symbols, "attract", weights, config),
     )
 
 
@@ -187,7 +195,8 @@ def _with_preposition(preposition: str, word: str) -> str:
     return f"{preposition} {word}"
 
 
-def transition(result: dict[str, Any], kind: Literal["target", "risk"]) -> dict | None:
+def transition(result: dict[str, Any], kind: Literal["target", "risk"],
+               config: dict | None = None) -> dict | None:
     """
     Переход по матрице: из какой ячейки в какую уводит цель или риск.
 
@@ -200,8 +209,14 @@ def transition(result: dict[str, Any], kind: Literal["target", "risk"]) -> dict 
     if not lines or to_hex is None:
         return None
 
-    before = cells_of(result["symbols"])
-    after = cells_of(symbols_after(result["symbols"], lines))
+    weights = result.get("weights")
+    if not weights:
+        # Снимок до ревизии 030 весов не хранит. Пересчитать ячейку перехода
+        # нечем, а считать её по старому правилу значит поставить в один
+        # абзац две несовместимые ячейки. Молчим.
+        return None
+    before = cells_of(result["symbols"], weights, config)
+    after = cells_of(symbols_after(result["symbols"], lines), weights, config)
 
     moves = []
     for axis, index in (("strength", 0), ("attract", 1)):

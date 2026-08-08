@@ -225,3 +225,57 @@ def test_tact_note_counts_directions_not_lines():
     note = tact_note(_results(), _summary())
     assert "4 подвижных линий на 3 направлениях" in note
     assert "не более двух направлений" in note
+
+
+# ── Порядок собственника против расчётного (§10.14) ───────────────────────────
+from app import m3_portfolio as pf  # noqa: E402
+
+
+def _ranked(*pairs):
+    return [{"position": i, "name": n, "v_rank": v}
+            for i, (n, v) in enumerate(pairs, start=1)]
+
+
+REAL = _ranked(("Салонный канал B2B", 5), ("Маркетплейс", 1),
+               ("Интернет-магазин", 4), ("Контрактное", 2), ("Обучение", 3))
+
+
+def test_rank_comparison_is_none_without_ranks():
+    """Сравнивать нечего — молчание честнее натяжки."""
+    assert pf.rank_comparison(REAL, None) is None
+    assert pf.rank_comparison(REAL, []) is None
+
+
+def test_rank_comparison_is_none_on_length_mismatch():
+    assert pf.rank_comparison(REAL, [1, 2, 3]) is None
+
+
+def test_rank_comparison_puts_the_dispute_first():
+    """
+    Числа реального портфеля «Вверх»: собственник назвал [4,5,1,2,3].
+    Три направления из пяти совпали, весь Спирмен −0,30 дала одна
+    перестановка двух — таблица обязана показать её сверху.
+    """
+    cmp = pf.rank_comparison(REAL, [4, 5, 1, 2, 3])
+    assert [r["name"] for r in cmp["rows"][:2]] == ["Маркетплейс", "Интернет-магазин"]
+    assert cmp["rows"][0]["gap"] == 4
+    assert cmp["rows"][1]["gap"] == -3
+    assert cmp["agreed"] == 2
+    assert [d["name"] for d in cmp["disputed"]] == ["Маркетплейс", "Интернет-магазин"]
+
+
+def test_rank_comparison_full_agreement():
+    cmp = pf.rank_comparison(REAL, [5, 1, 4, 2, 3])
+    assert cmp["agreed"] == 5
+    assert cmp["disputed"] == []
+    text = pf.rank_comparison_reading(cmp, 1.0)
+    assert "совпадают по существу" in text
+    assert "1,00" in text
+
+
+def test_reading_names_the_disputed_directions():
+    text = pf.rank_comparison_reading(pf.rank_comparison(REAL, [4, 5, 1, 2, 3]), -0.30)
+    assert "Маркетплейс" in text and "Интернет-магазин" in text
+    # Запятая, а не точка: во всём отчёте дробные через запятую.
+    assert "-0,30" in text and "-0.30" not in text
+    assert "не дефект данных" in text
