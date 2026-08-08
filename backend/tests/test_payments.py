@@ -560,3 +560,48 @@ async def test_refund_returns_credit_even_after_deletion(auth_client, db_session
 
     assert a.status == "draft"
     assert (await auth_client.get("/api/payments/credits")).json()["paid_credits"] == 0
+
+
+# ── Тестовый платёж на 1 ₽ ────────────────────────────────────────────────────
+# Раньше эндпоинт был захардкожен на product="m12", и платёжный путь Метода 3
+# не проверялся живьём ни разу. Тестов на него не было вовсе.
+@pytest.mark.asyncio
+async def test_test_create_requires_admin(auth_client):
+    r = await auth_client.post("/api/payments/test-create?product=m3")
+    assert r.status_code in (401, 403)
+
+
+@pytest.mark.asyncio
+async def test_test_create_rejects_unknown_product(admin_client):
+    r = await admin_client.post("/api/payments/test-create?product=m99")
+    assert r.status_code == 400
+    assert "m99" in r.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_test_create_makes_m3_order_without_assessment(
+    admin_client, db_session, mock_tochka,
+):
+    """
+    Заказ Метода 3 не привязывается к диагностике: обратной ссылки нет
+    по построению, а служебная запись Assessment заводилась только из-за
+    NOT NULL, которого больше нет.
+    """
+    r = await admin_client.post("/api/payments/test-create?product=m3")
+    assert r.status_code == 200, r.text
+
+    order = await db_session.get(Order, uuid.UUID(r.json()["order_id"]))
+    assert order.product == "m3"
+    assert order.assessment_id is None
+    assert float(order.amount) == 1.00
+
+
+@pytest.mark.asyncio
+async def test_test_create_works_when_payment_disabled(
+    admin_client, db_session, mock_tochka, monkeypatch,
+):
+    """Проверять шлюз нужно и при выключенном приёме платежей."""
+    monkeypatch.setattr(payments_router, "is_payment_enabled",
+                        lambda product="m12": False)
+    r = await admin_client.post("/api/payments/test-create?product=m3")
+    assert r.status_code == 200, r.text

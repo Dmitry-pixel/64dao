@@ -448,6 +448,7 @@ async def create_payment(
 
 @router.post("/test-create")
 async def create_test_payment(
+    product: str = DEFAULT_PRODUCT,
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -456,27 +457,30 @@ async def create_test_payment(
     чека и вебхука через реальный Точка API без списания полной суммы.
     Доступно только администратору.
 
-    Order.assessment_id обязателен по схеме БД (NOT NULL) — создаём
-    служебный Assessment (status='draft', без данных диагностики), он не
-    расходует кредиты и не появляется как отчёт пользователя.
+    Продукт обязателен по смыслу: у m12 и m3 разные наименования услуги
+    в чеке (54-ФЗ). Пока продукт был захардкожен в 'm12', платёжный путь
+    Метода 3 не проверялся живьём ни разу — при том что метод продаётся.
+
+    Служебный Assessment больше не создаётся. Он заводился только потому,
+    что Order.assessment_id считался NOT NULL; с появлением платёжного
+    контура Метода 3 колонка стала nullable — у m3 привязки к диагностике
+    нет вовсе. Служебная запись была мусором в таблице.
 
     Работает НЕЗАВИСИМО от pricing.payment_enabled — тестировать нужно
-    именно до включения оплаты для обычных пользователей.
-    """
-    settings = get_settings()
+    и до включения оплаты, и после.
 
-    test_assessment = Assessment(
-        user_id=admin.id,
-        status="draft",
-        company_name="[ТЕСТ ОПЛАТЫ] служебная запись, можно игнорировать",
-    )
-    db.add(test_assessment)
-    await db.flush()
+    ВНИМАНИЕ: оплаченный тестовый заказ засчитывается как полноценный
+    кредит (paid_orders * reports_per_order), то есть рубль даёт 2 кредита
+    Методов 1 и 2 либо 1 кредит Метода 3. Администратору это безразлично —
+    он проходит мимо кассы, — но баланс в кабинете раздувается. Отдельного
+    признака тестового заказа в схеме нет.
+    """
+    _check_product(product)
+    settings = get_settings()
 
     order = Order(
         user_id=admin.id,
-        product="m12",
-        assessment_id=test_assessment.id,
+        product=product,
         amount=1.00,
         currency="RUB",
         status="pending",
@@ -486,7 +490,7 @@ async def create_test_payment(
 
     items = [
         {
-            "name": "ТЕСТ: проверка оплаты (1 ₽)",
+            "name": f"ТЕСТ (1 ₽): {RECEIPT_NAME[product]}",
             "amount": 1.00,
             "quantity": 1,
             "vatType": current_vat_type(),
@@ -499,7 +503,7 @@ async def create_test_payment(
     try:
         tochka_resp = await client.create_payment_with_receipt(
             amount=1.00,
-            purpose=f"ТЕСТ оплаты 64 DAO, заказ {order.id}",
+            purpose=f"ТЕСТ оплаты 64 DAO ({product}), заказ {order.id}",
             order_id=str(order.id),
             customer_email=admin.email,
             items=items,

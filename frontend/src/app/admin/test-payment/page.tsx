@@ -12,6 +12,9 @@ export default function AdminTestPaymentPage() {
   const [creating, setCreating] = useState(false)
   const [result, setResult] = useState<{ order_id: string; payment_link: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Продукт обязателен: у m12 и m3 разные наименования услуги в чеке. Пока он
+  // был захардкожен, платёжный путь Метода 3 не проверялся живьём ни разу.
+  const [product, setProduct] = useState<'m12' | 'm3'>('m12')
 
   useEffect(() => {
     const init = async () => {
@@ -32,7 +35,7 @@ export default function AdminTestPaymentPage() {
     setError(null)
     setResult(null)
     try {
-      const res = await fetch(`${API}/api/payments/test-create`, {
+      const res = await fetch(`${API}/api/payments/test-create?product=${product}`, {
         method: 'POST',
         credentials: 'include',
       })
@@ -76,14 +79,37 @@ export default function AdminTestPaymentPage() {
               <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'var(--dark)', lineHeight: 1.6, marginTop: 0 }}>
                 Создаёт реальный платёж на <b>1 ₽</b> через Точку (не полную цену диагностики) — для проверки
                 прохождения оплаты, чека и вебхука. Работает независимо от переключателя «Оплата включена».
-                Заказ привязывается к служебной записи, не влияет на кредиты и отчёты.
               </p>
+              <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: '#c0392b', lineHeight: 1.6, marginTop: 0 }}>
+                Оплаченный тестовый заказ засчитывается как полноценный: рубль даёт
+                2 кредита Методов 1 и 2 либо 1 кредит Метода 3. Администратора это
+                не ограничивает — он проходит мимо кассы, — но баланс в кабинете
+                вырастет. Отдельного признака тестового заказа в схеме нет.
+              </p>
+
+              <div style={{ display: 'flex', gap: 8, margin: '4px 0 12px' }}>
+                {([['m12', 'Методы 1 и 2'], ['m3', 'Метод 3']] as const).map(([code, label]) => (
+                  <button
+                    key={code}
+                    onClick={() => setProduct(code)}
+                    style={{
+                      padding: '8px 16px', borderRadius: 6, cursor: 'pointer',
+                      fontFamily: 'sans-serif', fontSize: 13,
+                      background: product === code ? 'var(--dark)' : 'transparent',
+                      color: product === code ? '#fff' : 'var(--dark)',
+                      border: product === code ? 'none' : '1px solid rgba(26,37,64,0.2)',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <button
                 onClick={createTestPayment}
                 disabled={creating}
                 style={{ background: 'var(--dark)', color: '#fff', border: 'none', borderRadius: 6, padding: '12px 24px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer', fontWeight: 500, marginTop: 8 }}
               >
-                {creating ? 'Создаём...' : 'Создать тестовый платёж на 1 ₽'}
+                {creating ? 'Создаём...' : `Создать тестовый платёж на 1 ₽ · ${product === 'm3' ? 'Метод 3' : 'Методы 1 и 2'}`}
               </button>
 
               {error && (
