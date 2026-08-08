@@ -133,16 +133,26 @@ export default function AdminPricingPage() {
     try {
       // Отправляются оба блока: PUT перезаписывает файл целиком, и отправка
       // одной вкладки затёрла бы тариф другой.
-      await fetch(`${API}/api/admin/pricing`, {
+      const res = await fetch(`${API}/api/admin/pricing`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(all),
       })
+      // Без этой проверки кнопка зеленела и писала «Сохранено» при любом
+      // ответе сервера — 401 по истёкшей сессии, 403, 422, 500. Владелец
+      // включал приём платежей Метода 3, видел подтверждение и уходил;
+      // файл при этом не менялся с 30 июля. Ошибку ловил только полностью
+      // не ушедший запрос.
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '')
+        alert(`Не удалось сохранить: ${res.status}. ${detail.slice(0, 300)}`)
+        return
+      }
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch {
-      alert('Ошибка сохранения')
+      alert('Ошибка сохранения: запрос не ушёл. Проверьте соединение.')
     } finally {
       setSaving(false)
     }

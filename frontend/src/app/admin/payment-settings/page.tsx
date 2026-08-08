@@ -55,12 +55,21 @@ export default function AdminPaymentSettingsPage() {
   const save = async () => {
     setSaving(true)
     try {
-      await fetch(`${API}/api/admin/tochka-settings`, {
+      const res = await fetch(`${API}/api/admin/tochka-settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ jwt_token: jwtInput, client_id: clientIdInput }),
       })
+      // Та же дыра, что была в /admin/pricing: без проверки страница писала
+      // «Сохранено» при любом ответе. Здесь это дороже — не записались бы
+      // реквизиты платёжного шлюза. Соседний toggleCredits res.ok проверяет:
+      // шаблон разошёлся внутри одного экрана.
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '')
+        alert(`Не удалось сохранить: ${res.status}. ${detail.slice(0, 300)}`)
+        return
+      }
       setJwtInput('')
       setClientIdInput('')
       await load()
