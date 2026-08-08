@@ -1074,3 +1074,46 @@ def test_objects_section_prints_market_labels_when_given():
     html = objects_section([obj], {str(obj.id): market_label(3)})
     assert "Рынок" in html
     assert "Свой (3 из 6)" in html
+
+
+# ── Адрес вето (§10.2) ────────────────────────────────────────────────────────
+from app.m3_pdf import flag_location as _flag_location  # noqa: E402
+
+
+def _veto_result(l1=3.20):
+    return {"position": 5, "name": "Обучение мастеров", "scores": {"l1": l1}}
+
+
+def test_veto_location_names_the_line_and_the_actual_score():
+    """
+    В блоке линий стоит Инь, а балл может быть выше порога: символ понижен
+    принудительно. Без числа оговорка не объясняет противоречие, которое
+    читатель уже увидел.
+    """
+    got = _flag_location(_veto_result(), "VETO_UNPROFITABLE")
+    assert got == "5 · Обучение мастеров: линия 1 (3,20)"
+
+
+def test_mobility_conflict_shares_the_address():
+    assert "линия 1" in _flag_location(_veto_result(), "VETO_MOBILITY_CONFLICT")
+
+
+def test_veto_unknown_gets_no_score():
+    """
+    Вето не срабатывало, символ никто не понижал. Печатать балл значило бы
+    намекать на подмену, которой не было.
+    """
+    assert _flag_location(_veto_result(), "VETO_UNKNOWN") == "5 · Обучение мастеров"
+
+
+def test_veto_location_survives_missing_score():
+    assert _flag_location({"position": 5, "name": "Без балла", "scores": {}},
+                          "VETO_UNPROFITABLE") == "5 · Без балла"
+
+
+def test_veto_label_says_what_happened():
+    """Прежний текст «линия ресурсов принудительно слабая» не говорил,
+    что именно понижено и что балл при этом не учтён."""
+    from app.m3_pdf import FLAG_LABELS
+    assert "понижен до Инь" in FLAG_LABELS["VETO_UNPROFITABLE"]
+    assert "независимо от балла" in FLAG_LABELS["VETO_UNPROFITABLE"]
