@@ -261,7 +261,10 @@ export default function M3ReportPage() {
   if (loadError) return (
     <div style={S.page}><div style={S.stage}>
       <p style={S.warn}>{loadError}</p>
-      <button style={S.btnGhost} onClick={() => router.push('/m3')}>← К портфелям</button>
+      <div style={{ display: 'flex', gap: 12 }}>
+        <button style={S.btnGhost} onClick={() => router.push('/m3')}>← К портфелям</button>
+        <button style={S.btnGhost} onClick={() => router.push('/dashboard')}>← В кабинет</button>
+      </div>
     </div></div>
   )
 
@@ -632,6 +635,7 @@ export default function M3ReportPage() {
 
       <div style={{ marginTop: 40, display: 'flex', gap: 12 }}>
         <button style={S.btnGhost} onClick={() => router.push('/m3')}>← К портфелям</button>
+        <button style={S.btnGhost} onClick={() => router.push('/dashboard')}>← В кабинет</button>
       </div>
     </div></div>
   )

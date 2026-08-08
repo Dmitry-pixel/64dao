@@ -6,10 +6,9 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import PortfolioForm from '@/components/m3/PortfolioForm'
 import {
-  createPortfolio, listIndustries, listPortfolios, putObjects,
-  type M3Industry, type M3ObjectIn, type M3Portfolio,
+  createPortfolio, listIndustries, listPortfolios,
+  type M3Industry, type M3Portfolio,
 } from '@/lib/m3'
 
 const P = {
@@ -69,7 +68,7 @@ const STATUS_LABEL: Record<string, string> = {
   calculated: 'рассчитан',
 }
 
-type Phase = 'loading' | 'list' | 'setup' | 'objects'
+type Phase = 'loading' | 'list' | 'setup'
 
 function M3PageInner() {
   const router = useRouter()
@@ -86,7 +85,6 @@ function M3PageInner() {
   const [title, setTitle] = useState('')
   const [companyName, setCompanyName] = useState(companyParam)
   const [industryId, setIndustryId] = useState<number | null>(null)
-  const [portfolio, setPortfolio] = useState<M3Portfolio | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -116,24 +114,14 @@ function M3PageInner() {
         company_name: companyName.trim() || null,
         industry_id: industryId,
       })
-      setPortfolio(p)
-      setPhase('objects')
+      // Шаг направлений живёт на своём адресе: /m3/{id}/objects. Держать
+      // его состоянием этой страницы значило делать его недостижимым для
+      // уже созданного черновика — из-за этого и получался круг
+      // «Продолжить → анкета без направлений → список → Продолжить».
+      router.push(`/m3/${p.id}/objects`)
     } catch (e: any) {
       setError(e?.message || 'Не удалось создать портфель.')
     } finally {
-      setBusy(false)
-    }
-  }
-
-  async function saveObjects(objects: M3ObjectIn[]) {
-    if (!portfolio) return
-    setBusy(true)
-    setError(null)
-    try {
-      await putObjects(portfolio.id, objects)
-      router.push(`/m3/${portfolio.id}/questionnaire`)
-    } catch (e: any) {
-      setError(e?.message || 'Не удалось сохранить направления.')
       setBusy(false)
     }
   }
@@ -167,10 +155,14 @@ function M3PageInner() {
           <span style={P.status}>{STATUS_LABEL[p.status] ?? p.status}</span>
           <button
             style={P.btnGhost}
+            // Черновик без направлений отправлять в анкету нельзя: ей нечего
+            // показывать, и пользователь упирается в тупик.
             onClick={() => router.push(
               p.status === 'calculated'
                 ? `/report/m3/${p.id}`
-                : `/m3/${p.id}/questionnaire`,
+                : p.objects.length
+                  ? `/m3/${p.id}/questionnaire`
+                  : `/m3/${p.id}/objects`,
             )}
           >
             {p.status === 'calculated' ? 'Отчёт' : 'Продолжить'} →
@@ -259,18 +251,8 @@ function M3PageInner() {
     </div></div>
   )
 
-  return (
-    <div style={P.page}><div style={P.stage}>
-      <PortfolioForm
-        industries={industries}
-        portfolioIndustryId={industryId}
-        submitting={busy}
-        error={error}
-        onSubmit={saveObjects}
-        onCancel={() => setPhase('setup')}
-      />
-    </div></div>
-  )
+  // Все три фазы возвращают выше; ветка нужна компилятору.
+  return null
 }
 
 

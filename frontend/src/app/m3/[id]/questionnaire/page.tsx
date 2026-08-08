@@ -59,7 +59,9 @@ export default function M3QuestionnairePage() {
           return null
         }
         if (!p.objects.length) {
-          setLoadError('У портфеля нет направлений. Вернитесь и добавьте их.')
+          // Не сообщение об ошибке, а недоделанный шаг: уводим туда, где его
+          // доделывают. Кнопка «К портфелям» здесь замыкала круг.
+          router.replace(`/m3/${id}/objects`)
           return null
         }
         return getQuestionnaire(id)
