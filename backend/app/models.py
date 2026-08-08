@@ -267,7 +267,11 @@ class Order(Base):
     # Метода 3 считается по m3_portfolios.order_id — там же, где у Методов 1
     # и 2 он считается по assessments.order_id.
     assessment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("assessments.id", ondelete="CASCADE"), nullable=True)
-    amount:        Mapped[float]       = mapped_column(Numeric(10, 2), nullable=False, default=5500.00)
+    # Дефолта нет намеренно — по той же причине, что и у product выше:
+    # пропущенная сумма должна падать, а не превращаться в заказ по цене,
+    # которой давно нет. 5500 ₽ стояли здесь и в server_default с ревизии
+    # 001; реальная цена берётся из pricing_store и передаётся явно.
+    amount:        Mapped[float]       = mapped_column(Numeric(10, 2), nullable=False)
     currency:      Mapped[str]         = mapped_column(String(3), nullable=False, default="RUB")
     status:        Mapped[str]         = mapped_column(String(20), nullable=False, default="pending")
     payment_id:    Mapped[str | None]  = mapped_column(String(255))

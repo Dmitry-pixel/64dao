@@ -605,3 +605,18 @@ async def test_test_create_works_when_payment_disabled(
                         lambda product="m12": False)
     r = await admin_client.post("/api/payments/test-create?product=m3")
     assert r.status_code == 200, r.text
+
+
+@pytest.mark.asyncio
+async def test_order_without_amount_fails_loudly(db_session, test_user):
+    """
+    Ревизия 031. Раньше у orders.amount стоял дефолт 5500 ₽ — цена, от которой
+    отказались задолго до этого. Пропущенная сумма превращалась бы в заказ
+    по несуществующему прайсу вместо падения.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    db_session.add(Order(user_id=test_user.id, product="m3", status="pending"))
+    with pytest.raises(IntegrityError):
+        await db_session.flush()
+    await db_session.rollback()
