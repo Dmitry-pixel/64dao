@@ -128,6 +128,7 @@ def test_mobility_note_always_present():
 
 # ── Траектория по матрице ─────────────────────────────────────────────────────
 from app.m3_config import industry_weights  # noqa: E402
+from tests import m3_factory as factory  # noqa: E402
 from app.m3_verdict import cells_of, symbols_after, transition  # noqa: E402
 
 # Ячейки образца считались по числу Ян. Универсальный пресет 18 (34/33/33)
@@ -147,10 +148,13 @@ SAMPLE_TRAJECTORY = [
 
 
 def _traj(symbols, current, tl, th, rl, rh, weights=None):
-    return {"symbols": symbols, "current_hex": current,
-            "target_lines": list(tl), "target_hex": th,
-            "risk_lines": list(rl), "risk_hex": rh,
-            "weights": weights or UNIVERSAL}
+    """Обёртка над общей фабрикой: переходу нужны символы, векторы и веса."""
+    return factory.result(
+        symbols=symbols, current_hex=current,
+        target_lines=list(tl), target_hex=th,
+        risk_lines=list(rl), risk_hex=rh,
+        weights=weights or UNIVERSAL,
+    )
 
 
 @pytest.mark.parametrize("name,symbols,cells,cur,tl,th,rl,rh", SAMPLE_TRAJECTORY)

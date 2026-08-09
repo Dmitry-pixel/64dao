@@ -17,8 +17,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from app import m3_scoring as sc
 from app.m3_config import industry_weights
+from tests import m3_factory as factory
 from app.m3_pdf import build_portfolio_report_html
 from app.m3_service import enrich_result
 from app.m3_verdict import cell_breakdown_text
@@ -42,29 +42,20 @@ CASES = [
 
 def _result(index, case):
     name, symbols, mobility, cells, target, risk, share = case
-    return {
-        "object_id": f"o{index}", "position": index, "name": name,
-        "scores": {f"l{i}": 2.5 for i in range(1, 7)},
-        "symbols": symbols, "mobility": mobility,
-        "weights": industry_weights(1),
-        "cell_strength": cells[0], "cell_attract": cells[1],
-        "cell_key": f"{cells[0]}_{cells[1]}",
-        "cell_label": "подпись подставляется сервисом",
-        "coord_strength": 2.5, "coord_attract": 2.5,
-        "current_hex": 1, "current_name": "Творчество",
-        "target_hex": target[0], "target_lines": list(target[1]),
-        "risk_hex": risk[0], "risk_lines": list(risk[1]),
-        "v_index": 0.5, "z_index": 0.5, "v_rank": index, "z_rank": index,
-        "weak_line": 5, "strong_line": 1,
-        "tensions": [], "flags": [],
-        # Вывод ячейки собирается так же, как в build_report: разбор из
-        # символов и весов, уровень — из снимка.
-        "cell_breakdown": {
-            axis: {**sc.cell_detail(symbols, axis, industry_weights(1)),
-                   "level": level}
-            for axis, level in (("strength", cells[0]), ("attract", cells[1]))
-        },
-    }
+    return factory.result(
+        object_id=f"o{index}", position=index, name=name,
+        scores={f"l{i}": 2.5 for i in range(1, 7)},
+        symbols=symbols, mobility=mobility,
+        weights=industry_weights(1),
+        cell_strength=cells[0], cell_attract=cells[1],
+        cell_label="подпись подставляется сервисом",
+        coord_strength=2.5, coord_attract=2.5,
+        current_hex=1, current_name="Творчество",
+        target_hex=target[0], target_lines=list(target[1]),
+        risk_hex=risk[0], risk_lines=list(risk[1]),
+        v_index=0.5, z_index=0.5, v_rank=index, z_rank=index,
+        weak_line=5, strong_line=1,
+    )
 
 
 def _obj(index, case):

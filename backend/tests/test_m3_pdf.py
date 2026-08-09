@@ -13,6 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from tests import m3_factory as factory
 from app.m3_pdf import (
     banner, data_status_banner, footer_template, header_template, map_section,
     num, objects_section, page, report_header, section_title, signed,
@@ -52,16 +53,15 @@ def _obj(oid="o1", position=1, name="Салонный канал B2B", revenue=1
 def _result(oid="o1", position=1, name="Салонный канал B2B", cs="high", ca="low",
             symbols="AAABBA", current=26, target=None, risk=41,
             target_lines=(), risk_lines=(3,), mobility=None):
-    return {
-        "object_id": oid, "position": position, "name": name,
-        "cell_strength": cs, "cell_attract": ca,
-        "cell_label": "Высокая / Низкая",
-        "coord_strength": 3.33, "coord_attract": 2.33,
-        "symbols": symbols, "current_hex": current,
-        "target_hex": target, "risk_hex": risk,
-        "target_lines": list(target_lines), "risk_lines": list(risk_lines),
-        "mobility": mobility if mobility is not None else {"3": "old_yang"},
-    }
+    """Обёртка над общей фабрикой: подпись своя, контракт общий."""
+    return factory.result(
+        object_id=oid, position=position, name=name,
+        cell_strength=cs, cell_attract=ca,
+        symbols=symbols, current_hex=current,
+        target_hex=target, risk_hex=risk,
+        target_lines=list(target_lines), risk_lines=list(risk_lines),
+        mobility=mobility if mobility is not None else {"3": "old_yang"},
+    )
 
 
 # ── Числа ─────────────────────────────────────────────────────────────────────
@@ -310,29 +310,25 @@ from app.m3_pdf import (  # noqa: E402
     hexagram_line, line_glyph, lines_block, object_card, route_block,
     verdict_block,
 )
-from app.m3_config import industry_weights  # noqa: E402
 from app.m3_verdict import verdict_for  # noqa: E402
 
 
 def _full_result(**over):
-    base = {
-        "object_id": "o5", "position": 5, "name": "Обучение мастеров",
-        "cell_strength": "low", "cell_attract": "high",
-        "cell_label": "Низкая / Высокая",
-        "coord_strength": 2.0, "coord_attract": 3.0,
-        "symbols": "BABAAA", "current_hex": 6, "current_name": "Шесть",
-        "target_hex": 10, "target_lines": [1], "risk_hex": None, "risk_lines": [],
-        "mobility": {"1": "old_yin"},
-        "scores": {"l1": 1.0, "l2": 3.0, "l3": 2.0, "l4": 3.0, "l5": 2.67, "l6": 3.33},
-        "v_index": 0.619, "z_index": 0.030, "v_rank": 1, "z_rank": 5,
-        "weak_line": 1, "strong_line": 6, "tensions": ["P1", "P3"], "flags": [],
-        # Ячейки образца («низкая/высокая» для BABAAA) считались по числу Ян.
-        # Универсальный пресет 18 воспроизводит это правило точно; отраслевые
-        # веса проверяются отдельно, в test_m3_scoring и test_m3_verdict.
-        "weights": industry_weights(18),
-    }
+    """Направление 5 образца целиком: подвижная линия, оба индекса, напряжения."""
+    base = dict(
+        object_id="o5", position=5, name="Обучение мастеров",
+        cell_strength="low", cell_attract="high",
+        cell_label="Низкая / Высокая",
+        coord_strength=2.0, coord_attract=3.0,
+        symbols="BABAAA", current_hex=6, current_name="Шесть",
+        target_hex=10, target_lines=[1], risk_hex=None, risk_lines=[],
+        mobility={"1": "old_yin"},
+        scores={"l1": 1.0, "l2": 3.0, "l3": 2.0, "l4": 3.0, "l5": 2.67, "l6": 3.33},
+        v_index=0.619, z_index=0.030, v_rank=1, z_rank=5,
+        weak_line=1, strong_line=6, tensions=["P1", "P3"], flags=[],
+    )
     base.update(over)
-    return base
+    return factory.result(**base)
 
 
 def _step(text="Пересчитать юнит-экономику курса", line=1, kind="route", budget=True):
@@ -780,11 +776,8 @@ from app.m3_pdf import FLAG_LABELS, PORTFOLIO_FLAG_LABELS as PFL  # noqa: E402
 
 
 def _scored(**over):
-    base = dict(_result())
-    base["scores"] = {"l1": 3.0, "l2": 3.0, "l3": 4.0, "l4": 2.0, "l5": 2.0, "l6": 3.0}
-    base["flags"] = []
-    base.update(over)
-    return base
+    """То же направление 1, но с баллами: нужно флагам, у которых есть адрес."""
+    return factory.result(**over)
 
 
 def test_flag_location_names_direction_and_line():
