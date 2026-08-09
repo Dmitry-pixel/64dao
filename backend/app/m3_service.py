@@ -32,6 +32,10 @@ LINE_TITLES = {
     6: "Макро и регулирование",
 }
 
+# Линии, которыми компания управляет сама. Деление то же, что у осей матрицы
+# и у раздела 03: 1–3 конкурентная сила, 4–6 привлекательность рынка.
+INTERNAL_LINES = (1, 2, 3)
+
 DISCLAIMER_WEIGHTS = (
     "Отраслевые веса — экспертные априорные оценки, не эмпирические. "
     "Они задают начальную точку и подлежат пересмотру по мере накопления отчётов."
@@ -382,6 +386,18 @@ async def rebuild_checklist(db: AsyncSession, portfolio: M3Portfolio, calc: dict
     Старый Инь даёт маршрутный шаг — работу над назревшей слабостью.
     Старый Ян даёт шаг удержания: цель там остаться на месте, а не
     переместиться, поэтому промежуточных состояний у него нет.
+
+    Глагол зависит от оси. Линии 1–3 описывают то, что компания делает сама:
+    их прорабатывают и защищают. Линии 4–6 — то, во что она поставлена;
+    их не меняют. Пока формулировка была общей, отчёт предлагал «проработать
+    назревшее по линии 6 — макро и регулирование, требует бюджета», то есть
+    выделить деньги на проработку регулирования. Внешний фактор меняют
+    не им самим, а своей зависимостью от него.
+
+    Бюджет у внешнего «назревшего» сохраняется: сменить каналы или сегмент
+    стоит денег, и это осмысленная трата. У внешнего перегрева бюджета нет —
+    действие там состоит в том, чтобы перестать рассчитывать на текущий
+    уровень (та же мысль, что в DISCLAIMER_LINE4).
     """
     await db.execute(delete(M3ChecklistStep).where(M3ChecklistStep.portfolio_id == portfolio.id))
     by_id = {o.id: o for o in portfolio.objects}
@@ -391,17 +407,22 @@ async def rebuild_checklist(db: AsyncSession, portfolio: M3Portfolio, calc: dict
         if obj is None:
             continue
         for line in r["target_lines"]:
+            verb = ("проработать назревшее" if line in INTERNAL_LINES
+                    else "снизить зависимость")
             db.add(M3ChecklistStep(
                 portfolio_id=portfolio.id, object_id=obj.id, line=line,
                 step_type="route", wave=1, needs_budget=True,
-                step_text=f"{obj.name}: проработать назревшее по линии {line} — "
+                step_text=f"{obj.name}: {verb} по линии {line} — "
                           f"{LINE_TITLES[line].lower()}",
             ))
         for line in r["risk_lines"]:
+            internal = line in INTERNAL_LINES
+            verb = ("защитить достигнутое" if internal
+                    else "не закладываться на текущий уровень")
             db.add(M3ChecklistStep(
                 portfolio_id=portfolio.id, object_id=obj.id, line=line,
                 step_type="hold", wave=1, needs_budget=False,
-                step_text=f"{obj.name}: защитить достигнутое по линии {line} — "
+                step_text=f"{obj.name}: {verb} по линии {line} — "
                           f"{LINE_TITLES[line].lower()}",
             ))
         if not r["target_lines"] and not r["risk_lines"]:

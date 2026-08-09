@@ -621,6 +621,36 @@ class TestChecklistAndTradeoff:
         assert len(by_type["route"]) == 2      # старых Инь в кейсе два
         assert len(by_type["hold"]) == 2       # старых Ян тоже два
 
+    async def test_step_verb_depends_on_the_axis(self, auth_client, calculated):
+        """
+        Линии 1–3 компания двигает сама, 4–6 — то, во что она поставлена.
+        Пока формулировка была общей, отчёт предлагал «проработать назревшее
+        по линии 6 — макро и регулирование, требует бюджета»: выделить деньги
+        на проработку регулирования. Внешний фактор меняют не им самим,
+        а своей зависимостью от него.
+        """
+        steps = (await auth_client.get(f"{REPORTS}/{calculated['id']}/checklist")).json()
+        for s in steps:
+            line = s.get("line")
+            if line is None:
+                continue
+            internal = line in (1, 2, 3)
+            if s["step_type"] == "route":
+                expected = "проработать назревшее" if internal else "снизить зависимость"
+            elif s["step_type"] == "hold":
+                expected = ("защитить достигнутое" if internal
+                            else "не закладываться на текущий уровень")
+            else:
+                continue
+            assert expected in s["step_text"], (line, s["step_text"])
+
+    async def test_external_hold_asks_for_no_budget(self, auth_client, calculated):
+        """Перестать рассчитывать на текущий уровень спроса денег не стоит."""
+        steps = (await auth_client.get(f"{REPORTS}/{calculated['id']}/checklist")).json()
+        for s in steps:
+            if s["step_type"] == "hold":
+                assert s["needs_budget"] is False, s["step_text"]
+
     async def test_toggle_step(self, auth_client, calculated):
         steps = (await auth_client.get(f"{REPORTS}/{calculated['id']}/checklist")).json()
         sid = steps[0]["id"]
