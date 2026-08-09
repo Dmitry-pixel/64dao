@@ -590,6 +590,11 @@ class TestReport:
         text = " ".join(report["disclaimers"])
         assert "экспертные априорные" in text
         assert "идентификатор конфигурации" in text
+        # §10.3. Клиент видит шесть линий с бизнес-подписями и нигде
+        # не находит, почему они стоят именно так. Без этой оговорки
+        # догадка «тут какая-то традиция» ничем не опровергается.
+        assert "конструктивное правило модели" in text
+        assert "не свойство традиции" in text
 
     def test_hexagram_name_returned_but_secondary(self, report):
         r = report["objects"][0]["result"]

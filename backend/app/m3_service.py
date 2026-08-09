@@ -41,6 +41,13 @@ DISCLAIMER_HEXAGRAM = (
     "к традиции. Название выводится для связи с Методами 1 и 2 и в трактовке "
     "не участвует."
 )
+DISCLAIMER_LINES = (
+    "Соответствие линий факторам — конструктивное правило модели, а не "
+    "свойство традиции. Линии 1–3 описывают то, что компания делает сама, "
+    "линии 4–6 — то, во что она поставлена. Положение третьей линии "
+    "используется как аналогия для фактора, соединяющего внутренний контур "
+    "с рынком."
+)
 DISCLAIMER_HELD = (
     "Вердикты аллокации удержаны: сработал портфельный флаг качества данных. "
     "Диагноз и маршруты приведены, распределение ресурса — нет."
@@ -450,7 +457,7 @@ def compose_narrative(result: dict, content: dict) -> list[dict]:
 
 
 def disclaimers(calc: dict) -> list[str]:
-    out = [DISCLAIMER_WEIGHTS, DISCLAIMER_HEXAGRAM]
+    out = [DISCLAIMER_WEIGHTS, DISCLAIMER_HEXAGRAM, DISCLAIMER_LINES]
     if calc["portfolio"]["verdicts_held"]:
         out.insert(0, DISCLAIMER_HELD)
     if any(r["symbols"][4] == sc.YIN for r in calc["objects"]):
