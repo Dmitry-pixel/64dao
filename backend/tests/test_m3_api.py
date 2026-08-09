@@ -586,6 +586,25 @@ class TestReport:
         assert zone["kind"] == "zone"
         assert zone["mistake"]
 
+    def test_payload_carries_ready_strings_for_the_web(self, report):
+        """
+        У формулировки одно определение. Веб печатает готовую строку
+        из payload и своей копии на TypeScript не держит.
+
+        До этого `cellBreakdownText` и `marketLabel` были написаны дважды,
+        и расхождение поймать было нечем: тест паритета видит только PDF.
+        Проверка стоит здесь, а не в паритете: там строки приходят
+        из фабрики и совпали бы по построению.
+        """
+        from app.m3_verdict import cell_breakdown_text, market_label
+
+        for item in report["objects"]:
+            r = item["result"]
+            assert r["market_label"] == market_label(r["market_overrides"])
+            for axis in ("strength", "attract"):
+                d = r["cell_breakdown"][axis]
+                assert d["text"] == cell_breakdown_text(axis, d), (r["name"], axis)
+
     def test_disclaimers_present(self, report):
         text = " ".join(report["disclaimers"])
         assert "экспертные априорные" in text

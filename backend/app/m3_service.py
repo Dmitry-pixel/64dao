@@ -577,6 +577,10 @@ async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
             "market_overrides": sc.market_override_count(
                 object_answers.get(r.object_id, {})),
         }
+        # Готовая подпись, а не только число: копия формулировки на TypeScript
+        # разошлась бы с питоновской, а поймать это нечем — тест паритета
+        # видит только сторону PDF.
+        item["market_label"] = vd.market_label(item["market_overrides"])
         if r.weights:
             # Вывод ячейки для карточки (§10.1a). Считается из снимка, а не
             # заново из анкеты: symbols и weights уже зафиксированы.
@@ -590,6 +594,9 @@ async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
                                 ("attract", r.cell_attract)):
                 d = sc.cell_detail(code, axis, r.weights)
                 d["level"] = level
+                # Строка собирается здесь по той же причине, что и market_label:
+                # веб печатает готовое, своей копии формулировки не держит.
+                d["text"] = vd.cell_breakdown_text(axis, d)
                 breakdown[axis] = d
             item["cell_breakdown"] = breakdown
         enrich_result(

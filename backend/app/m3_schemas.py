@@ -248,6 +248,8 @@ class M3CellAxisOut(BaseModel):
     sum: int
     total: int
     lines: list[M3CellLineOut]
+    # Готовая строка: веб печатает её, своей копии формулировки не держит.
+    text: str = ""
 
 
 class M3CellBreakdownOut(BaseModel):
@@ -288,6 +290,8 @@ class M3ResultOut(BaseModel):
     # Дефолт нужен старым снимкам: у отчётов, собранных до появления поля,
     # его в словаре нет, и без дефолта отчёт перестал бы отдаваться.
     market_overrides: int = 0
+    # Подпись колонки «Рынок». Дефолт нужен старым снимкам отчёта.
+    market_label: str = ""
     # Вывод ячейки. None у снимков до ревизии 030: весов в них нет,
     # и достраивать их задним числом значит выдумать данные.
     cell_breakdown: M3CellBreakdownOut | None = None

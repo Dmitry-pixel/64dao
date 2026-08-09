@@ -18,6 +18,7 @@
 """
 from app.m3_config import industry_weights
 from app import m3_scoring as sc
+from app import m3_verdict as vd
 
 # Универсальный пресет: при нём правило «сумма весов» воспроизводит прежнее
 # «по числу Ян» точно, поэтому ячейки образцов остаются в силе. Отраслевые
@@ -29,10 +30,12 @@ def breakdown(symbols: str, cells: tuple[str, str], weights=None) -> dict:
     """Вывод ячейки — так же, как его собирает build_report: разбор из
     символов и весов, уровень из снимка."""
     w = weights or UNIVERSAL
-    return {
-        axis: {**sc.cell_detail(symbols, axis, w), "level": level}
-        for axis, level in (("strength", cells[0]), ("attract", cells[1]))
-    }
+    out = {}
+    for axis, level in (("strength", cells[0]), ("attract", cells[1])):
+        d = {**sc.cell_detail(symbols, axis, w), "level": level}
+        d["text"] = vd.cell_breakdown_text(axis, d)
+        out[axis] = d
+    return out
 
 
 def result(**over) -> dict:
@@ -72,6 +75,7 @@ def result(**over) -> dict:
         "tensions": [],
         "flags": [],
         "market_overrides": 0,
+        "market_label": "Общий",
     }
     base.update(over)
     # Ячейки и вывод пересобираются после подстановки: тест, задавший

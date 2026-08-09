@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import M3Checklist from '@/components/m3/M3Checklist'
 import PortfolioMap from '@/components/m3/PortfolioMap'
 import {
-  LINE_TITLES, PROFITABILITY_LABELS, cellBreakdownText,
+  LINE_TITLES, PROFITABILITY_LABELS,
   getChecklist, getReport, postTradeoff, toggleChecklistStep,
   type M3ChecklistStep, type M3Report, type M3Result, type M3TradeoffIn,
 } from '@/lib/m3'
@@ -164,7 +164,7 @@ function CellBreakdown({ r }: { r: M3Result }) {
   return (
     <div style={{ margin: '-8px 0 16px', fontSize: 12, color: C.muted }}>
       {(['strength', 'attract'] as const).map(axis => (
-        <div key={axis} style={{ margin: '2px 0' }}>{cellBreakdownText(axis, b[axis])}</div>
+        <div key={axis} style={{ margin: '2px 0' }}>{b[axis].text}</div>
       ))}
     </div>
   )
@@ -196,19 +196,6 @@ function Lines({ r }: { r: M3Result }) {
     </div>
   )
 }
-
-/**
- * Подпись колонки «Рынок»: чей рыночный слой пошёл в расчёт.
- *
- * Формулировка повторяет m3_pdf.market_label — веб и PDF показывают одно и
- * то же. Правило (что считать переопределением) живёт в расчёте и приходит
- * числом: подмена идёт попунктно, поэтому частичное переопределение —
- * рабочее состояние, а не недозаполненность.
- */
-function marketLabel(overrides: number): string {
-  return overrides <= 0 ? 'Общий' : `Свой (${overrides} из 6)`
-}
-
 
 export default function M3ReportPage() {
   const router = useRouter()
@@ -351,7 +338,7 @@ export default function M3ReportPage() {
                 {o.revenue_share === null ? '—' : `${o.revenue_share}%`}
               </td>
               <td style={S.td}>{PROFITABILITY_LABELS[o.profitability]}</td>
-              <td style={S.td}>{marketLabel(byId[o.id]?.market_overrides ?? 0)}</td>
+              <td style={S.td}>{byId[o.id]?.market_label ?? '—'}</td>
             </tr>
           ))}
         </tbody>

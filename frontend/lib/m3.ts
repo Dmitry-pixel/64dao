@@ -296,6 +296,9 @@ export interface M3Result {
   flags: string[]
   /** Сколько пунктов рынка направление переопределило своими ответами (0–6). */
   market_overrides: number
+  /** Подпись колонки «Рынок». Собирается на бэкенде (m3_verdict.market_label):
+   *  у формулировки одно определение, копии здесь нет. */
+  market_label: string
   verdict: M3Verdict
   trajectory: M3Trajectory
   execution_reason: string
@@ -387,27 +390,10 @@ export type M3CellAxis = {
   sum: number
   total: number
   lines: { line: number; weight: number }[]
-}
-
-export const CELL_NOM: Record<string, string> = {
-  low: 'низкая', mid: 'средняя', high: 'высокая',
-}
-
-const AXIS_SHORT: Record<string, string> = { strength: 'Сила', attract: 'Рынок' }
-
-/**
- * Как получился уровень оси: «Сила: Ян на Л2 (45) + Л3 (30) = 75 из 100 →
- * высокая».
- *
- * Формулировка повторяет m3_verdict.cell_breakdown_text — веб и PDF
- * показывают одно и то же. При правке менять обе; расхождение ловит
- * test_m3_report_parity.
- */
-export function cellBreakdownText(axis: 'strength' | 'attract', d: M3CellAxis): string {
-  const got = d.lines.length
-    ? `Ян на ${d.lines.map(w => `Л${w.line} (${w.weight})`).join(' + ')} = ${d.sum}`
-    : `Ян нет — ${d.sum}`
-  return `${AXIS_SHORT[axis]}: ${got} из ${d.total} → ${CELL_NOM[d.level]}`
+  /** Готовая строка вида «Сила: Ян на Л2 (45) + Л3 (30) = 75 из 100 → высокая».
+   *  Собирается на бэкенде (m3_verdict.cell_breakdown_text): у формулировки
+   *  одно определение, копии здесь нет. */
+  text: string
 }
 
 export const LINE_TITLES: Record<number, string> = {

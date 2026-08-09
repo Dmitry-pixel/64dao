@@ -26,7 +26,7 @@ from app.m3_portfolio import (
     rank_comparison_reading, tact_note, yin_table,
 )
 from app.m3_verdict import (
-    cell_breakdown_text, cell_label, execution_reason, verdict_for,
+    cell_breakdown_text, cell_label, execution_reason, market_label, verdict_for,
 )
 from app.m3_verdict import transition as trajectory
 
@@ -259,18 +259,6 @@ def data_status_banner(summary: dict[str, Any], flag_labels: dict[str, str]) -> 
 
 
 # ── 00 Исходные данные ────────────────────────────────────────────────────────
-def market_label(overrides: int) -> str:
-    """
-    Подпись колонки «Рынок»: чей рыночный слой пошёл в расчёт.
-
-    Подмена идёт попунктно, а не блоком целиком, поэтому частичное
-    переопределение — рабочее состояние, а не недозаполненность. Число в
-    скобках показывает глубину отличия; без него направление с одним
-    переопределённым пунктом читалось бы наравне с полностью своим.
-    """
-    if overrides <= 0:
-        return "Общий"
-    return f"Свой ({overrides} из {sc.MARKET_ITEMS_TOTAL})"
 
 
 
