@@ -1,9 +1,10 @@
 import asyncio
 import logging
 import random
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import (
@@ -11,7 +12,7 @@ from app.auth import (
     create_token, set_auth_cookie, clear_auth_cookie,
     create_otp_code, verify_otp_code,
     create_reset_token, verify_reset_token,
-    get_current_user,
+    get_current_user, token_predates_password_change,
 )
 from app.config import get_settings
 from app.db import get_db
@@ -19,7 +20,7 @@ from app.email import send_otp_email, send_welcome_email, send_forgot_password_e
 
 settings = get_settings()
 from app.limiter import limiter
-from app.models import User
+from app.models import User, OtpCode
 from app.site_mode import get_site_mode
 from app.schemas import (
     LoginRequest, RegisterRequest, VerifyOTPRequest,
@@ -216,7 +217,23 @@ async def reset_password(
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
+    # Ссылка одноразовая. Раньше токен работал весь свой час и позволял
+    # менять пароль сколько угодно раз: перехвативший письмо мог сменить
+    # пароль повторно уже после того, как это сделал владелец.
+    if token_predates_password_change(payload, user):
+        raise HTTPException(status_code=400,
+                            detail="Ссылка недействительна или истекла")
+
     user.password_hash = hash_password(new_password)
+    user.password_changed_at = datetime.now(timezone.utc)
+
+    # Неиспользованные OTP гасим: код, высланный до смены пароля, не должен
+    # оставаться пропуском в аккаунт.
+    await db.execute(
+        update(OtpCode)
+        .where(OtpCode.user_id == user.id, OtpCode.used.is_(False))
+        .values(used=True)
+    )
 
     return SuccessResponse(message="Пароль успешно изменён")
 

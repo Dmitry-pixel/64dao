@@ -20,6 +20,10 @@ class User(Base):
     id:           Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
     email:        Mapped[str]       = mapped_column(String(255), unique=True, nullable=False, index=True)
     password_hash:Mapped[str | None]= mapped_column(Text, nullable=True)
+    # Момент последней смены пароля. NULL — пароль не менялся ни разу.
+    # По нему отбраковываются токены, выпущенные до смены: и ссылка сброса
+    # (одноразовость), и активные сессии (выход со всех устройств).
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     full_name:    Mapped[str | None]= mapped_column(String(255), nullable=True)
     company_name: Mapped[str | None]= mapped_column(String(255), nullable=True)
     role:         Mapped[str]       = mapped_column(String(20), nullable=False, default="user")

@@ -13,10 +13,11 @@ SMTP-вызовов. Rate-limiting (slowapi) на эндпоинтах НЕ от
 import uuid
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.models import User, OtpCode
-from app.auth import create_otp_code, hash_password
+from app.auth import create_otp_code, create_reset_token, hash_password
+from app.limiter import limiter
 
 
 def unique_email() -> str:
@@ -207,3 +208,82 @@ async def test_deactivated_user_gets_403(auth_client, db_session, test_user):
 
     resp = await auth_client.get("/api/auth/me")
     assert resp.status_code == 403
+
+
+# ── Reset password ────────────────────────────────────────────────────────────
+
+@pytest.fixture
+def clean_limiter():
+    """Обнуляет счётчики slowapi вокруг теста.
+
+    Лимитер держит состояние в памяти процесса и один на весь прогон.
+    У /reset-password лимит 5/minute, а тесты ниже дёргают его четыре раза
+    подряд: без сброса порядок тестов начинает влиять на результат.
+    """
+    limiter.reset()
+    yield
+    limiter.reset()
+
+
+@pytest.mark.asyncio
+async def test_reset_link_cannot_be_reused(client, db_session, test_user, clean_limiter):
+    """Ссылка сброса одноразовая.
+
+    Раньше токен жил свой час и срабатывал сколько угодно раз: перехвативший
+    письмо мог сменить пароль повторно уже после владельца.
+    """
+    token = create_reset_token(str(test_user.id), test_user.email)
+
+    first = await client.post("/api/auth/reset-password", json={
+        "token": token, "new_password": "NewPassword123"})
+    assert first.status_code == 200, first.text
+
+    second = await client.post("/api/auth/reset-password", json={
+        "token": token, "new_password": "HijackedPassword456"})
+    assert second.status_code == 400, second.text
+
+
+@pytest.mark.asyncio
+async def test_password_change_invalidates_existing_session(
+    auth_client, db_session, test_user, clean_limiter
+):
+    """Смена пароля закрывает ранее выданные сессии.
+
+    Кука жила свои 7 дней независимо от смены пароля, то есть смена пароля
+    не выгоняла того, кто уже вошёл, — а это её основной сценарий.
+    """
+    before = await auth_client.get("/api/auth/me")
+    assert before.status_code == 200
+
+    token = create_reset_token(str(test_user.id), test_user.email)
+    resp = await auth_client.post("/api/auth/reset-password", json={
+        "token": token, "new_password": "NewPassword123"})
+    assert resp.status_code == 200, resp.text
+
+    after = await auth_client.get("/api/auth/me")
+    assert after.status_code == 401, after.text
+
+
+@pytest.mark.asyncio
+async def test_password_change_burns_unused_otp(
+    client, db_session, test_user, clean_limiter
+):
+    """Неиспользованный OTP гаснет вместе со сменой пароля.
+
+    Код, высланный до смены, не должен оставаться запасным входом.
+    """
+    await create_otp_code(str(test_user.id), db_session)
+    unused_before = await db_session.scalar(
+        select(func.count(OtpCode.id)).where(
+            OtpCode.user_id == test_user.id, OtpCode.used.is_(False)))
+    assert unused_before == 1
+
+    token = create_reset_token(str(test_user.id), test_user.email)
+    resp = await client.post("/api/auth/reset-password", json={
+        "token": token, "new_password": "NewPassword123"})
+    assert resp.status_code == 200, resp.text
+
+    unused_after = await db_session.scalar(
+        select(func.count(OtpCode.id)).where(
+            OtpCode.user_id == test_user.id, OtpCode.used.is_(False)))
+    assert unused_after == 0

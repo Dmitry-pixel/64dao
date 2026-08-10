@@ -29,11 +29,17 @@ def verify_password(plain: str, hashed: str) -> bool:
 # ── JWT ───────────────────────────────────────────────────────────────────────
 
 def create_token(user_id: str, email: str, role: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.jwt_expire_days)
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(days=settings.jwt_expire_days)
     payload = {
         "sub":   user_id,
         "email": email,
         "role":  role,
+        # iat нужен, чтобы смена пароля могла аннулировать ранее выданные
+        # токены: без времени выпуска отличить старую сессию от новой нечем.
+        # Дробные секунды намеренно не отбрасываются — см. комментарий в
+        # token_predates_password_change().
+        "iat":   now.timestamp(),
         "exp":   expire,
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
@@ -77,15 +83,41 @@ def create_impersonation_token(
     admin_id: str,
 ) -> str:
     """JWT от лица target_user, с полем impersonated_by=admin_id. TTL — 4 ч."""
-    expire = datetime.now(timezone.utc) + timedelta(hours=4)
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(hours=4)
     payload = {
         "sub":             target_user_id,
         "email":           target_email,
         "role":            target_role,
         "impersonated_by": admin_id,
+        "iat":             now.timestamp(),
         "exp":             expire,
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+
+def token_predates_password_change(payload: dict, user: User) -> bool:
+    """Токен выпущен до последней смены пароля этого пользователя?
+
+    Сравнение с дробными секундами. Округление iat до целых ломало главный
+    сценарий: ссылка сброса, использованная дважды в пределах одной секунды,
+    во второй раз давала iat == password_changed_at и проходила проверку.
+    Для человека это неотличимо от одноразовости, для скрипта — нет.
+
+    Токен без iat выпущен до появления этого поля. Пока пароль не менялся,
+    он остаётся рабочим; после смены доказать его свежесть нечем, поэтому
+    он считается устаревшим — иначе смена пароля не закрывала бы именно те
+    сессии, ради которых она чаще всего и делается.
+    """
+    changed_at = getattr(user, "password_changed_at", None)
+    if changed_at is None:
+        return False
+    iat = payload.get("iat")
+    if iat is None:
+        return True
+    if changed_at.tzinfo is None:
+        changed_at = changed_at.replace(tzinfo=timezone.utc)
+    return float(iat) < changed_at.timestamp()
 
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
@@ -112,6 +144,13 @@ async def get_current_user(
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account deactivated")
 
+    # Смена пароля закрывает все ранее выданные сессии. Раньше выданная
+    # кука жила до истечения (7 дней) независимо от смены пароля, то есть
+    # смена пароля не выгоняла того, кто уже вошёл.
+    if token_predates_password_change(payload, user):
+        raise HTTPException(status_code=401,
+                            detail="Сессия завершена: пароль был изменён")
+
     return user
 
 
@@ -125,9 +164,12 @@ async def require_admin(user: User = Depends(get_current_user)) -> User:
 # ── Password reset token ─────────────────────────────────────────────────────
 
 def create_reset_token(user_id: str, email: str) -> str:
-    """JWT на 1 час для сброса пароля."""
-    expire = datetime.now(timezone.utc) + timedelta(hours=1)
-    payload = {"sub": user_id, "email": email, "type": "password_reset", "exp": expire}
+    """JWT на 1 час для сброса пароля. Одноразовость — через iat, см.
+    token_predates_password_change()."""
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(hours=1)
+    payload = {"sub": user_id, "email": email, "type": "password_reset",
+               "iat": now.timestamp(), "exp": expire}
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
