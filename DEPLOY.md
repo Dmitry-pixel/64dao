@@ -400,9 +400,20 @@ ls -lh /var/backups/64dao/uploads/
 gunzip < /var/backups/64dao/db/db_2024-01-01_03-00-00.sql.gz | \
   sudo -u postgres psql dao64
 
-# Uploads
-tar xzf /var/backups/64dao/uploads/uploads_2024-01-01_03-00-00.tar.gz \
-  -C /var/www/64dao/uploads/
+# Uploads — ТОЛЬКО в том dao64_uploads, НЕ на хостовый путь.
+#
+# Распаковка в /var/www/64dao/uploads/ создаёт на хосте каталог с
+# рантайм-настройками, среди которых tochka_settings.json с JWT банка.
+# Приложение работает с томом; хостовый путь отдаётся другим механизмом
+# и правила deny в vhosts/64dao.conf его не прикрывают. Восстановление
+# туда превращает аварийную процедуру в утечку.
+#
+# Бэкап снимается из тома (backup.sh: tar czf ... -C /data .),
+# восстанавливается симметрично.
+docker run --rm \
+  -v dao64_uploads:/data \
+  -v /var/backups/64dao/uploads:/bk:ro \
+  alpine tar xzf /bk/uploads_2024-01-01_03-00-00.tar.gz -C /data
 ```
 
 ---
