@@ -9,8 +9,11 @@ psycopg2-binary==2.9.10
 alembic==1.14.0
 
 # ── Auth / Security ────────────────────────────────────────────────────────────
+# passlib и bcrypt удалены вместе с паролями (миграция 033). passlib не
+# обновлялся с 2020 года, читал bcrypt.__about__ и ломался на bcrypt 4.1+ —
+# пин bcrypt==4.0.1 держал всю аутентификацию. Вход беспарольный, хешировать
+# нечего.
 PyJWT==2.13.0
-passlib[bcrypt]==1.7.4
 python-multipart==0.0.31
 
 # ── Validation ─────────────────────────────────────────────────────────────────
@@ -31,6 +34,5 @@ aiofiles==24.1.0
 # Rate limiting (in-memory; переключить на Redis заменив storage_uri в main.py)
 slowapi==0.1.9
 limits==3.14.0
-bcrypt==4.0.1
 httpx>=0.27,<1.0
 cryptography>=42,<44

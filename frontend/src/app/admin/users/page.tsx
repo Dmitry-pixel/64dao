@@ -13,6 +13,7 @@ export default function AdminUsersPage() {
   const [impersonating, setImpersonating] = useState<string | null>(null)
   const [roleChanging, setRoleChanging] = useState<string | null>(null)
   const [statusChanging, setStatusChanging] = useState<string | null>(null)
+  const [revoking, setRevoking] = useState<string | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -79,6 +80,22 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function handleRevokeSessions(u: any) {
+    // Нужно, когда пользователь потерял устройство с открытой сессией и
+    // сам нажать кнопку в профиле уже не может. Блокировка аккаунта для
+    // этого не годится: она закрывает доступ целиком, а не одну сессию.
+    if (!confirm(`Завершить сессии ${u.email} на всех устройствах?\n\nПользователю придётся войти заново по коду из письма.`)) return
+    setRevoking(u.id)
+    try {
+      await adminApi.revokeUserSessions(u.id)
+      alert('Сессии завершены')
+    } catch (e: any) {
+      alert(e.message ?? 'Ошибка')
+    } finally {
+      setRevoking(null)
+    }
+  }
+
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', color: 'var(--text-mute)' }}>Загрузка…</div>
 
   return (
@@ -112,6 +129,7 @@ export default function AdminUsersPage() {
                 <th>Создан</th>
                 <th>Действия</th>
                 <th>Статус</th>
+                <th>Сессии</th>
               </tr>
             </thead>
             <tbody>
@@ -175,6 +193,16 @@ export default function AdminUsersPage() {
                             ? <span className="pill pill-completed">активен</span>
                             : <span className="pill" style={{ background: 'rgba(192,57,43,0.1)', color: 'var(--red)' }}>заблокирован</span>}
                         </button>}
+                  </td>
+                  <td>
+                    <button
+                      onClick={() => handleRevokeSessions(u)}
+                      disabled={revoking === u.id}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'sans-serif', fontSize: 12, color: 'var(--red)', opacity: revoking === u.id ? 0.5 : 1 }}
+                      title="Завершить сессии на всех устройствах"
+                    >
+                      {revoking === u.id ? '…' : 'сбросить сессии'}
+                    </button>
                   </td>
                 </tr>
               ))}

@@ -244,10 +244,10 @@ class TestAccess:
         r = await auth_client.post(f"{M3}/portfolios", json={"title": "Чужой"})
         pid = r.json()["id"]
 
-        from app.auth import create_token, hash_password
+        from app.auth import create_token
         from app.models import User
         other = User(id=uuid.uuid4(), email=f"o-{uuid.uuid4().hex[:8]}@e.com",
-                     password_hash=hash_password("Password123"), role="user")
+                     role="user")
         db_session.add(other)
         await db_session.flush()
         client.cookies.clear()
@@ -901,12 +901,11 @@ class TestDelete:
     async def test_stranger_cannot_delete(self, auth_client, calculated, db_session,
                                           test_user, test_admin):
         """Чужой портфель не удаляется: проверка та же, что на чтении."""
-        from app.auth import hash_password
         from app.models import User
 
         other = User(
             id=uuid.uuid4(), email=f"other-{uuid.uuid4().hex[:8]}@example.com",
-            password_hash=hash_password("Password123"), full_name="Чужой", role="user",
+            full_name="Чужой", role="user",
         )
         db_session.add(other)
         await db_session.flush()

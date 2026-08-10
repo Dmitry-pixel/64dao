@@ -8,15 +8,13 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import (
-    hash_password, verify_password,
     create_token, set_auth_cookie, clear_auth_cookie,
     create_otp_code, verify_otp_code,
-    create_reset_token, verify_reset_token,
-    get_current_user, token_predates_password_change,
+    get_current_user,
 )
 from app.config import get_settings
 from app.db import get_db
-from app.email import send_otp_email, send_welcome_email, send_forgot_password_email
+from app.email import send_otp_email, send_welcome_email
 
 settings = get_settings()
 from app.limiter import limiter
@@ -52,7 +50,6 @@ async def register(
 
     user = User(
         email=body.email,
-        password_hash=hash_password(body.password),
         full_name=body.full_name,
         company_name=body.company_name,
         role="user",
@@ -166,84 +163,41 @@ async def resend_otp(
     return SuccessResponse(message="Если email зарегистрирован — код отправлен")
 
 
-# ── Forgot password ───────────────────────────────────────────────────────────
-
-@router.post("/forgot-password", response_model=SuccessResponse)
-@limiter.limit("3/minute")
-async def forgot_password(
-    request: Request,
-    body: LoginRequest,          # переиспользуем схему {email}
-    db: AsyncSession = Depends(get_db),
-):
-    """Отправляет ссылку сброса пароля. Одинаковый ответ независимо от наличия email."""
-    from app.config import get_settings as _gs
-    app_url = _gs().app_url
-
-    user = await db.scalar(select(User).where(User.email == body.email))
-    if user:
-        token = create_reset_token(str(user.id), user.email)
-        reset_link = f"{app_url}/reset-password?token={token}"
-        try:
-            await send_forgot_password_email(user.email, user.full_name, reset_link)
-        except Exception as exc:
-            logger.error("Failed to send reset email to %s: %s", user.email, exc)
-            raise HTTPException(status_code=500, detail="Не удалось отправить письмо. Попробуйте позже.")
-    else:
-        await asyncio.sleep(random.uniform(0.15, 0.35))
-
-    return SuccessResponse(message="Если email зарегистрирован — ссылка для сброса отправлена")
-
-
-@router.post("/reset-password", response_model=SuccessResponse)
-@limiter.limit("5/minute")
-async def reset_password(
-    request: Request,
-    body: dict,
-    db: AsyncSession = Depends(get_db),
-):
-    """Принимает {token, new_password} и обновляет пароль пользователя."""
-    token = body.get("token", "")
-    new_password = body.get("new_password", "")
-
-    if not token or not new_password:
-        raise HTTPException(status_code=400, detail="token и new_password обязательны")
-    if len(new_password) < 8:
-        raise HTTPException(status_code=400, detail="Пароль должен быть не менее 8 символов")
-
-    payload = verify_reset_token(token)
-    user_id = payload.get("sub")
-
-    user = await db.scalar(select(User).where(User.id == user_id))
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-
-    # Ссылка одноразовая. Раньше токен работал весь свой час и позволял
-    # менять пароль сколько угодно раз: перехвативший письмо мог сменить
-    # пароль повторно уже после того, как это сделал владелец.
-    if token_predates_password_change(payload, user):
-        raise HTTPException(status_code=400,
-                            detail="Ссылка недействительна или истекла")
-
-    user.password_hash = hash_password(new_password)
-    user.password_changed_at = datetime.now(timezone.utc)
-
-    # Неиспользованные OTP гасим: код, высланный до смены пароля, не должен
-    # оставаться пропуском в аккаунт.
-    await db.execute(
-        update(OtpCode)
-        .where(OtpCode.user_id == user.id, OtpCode.used.is_(False))
-        .values(used=True)
-    )
-
-    return SuccessResponse(message="Пароль успешно изменён")
-
-
 # ── Logout ────────────────────────────────────────────────────────────────────
 
 @router.post("/logout", response_model=SuccessResponse)
 async def logout(response: Response):
     clear_auth_cookie(response)
     return SuccessResponse(message="Выход выполнен")
+
+
+@router.post("/logout-all", response_model=SuccessResponse)
+async def logout_all(
+    response: Response,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Завершить сессии на всех устройствах.
+
+    Вход беспарольный, поэтому кука на 7 дней — единственный ключ от
+    аккаунта, и до появления этой отметки отозвать её было нечем: украли
+    ноутбук с открытой сессией — оставалось ждать неделю.
+
+    Текущая сессия тоже завершается: её токен выпущен раньше отметки.
+    Кука снимается сразу, чтобы браузер не бился в 401 до перезагрузки.
+    """
+    user.sessions_revoked_at = datetime.now(timezone.utc)
+
+    # Неотработанные коды входа гасим заодно: код, отправленный до отзыва,
+    # остался бы действующим пропуском и обесценил бы саму кнопку.
+    await db.execute(
+        update(OtpCode)
+        .where(OtpCode.user_id == user.id, OtpCode.used.is_(False))
+        .values(used=True)
+    )
+
+    clear_auth_cookie(response)
+    return SuccessResponse(message="Сессии на всех устройствах завершены")
 
 
 # ── Me ────────────────────────────────────────────────────────────────────────

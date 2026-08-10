@@ -2,7 +2,10 @@
 test_auth.py — regression-тесты роутера /api/auth.
 
 Покрывает: register, login (OTP step 1), verify (OTP step 2), resend-otp,
-forgot-password, reset-password, logout, /me.
+logout, logout-all (отзыв сессий), /me.
+
+Паролей в системе нет: forgot-password и reset-password удалены вместе с
+users.password_hash в миграции 033.
 
 Все email-функции мокаются (mock_email_senders fixture) — никаких реальных
 SMTP-вызовов. Rate-limiting (slowapi) на эндпоинтах НЕ отключается специально:
@@ -16,8 +19,7 @@ import pytest
 from sqlalchemy import func, select
 
 from app.models import User, OtpCode
-from app.auth import create_otp_code, create_reset_token, hash_password
-from app.limiter import limiter
+from app.auth import create_otp_code
 
 
 def unique_email() -> str:
@@ -31,7 +33,6 @@ async def test_register_creates_user_and_sends_otp_and_welcome(client, db_sessio
     email = unique_email()
     resp = await client.post("/api/auth/register", json={
         "email": email,
-        "password": "ValidPass123",
         "full_name": "Иван Тестов",
         "company_name": "ООО Тест",
     })
@@ -52,7 +53,6 @@ async def test_register_creates_user_and_sends_otp_and_welcome(client, db_sessio
 async def test_register_duplicate_email_returns_409(client, test_user, mock_email_senders):
     resp = await client.post("/api/auth/register", json={
         "email": test_user.email,
-        "password": "AnotherPass123",
         "full_name": "Другое Имя",
         "company_name": "Другая компания",
     })
@@ -60,15 +60,24 @@ async def test_register_duplicate_email_returns_409(client, test_user, mock_emai
 
 
 @pytest.mark.asyncio
-async def test_register_short_password_rejected(client, mock_email_senders):
+async def test_register_ignores_password_field(client, db_session, mock_email_senders):
+    """Пароль в теле запроса не принимается и никуда не сохраняется.
+
+    Схема RegisterRequest его не объявляет, а extra-поля pydantic по
+    умолчанию игнорирует. Тест фиксирует это: если поле однажды вернут,
+    оно не должно молча начать что-то делать.
+    """
+    email = unique_email()
     resp = await client.post("/api/auth/register", json={
-        "email": unique_email(),
-        "password": "short",
+        "email": email,
+        "password": "ValidPass123",
         "full_name": "Имя",
         "company_name": "Компания",
     })
-    assert resp.status_code == 422
-    mock_email_senders["send_otp_email"].assert_not_called()
+    assert resp.status_code == 200
+    user = await db_session.scalar(select(User).where(User.email == email))
+    assert user is not None
+    assert not hasattr(user, "password_hash")
 
 
 # ── Login (OTP step 1) ────────────────────────────────────────────────────────
@@ -210,67 +219,37 @@ async def test_deactivated_user_gets_403(auth_client, db_session, test_user):
     assert resp.status_code == 403
 
 
-# ── Reset password ────────────────────────────────────────────────────────────
-
-@pytest.fixture
-def clean_limiter():
-    """Обнуляет счётчики slowapi вокруг теста.
-
-    Лимитер держит состояние в памяти процесса и один на весь прогон.
-    У /reset-password лимит 5/minute, а тесты ниже дёргают его четыре раза
-    подряд: без сброса порядок тестов начинает влиять на результат.
-    """
-    limiter.reset()
-    yield
-    limiter.reset()
-
+# ── Logout all (отзыв сессий) ─────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_reset_link_cannot_be_reused(client, db_session, test_user, clean_limiter):
-    """Ссылка сброса одноразовая.
+async def test_logout_all_invalidates_existing_session(auth_client, test_user):
+    """Отзыв сессий убивает уже выданный токен.
 
-    Раньше токен жил свой час и срабатывал сколько угодно раз: перехвативший
-    письмо мог сменить пароль повторно уже после владельца.
+    Вход беспарольный, поэтому кука на 7 дней — единственный ключ от
+    аккаунта. До появления sessions_revoked_at отозвать её было нечем.
     """
-    token = create_reset_token(str(test_user.id), test_user.email)
+    token = auth_client.cookies.get("auth-token")
+    assert token
 
-    first = await client.post("/api/auth/reset-password", json={
-        "token": token, "new_password": "NewPassword123"})
-    assert first.status_code == 200, first.text
-
-    second = await client.post("/api/auth/reset-password", json={
-        "token": token, "new_password": "HijackedPassword456"})
-    assert second.status_code == 400, second.text
-
-
-@pytest.mark.asyncio
-async def test_password_change_invalidates_existing_session(
-    auth_client, db_session, test_user, clean_limiter
-):
-    """Смена пароля закрывает ранее выданные сессии.
-
-    Кука жила свои 7 дней независимо от смены пароля, то есть смена пароля
-    не выгоняла того, кто уже вошёл, — а это её основной сценарий.
-    """
     before = await auth_client.get("/api/auth/me")
     assert before.status_code == 200
 
-    token = create_reset_token(str(test_user.id), test_user.email)
-    resp = await auth_client.post("/api/auth/reset-password", json={
-        "token": token, "new_password": "NewPassword123"})
+    resp = await auth_client.post("/api/auth/logout-all")
     assert resp.status_code == 200, resp.text
 
+    # Ответ снимает куку. Возвращаем тот же токен вручную: проверяем, что
+    # отвергается именно он, а не пустой запрос без куки.
+    auth_client.cookies.set("auth-token", token)
     after = await auth_client.get("/api/auth/me")
     assert after.status_code == 401, after.text
 
 
 @pytest.mark.asyncio
-async def test_password_change_burns_unused_otp(
-    client, db_session, test_user, clean_limiter
-):
-    """Неиспользованный OTP гаснет вместе со сменой пароля.
+async def test_logout_all_burns_unused_otp(auth_client, db_session, test_user):
+    """Неотработанный код входа гаснет вместе с отзывом сессий.
 
-    Код, высланный до смены, не должен оставаться запасным входом.
+    Иначе код, отправленный до отзыва, остался бы действующим пропуском
+    и обесценил бы саму кнопку.
     """
     await create_otp_code(str(test_user.id), db_session)
     unused_before = await db_session.scalar(
@@ -278,12 +257,39 @@ async def test_password_change_burns_unused_otp(
             OtpCode.user_id == test_user.id, OtpCode.used.is_(False)))
     assert unused_before == 1
 
-    token = create_reset_token(str(test_user.id), test_user.email)
-    resp = await client.post("/api/auth/reset-password", json={
-        "token": token, "new_password": "NewPassword123"})
+    resp = await auth_client.post("/api/auth/logout-all")
     assert resp.status_code == 200, resp.text
 
     unused_after = await db_session.scalar(
         select(func.count(OtpCode.id)).where(
             OtpCode.user_id == test_user.id, OtpCode.used.is_(False)))
     assert unused_after == 0
+
+
+@pytest.mark.asyncio
+async def test_logout_all_requires_auth(client):
+    resp = await client.post("/api/auth/logout-all")
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_admin_can_revoke_user_sessions(admin_client, db_session, test_user):
+    """Админ отзывает сессии пользователя, который сам этого сделать не может.
+
+    Сценарий: потеряно устройство с открытой сессией, человек пишет в
+    поддержку. Блокировка аккаунта тут не годится — она закрывает доступ
+    целиком, а не одну сессию.
+    """
+    assert test_user.sessions_revoked_at is None
+
+    resp = await admin_client.post(f"/api/admin/users/{test_user.id}/revoke-sessions")
+    assert resp.status_code == 200, resp.text
+
+    assert test_user.sessions_revoked_at is not None
+
+
+@pytest.mark.asyncio
+async def test_admin_revoke_sessions_unknown_user_404(admin_client):
+    import uuid as _uuid
+    resp = await admin_client.post(f"/api/admin/users/{_uuid.uuid4()}/revoke-sessions")
+    assert resp.status_code == 404

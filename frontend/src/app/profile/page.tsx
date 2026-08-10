@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getMe, logout, type AuthUser } from '@/lib/api'
+import { getMe, logout, logoutAll, type AuthUser } from '@/lib/api'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
 
@@ -12,8 +12,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [fullName, setFullName] = useState('')
   const [companyName, setCompanyName] = useState('')
-  const [oldPassword, setOldPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -48,25 +46,14 @@ export default function ProfilePage() {
     }
   }
 
-  async function changePassword() {
-    if (!oldPassword || !newPassword) return
+  async function revokeSessions() {
+    if (!confirm('Завершить сессии на всех устройствах? Придётся войти заново.')) return
     setSaving(true); setMsg('')
     try {
-      const res = await fetch(`${API}/api/auth/change-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
-      })
-      if (!res.ok) {
-        const d = await res.json()
-        throw new Error(d.detail || 'Ошибка')
-      }
-      setMsg('Пароль изменён ✓')
-      setOldPassword(''); setNewPassword('')
-    } catch (e: any) {
-      setMsg(e.message)
-    } finally {
+      await logoutAll()
+      router.push('/login')
+    } catch {
+      setMsg('Не удалось завершить сессии')
       setSaving(false)
     }
   }
@@ -159,21 +146,24 @@ export default function ProfilePage() {
 
           {tab === 'security' && (
             <div style={S.card}>
-              <span style={S.labelRed}>Пароль</span>
+              <span style={S.labelRed}>Доступ</span>
               <h3 style={S.cardH3}>Безопасность</h3>
+              <p style={S.fieldHint}>
+                Вход в 64 ДАО выполняется по одноразовому коду из письма — пароля нет,
+                и придумывать его не нужно. Доступ к аккаунту даёт доступ к вашей почте.
+              </p>
               <div style={S.field}>
-                <label style={S.label}>Текущий пароль</label>
-                <input style={S.input} type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} placeholder="Введите текущий пароль" />
-              </div>
-              <div style={S.field}>
-                <label style={S.label}>Новый пароль</label>
-                <input style={S.input} type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Не менее 8 символов" />
-                <p style={S.fieldHint}>Минимум 8 символов. Используется как альтернатива OTP при входе.</p>
+                <label style={S.label}>Сессии на других устройствах</label>
+                <p style={S.fieldHint}>
+                  Если вы входили с чужого или потерянного устройства, завершите все сессии.
+                  Вход останется открытым только там, где вы войдёте заново.
+                </p>
               </div>
               {msg && <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: msg.includes('✓') ? '#166534' : '#c0392b', marginBottom: 12 }}>{msg}</p>}
               <div style={S.rowEnd}>
-                <button style={S.btnGhost} onClick={() => { setOldPassword(''); setNewPassword(''); setMsg('') }}>Отменить</button>
-                <button style={S.btnPrimary} onClick={changePassword} disabled={saving || !oldPassword || !newPassword}>{saving ? 'Сохранение...' : 'Сменить пароль'}</button>
+                <button style={S.btnPrimary} onClick={revokeSessions} disabled={saving}>
+                  {saving ? 'Завершаем...' : 'Выйти со всех устройств'}
+                </button>
               </div>
             </div>
           )}

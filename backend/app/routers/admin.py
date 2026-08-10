@@ -7,7 +7,7 @@ from sqlalchemy import select, func, cast, Date
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_admin, get_current_user, hash_password, create_impersonation_token, create_token, decode_token, set_auth_cookie
+from app.auth import require_admin, get_current_user, create_impersonation_token, create_token, decode_token, set_auth_cookie
 from app.config import get_settings
 from app.db import get_db
 from app.limiter import limiter
@@ -45,7 +45,6 @@ async def admin_setup(request: Request, body: AdminSetupRequest,
 
     admin = User(
         email=body.email,
-        password_hash=hash_password(body.password),
         full_name=body.full_name,
         role="admin",
     )
@@ -302,6 +301,30 @@ async def delete_user(
 
 class SetStatusRequest(BaseModel):
     is_active: bool
+
+
+@router.post("/users/{user_id}/revoke-sessions", response_model=SuccessResponse)
+async def revoke_user_sessions(
+    user_id: str,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Завершить сессии пользователя на всех устройствах.
+
+    Нужно, когда сам пользователь нажать кнопку уже не может: потерял
+    устройство с открытой сессией и обращается в поддержку. Блокировка
+    аккаунта (is_active) для этого не годится — она закрывает доступ
+    полностью, а не только скомпрометированную сессию.
+    """
+    from datetime import datetime as _dt, timezone as _tz
+
+    user = await db.scalar(select(User).where(User.id == user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    user.sessions_revoked_at = _dt.now(_tz.utc)
+    await db.flush()
+    return SuccessResponse(message="Сессии пользователя завершены")
 
 
 @router.patch("/users/{user_id}/status", response_model=SuccessResponse)

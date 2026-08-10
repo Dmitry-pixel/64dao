@@ -175,16 +175,13 @@ class TestAuth:
             body.get("ok") is True or body.get("success") is True
         )
 
-    def test_forgot_password_valid_email(self):
-        status, _ = post("/api/auth/forgot-password", {"email": "smoke@example.com"})
-        assert status == 200
+    def test_password_endpoints_are_gone(self):
+        """Восстановление пароля удалено вместе с паролями (миграция 033)."""
+        assert post("/api/auth/forgot-password", {"email": "smoke@example.com"})[0] == 404
+        assert post("/api/auth/reset-password", {"token": "x", "new_password": "y"})[0] == 404
 
-    def test_reset_password_invalid_token(self):
-        status, _ = post("/api/auth/reset-password", {
-            "token": "invalid_token",
-            "new_password": "test123456",
-        })
-        assert status in (400, 422)
+    def test_logout_all_requires_auth(self):
+        assert post("/api/auth/logout-all")[0] == 401
 
 
 # ── 4. Assessments — требуют авторизации ─────────────────────────────────────

@@ -21,8 +21,8 @@ class ResendOTPRequest(BaseModel):
 
 
 class RegisterRequest(BaseModel):
+    # Пароля нет: вход по одноразовому коду на почту, см. app/auth.py.
     email:        EmailStr
-    password:     str = Field(min_length=8, max_length=128)
     full_name:    str = Field(min_length=1, max_length=255)
     company_name: str = Field(min_length=1, max_length=255)
 
@@ -290,7 +290,6 @@ class LogEntry(BaseModel):
 class AdminSetupRequest(BaseModel):
     setup_key: str
     email:     EmailStr
-    password:  str = Field(min_length=8)
     full_name: str = Field(min_length=1)
 
 

@@ -12,6 +12,8 @@ conftest.py — общие фикстуры для regression-тестов 64dao
   друг от друга без необходимости пересоздавать схему на каждый запуск).
 - Аутентификация в тестах — через прямой вызов auth.create_token(), минуя
   OTP/email-флоу (OTP тестируется отдельно, см. test_auth.py).
+- Паролей в системе нет: вход только по OTP, users.password_hash удалён
+  миграцией 033.
 
 ВАЖНО: переменная окружения DB_NAME должна быть переопределена на dao64_test
 для тестового прогона — см. pytest.ini/conftest ниже (os.environ patch перед
@@ -45,7 +47,7 @@ from app.config import get_settings  # noqa: E402
 from app.db import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import User  # noqa: E402
-from app.auth import create_token, hash_password  # noqa: E402
+from app.auth import create_token  # noqa: E402
 
 settings = get_settings()
 
@@ -107,7 +109,6 @@ async def test_user(db_session: AsyncSession) -> User:
     user = User(
         id=uuid.uuid4(),
         email=f"test-{uuid.uuid4().hex[:8]}@example.com",
-        password_hash=hash_password("TestPassword123"),
         full_name="Test User",
         company_name="Test Company",
         role="user",
@@ -122,7 +123,6 @@ async def test_admin(db_session: AsyncSession) -> User:
     admin = User(
         id=uuid.uuid4(),
         email=f"admin-{uuid.uuid4().hex[:8]}@example.com",
-        password_hash=hash_password("AdminPassword123"),
         full_name="Test Admin",
         role="admin",
     )
@@ -138,7 +138,6 @@ def mock_email_senders(monkeypatch):
     mocks = {
         "send_otp_email": AsyncMock(return_value=None),
         "send_welcome_email": AsyncMock(return_value=None),
-        "send_forgot_password_email": AsyncMock(return_value=None),
     }
     for name, mock in mocks.items():
         monkeypatch.setattr(auth_router, name, mock)

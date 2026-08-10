@@ -87,20 +87,6 @@ export async function verifyOTP(email: string, code: string) {
   })
 }
 
-export async function forgotPassword(email: string) {
-  return request<{ message: string }>('/api/auth/forgot-password', {
-    method: 'POST',
-    body: JSON.stringify({ email }),
-  })
-}
-
-export async function resetPassword(token: string, new_password: string) {
-  return request<{ message: string }>('/api/auth/reset-password', {
-    method: 'POST',
-    body: JSON.stringify({ token, new_password }),
-  })
-}
-
 export async function resendOTP(email: string) {
   return request<{ message: string }>('/api/auth/resend-otp', {
     method: 'POST',
@@ -111,6 +97,12 @@ export async function resendOTP(email: string) {
 export async function logout() {
   _meCache = null
   return request<{ message: string }>('/api/auth/logout', { method: 'POST' })
+}
+
+/** Завершает сессии на всех устройствах, включая текущую. */
+export async function logoutAll() {
+  _meCache = null
+  return request<{ message: string }>('/api/auth/logout-all', { method: 'POST' })
 }
 
 let _meCache: AuthUser | null = null
@@ -134,7 +126,6 @@ export async function getMe(): Promise<AuthUser> {
 
 export async function register(data: {
   email: string
-  password: string
   full_name: string
   company_name: string
 }) {
@@ -335,12 +326,15 @@ export const adminApi = {
     return res.json()
   },
 
-  setup: (d: { setup_key: string; email: string; password: string; full_name: string }) =>
+  setup: (d: { setup_key: string; email: string; full_name: string }) =>
     request('/api/admin/setup', { method: 'POST', body: JSON.stringify(d) }),
 
   impersonate:     (userId: string) => request(`/api/admin/impersonate/${userId}`, { method: 'POST' }),
   stopImpersonate: ()               => request('/api/admin/impersonate/stop', { method: 'POST' }),
   impersonateStatus: ()             => request<ImpersonateStatus>('/api/admin/impersonate/status'),
+
+  revokeUserSessions: (userId: string) =>
+    request(`/api/admin/users/${userId}/revoke-sessions`, { method: 'POST' }),
 
   setUserRole: (userId: string, role: 'user' | 'admin') =>
     request(`/api/admin/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),

@@ -86,15 +86,6 @@ async def send_otp_email(to: str, code: str, name: str | None = None) -> None:
     await _send_message(to, subject, _wrap_html(body), _sender("otp"))
 
 
-async def send_forgot_password_email(to: str, name: str | None, reset_link: str) -> None:
-    name_part = f", {name}" if name else ""
-    subject, body = _render("forgot_password", {"name": name or "", "name_part": name_part, "reset_link": reset_link})
-    if settings.debug:
-        logger.info("=== DEBUG FORGOT PASSWORD === email=%s link=%s ===", to, reset_link)
-        return
-    await _send_message(to, subject, _wrap_html(body), _sender("forgot_password"))
-
-
 async def send_welcome_email(to: str, name: str) -> None:
     name_part = f", {name}" if name else ""
     subject, body = _render("welcome", {"name": name, "name_part": name_part})

@@ -556,7 +556,6 @@ async def test_save_document_unknown_slug_404(admin_client, isolated_docs_dir):
 async def test_admin_setup_without_key_unauthorized(client, db_session):
     resp = await client.post("/api/admin/setup", json={
         "email": "newadmin@example.com",
-        "password": "AdminPass123",
         "full_name": "New Admin",
         "setup_key": "",
     })
@@ -578,12 +577,10 @@ async def test_set_user_status_cannot_block_admin(admin_client, db_session):
     from unittest.mock import AsyncMock, patch
     import uuid as _uuid
     from app.models import User as _User
-    from app.auth import hash_password as _hp
 
     other_admin = _User(
         id=_uuid.uuid4(),
         email=f"admin2-{_uuid.uuid4().hex[:8]}@example.com",
-        password_hash=_hp("AdminPassword123"),
         full_name="Second Admin",
         role="admin",
     )

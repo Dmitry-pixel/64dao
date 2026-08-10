@@ -85,22 +85,6 @@ DEFAULT_TEMPLATES: dict[str, dict] = {
         ),
         "description": "Отправляется один раз при регистрации. Доступные переменные: {name} — имя пользователя.",
     },
-    "forgot_password": {
-        "subject": "Сброс пароля 64DAO",
-        "body_html": (
-            "<p>Здравствуйте{name_part}!</p>"
-            "<p>Мы получили запрос на сброс пароля для вашей учётной записи.</p>"
-            "<p style=\"margin:24px 0;\">"
-            "<a href=\"{reset_link}\" style=\"background:#1a2540;color:#fff;padding:12px 24px;"
-            "border-radius:6px;text-decoration:none;font-weight:600;\">Сбросить пароль</a>"
-            "</p>"
-            "<p>Или скопируйте ссылку в браузер:<br>"
-            "<span style=\"color:#1e3a8a;font-size:13px;\">{reset_link}</span></p>"
-            "<p>Ссылка действует <b>1 час</b>.</p>"
-            "<p style=\"color:#999;font-size:12px;\">Если вы не запрашивали сброс пароля — просто проигнорируйте это письмо.</p>"
-        ),
-        "description": "Отправляется при запросе сброса пароля. Доступные переменные: {name}, {name_part}, {reset_link} — ссылка на форму сброса.",
-    },
     "repeat_diagnostic": {
         "subject": "Пора обновить стратегическую диагностику",
         "body_html": (
