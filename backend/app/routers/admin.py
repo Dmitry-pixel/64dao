@@ -696,37 +696,52 @@ async def impersonation_status(
 
 # ── Пример отчёта (PDF) ───────────────────────────────────────────────────────
 
-SAMPLE_REPORT_FILE = Path("/var/www/64dao/uploads/sample_report.pdf")
+# Примеров два: Методы 1-2 и Метод 3. Пути — в sample_report_store, чтобы
+# константа не расползлась по двум роутерам, как было до этого.
+from app.sample_report_store import file_for as sample_report_file_for
+
+# Оставлено для совместимости со старым кодом и тестами.
+SAMPLE_REPORT_FILE = sample_report_file_for(None)
 
 
 @router.get("/sample-report/status")
-async def get_sample_report_status(_: User = Depends(require_admin)):
-    exists = SAMPLE_REPORT_FILE.exists()
+async def get_sample_report_status(
+    method: str | None = None,
+    _: User = Depends(require_admin),
+):
+    path = sample_report_file_for(method)
+    exists = path.exists()
     return {
         "uploaded": exists,
-        "size_bytes": SAMPLE_REPORT_FILE.stat().st_size if exists else None,
+        "size_bytes": path.stat().st_size if exists else None,
     }
 
 
 @router.post("/sample-report")
 async def upload_sample_report(
     file: UploadFile = File(...),
+    method: str | None = None,
     _: User = Depends(require_admin),
 ):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Допускаются только PDF-файлы")
 
     contents = await file.read()
-    SAMPLE_REPORT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    SAMPLE_REPORT_FILE.write_bytes(contents)
+    path = sample_report_file_for(method)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(contents)
     return {"ok": True, "size_bytes": len(contents)}
 
 
 @router.delete("/sample-report")
-async def delete_sample_report(_: User = Depends(require_admin)):
-    if not SAMPLE_REPORT_FILE.exists():
+async def delete_sample_report(
+    method: str | None = None,
+    _: User = Depends(require_admin),
+):
+    path = sample_report_file_for(method)
+    if not path.exists():
         raise HTTPException(status_code=404, detail="Файл не найден")
-    SAMPLE_REPORT_FILE.unlink()
+    path.unlink()
     return {"ok": True}
 
 

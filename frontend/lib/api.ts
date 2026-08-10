@@ -347,11 +347,14 @@ export const adminApi = {
   socialLinks:     () => request<{ telegram: string; vk: string; max: string }>('/api/admin/social-links'),
   saveSocialLinks: (d: { telegram: string; vk: string; max: string }) =>
     request('/api/admin/social-links', { method: 'PUT', body: JSON.stringify(d) }),
-  sampleReportStatus: () => request<{ uploaded: boolean; size_bytes: number | null }>('/api/admin/sample-report/status'),
-  uploadSampleReport: async (file: File) => {
+  sampleReportStatus: (method?: string) =>
+    request<{ uploaded: boolean; size_bytes: number | null }>(
+      `/api/admin/sample-report/status${method ? `?method=${method}` : ''}`,
+    ),
+  uploadSampleReport: async (file: File, method?: string) => {
     const form = new FormData()
     form.append('file', file)
-    const res = await fetch(`${API}/api/admin/sample-report`, {
+    const res = await fetch(`${API}/api/admin/sample-report${method ? `?method=${method}` : ''}`, {
       method: 'POST', credentials: 'include', body: form,
     })
     if (!res.ok) {
@@ -360,7 +363,8 @@ export const adminApi = {
     }
     return res.json()
   },
-  deleteSampleReport: () => request('/api/admin/sample-report', { method: 'DELETE' }),
+  deleteSampleReport: (method?: string) =>
+    request(`/api/admin/sample-report${method ? `?method=${method}` : ''}`, { method: 'DELETE' }),
   lifecycleStages: () =>
     request<{ sort_order: number; name: string; description: string | null }[]>('/api/admin/lifecycle-stages'),
   saveLifecycleStages: (d: { sort_order: number; description: string | null }[]) =>

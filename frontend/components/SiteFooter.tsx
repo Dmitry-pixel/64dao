@@ -100,7 +100,8 @@ export default async function SiteFooter({ year }: { year: number }) {
 
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 40px', fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
-          © {year} 64 ДАО — все права защищены
+          <div>© {year} 64 ДАО — все права защищены</div>
+          <div style={{ marginTop: 6 }}>ИНН: 770402717024 · ОГРНИП: 326774600327837</div>
         </div>
       </div>
     </footer>

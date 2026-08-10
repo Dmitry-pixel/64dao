@@ -206,11 +206,138 @@ async function getPricing(): Promise<PricingData> {
   return DEFAULT_PRICING
 }
 
+// ─── Тариф Метода 3 (GET /api/pricing -> products.m3) ────────────────────────
+// Отдельный запрос, а не расширение getPricing(): у getPricing семь мест
+// использования, и менять её форму ради одного блока — лишний риск.
+// Next дедуплицирует одинаковые fetch в пределах одного рендера, второго
+// похода в сеть не будет.
+
+const DEFAULT_PRICING_M3: PricingData = {
+  title: 'Матрица силы · Метод 3',
+  price: 20000,
+  currency: '₽',
+  description: 'разовая оплата · НДС не облагается',
+  features: [
+    { label: 'Диагностика', value: 'Метод 3 · матрица силы' },
+    { label: 'Направлений в портфеле', value: 'От 3 до 8' },
+    { label: 'PDF-отчёт', value: 'Включён' },
+    { label: 'Онлайн-просмотр', value: 'Без ограничений' },
+  ],
+}
+
+async function getPricingM3(): Promise<PricingData> {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? ''
+    const res = await fetch(`${apiUrl}/api/pricing`, { next: { revalidate: 300 } })
+    if (res.ok) {
+      const data = await res.json()
+      const m3 = data?.products?.m3
+      if (m3) {
+        return {
+          title: m3.title ?? DEFAULT_PRICING_M3.title,
+          price: m3.price ?? DEFAULT_PRICING_M3.price,
+          currency: m3.currency ?? DEFAULT_PRICING_M3.currency,
+          description: m3.description ?? DEFAULT_PRICING_M3.description,
+          features: Array.isArray(m3.features) && m3.features.length > 0 ? m3.features : DEFAULT_PRICING_M3.features,
+        }
+      }
+    }
+  } catch {
+    // используем дефолт ниже
+  }
+  return DEFAULT_PRICING_M3
+}
+
+// ─── Матрица 3×3 в логике GE/McKinsey ────────────────────────────────────────
+// Ось конкурентоспособности развёрнута к канону: сильная слева.
+// Это то же правило, что в расчёте (COL_INDEX = {high: 0, mid: 1, low: 2}).
+// Пример на схеме — иллюстративный, к расчёту конкретного клиента отношения
+// не имеет.
+
+function PowerMatrixSvg() {
+  const cells: { r: number; c: number }[] = []
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) cells.push({ r, c })
+
+  const fillFor = (r: number, c: number) => {
+    const rank = r + c
+    if (rank <= 1) return 'rgba(30,58,138,0.16)'
+    if (rank === 2) return 'rgba(30,58,138,0.08)'
+    return 'rgba(192,57,43,0.08)'
+  }
+
+  const X0 = 96
+  const Y0 = 34
+  const S = 118
+
+  const rowLabels = ['Высокая', 'Средняя', 'Низкая']
+  const colLabels = ['Высокая', 'Средняя', 'Низкая']
+
+  return (
+    <svg viewBox="0 0 520 452" style={{ width: '100%', height: 'auto' }} role="img" aria-label="Матрица 3 на 3 в логике GE/McKinsey">
+      {cells.map(({ r, c }) => (
+        <rect
+          key={`${r}-${c}`}
+          x={X0 + c * S}
+          y={Y0 + r * S}
+          width={S - 6}
+          height={S - 6}
+          rx={4}
+          fill={fillFor(r, c)}
+          stroke="rgba(26,37,64,0.14)"
+          strokeWidth={1}
+        />
+      ))}
+
+      {/* подписи строк — привлекательность рынка */}
+      {rowLabels.map((l, r) => (
+        <text key={l} x={88} y={Y0 + r * S + (S - 6) / 2 + 4} textAnchor="end" fontSize={12} fill="rgba(26,37,64,0.65)">{l}</text>
+      ))}
+
+      {/* подписи столбцов — конкурентоспособность */}
+      {colLabels.map((l, c) => (
+        <text key={l} x={X0 + c * S + (S - 6) / 2} y={Y0 + 3 * S + 14} textAnchor="middle" fontSize={12} fill="rgba(26,37,64,0.65)">{l}</text>
+      ))}
+
+      {/* названия осей */}
+      <text x={18} y={Y0 + 1.5 * S} textAnchor="middle" fontSize={12} fontWeight={600} fill="#1a2540" transform={`rotate(-90 18 ${Y0 + 1.5 * S})`}>
+        ПРИВЛЕКАТЕЛЬНОСТЬ РЫНКА
+      </text>
+      <text x={X0 + 1.5 * S - 3} y={Y0 + 3 * S + 44} textAnchor="middle" fontSize={12} fontWeight={600} fill="#1a2540">
+        КОНКУРЕНТОСПОСОБНОСТЬ
+      </text>
+
+      {/* текущая позиция и условный переход */}
+      <defs>
+        <marker id="m3arrow" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
+          <path d="M0,0 L7,3.2 L0,6.4 z" fill="#c0392b" />
+        </marker>
+      </defs>
+      <line
+        x1={X0 + 1.5 * S - 3}
+        y1={Y0 + 1.5 * S - 3}
+        x2={X0 + 0.5 * S + 6}
+        y2={Y0 + 0.5 * S + 10}
+        stroke="#c0392b"
+        strokeWidth={2}
+        strokeDasharray="5 4"
+        markerEnd="url(#m3arrow)"
+      />
+      <circle cx={X0 + 1.5 * S - 3} cy={Y0 + 1.5 * S - 3} r={6} fill="#c0392b" />
+      <text x={X0 + 1.5 * S + 10} y={Y0 + 1.5 * S + 1} fontSize={11} fill="#c0392b" fontWeight={600}>Сегодня</text>
+      <text x={X0 + 0.5 * S - 30} y={Y0 + 0.5 * S - 4} fontSize={11} fill="#c0392b" fontWeight={600}>Условный переход</text>
+
+      <text x={X0} y={446} fontSize={10} fill="rgba(26,37,64,0.45)">Пример раскладки. Позиция и переход рассчитываются по вашим ответам.</text>
+    </svg>
+  )
+}
+
 export default async function HomePage() {
   const year = new Date().getFullYear()
   const pricing = await getPricing()
   const priceFormatted = pricing.price.toLocaleString('ru-RU')
   const priceLabel = `${priceFormatted} ${pricing.currency}`
+  const pricingM3 = await getPricingM3()
+  const priceM3Formatted = pricingM3.price.toLocaleString('ru-RU')
   const pageSchema = {
     ...landingSchema,
     '@graph': [
@@ -576,6 +703,110 @@ export default async function HomePage() {
                 <p style={{ margin: '14px 0 0', fontSize: 14, lineHeight: 1.75, color: '#555555' }}>
                   Мы не обещаем рост выручки и не принимаем за вас стратегические решения — это зона вашей ответственности. Но мы отвечаем за то, что отчёт будет понятным и пригодным как рамка для разговора о стратегии. Если он окажется неясным — напишите в течение 7 дней, и мы бесплатно дадим короткий разбор-комментарий по вашему отчёту.
                 </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── POWER MATRIX (Метод 3) ── */}
+        <section id="power-matrix" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'color-mix(in oklab, var(--muted) 40%, var(--background))' }}>
+          <div className="g-2col g-pad96" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, padding: '96px 40px', alignItems: 'center' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ display: 'inline-block', width: 32, height: 2, background: 'var(--accent)' }} />
+                <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#888888' }}>Матрица силы · Метод 3</span>
+              </div>
+              <h2 style={{ margin: '24px 0 0', fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(28px,4vw,38px)', fontWeight: 700, lineHeight: 1.2, color: 'var(--foreground)' }}>
+                От классической матрицы — к управлению изменениями
+              </h2>
+              <div style={{ width: 80, height: 3, background: 'var(--accent)', margin: '28px 0' }} />
+
+              <p style={{ margin: 0, maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
+                Матрица GE/McKinsey показывает положение бизнеса. 64dao показывает, куда оно сдвинется — и при каких условиях.
+              </p>
+              <p style={{ margin: '18px 0 0', maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
+                Мы соединяем количественную оценку привлекательности рынка и силы бизнеса с системой из 64 состояний. Вы видите не только где бизнес находится сегодня:
+              </p>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 20, maxWidth: 560 }}>
+                {['что формирует эту позицию', 'что назрело и что перегрето', 'где точка воздействия', 'какой переход имеет смысл'].map((step, i, arr) => (
+                  <span key={step} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ display: 'inline-block', borderRadius: 4, border: '1px solid rgba(26,37,64,0.16)', background: 'var(--background)', padding: '8px 12px', fontSize: 14, color: 'var(--foreground)' }}>
+                      {step}
+                    </span>
+                    {i < arr.length - 1 && <span aria-hidden="true" style={{ fontSize: 14, color: 'var(--accent)' }}>→</span>}
+                  </span>
+                ))}
+              </div>
+
+              <p style={{ margin: '24px 0 0', maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
+                В одном отчёте: матрица 3×3 в логике GE/McKinsey, разбор шести факторов, назревшие и перегретые линии, приоритет вложения и очередь исполнения.
+              </p>
+              <p style={{ margin: '18px 0 0', maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
+                64dao можно использовать самостоятельно или дополнить им классический GE/McKinsey-анализ.
+              </p>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 36 }}>
+                <a href="/m3" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, borderRadius: 6, background: 'var(--brand-navy)', padding: '15px 26px', fontSize: 15, fontWeight: 500, color: 'var(--background)', textDecoration: 'none' }}>
+                  Пройти диагностику <span aria-hidden="true">→</span>
+                </a>
+                <a href="/api/sample-report?method=3" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, borderRadius: 6, border: '1px solid rgba(26,37,64,0.22)', background: 'var(--background)', padding: '15px 26px', fontSize: 15, fontWeight: 500, color: 'var(--foreground)', textDecoration: 'none' }}>
+                  Скачать пример отчёта
+                </a>
+              </div>
+            </div>
+
+            <div style={{ background: 'var(--background)', borderRadius: 8, padding: '32px 28px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+              <PowerMatrixSvg />
+            </div>
+          </div>
+        </section>
+
+        {/* ── PRICE M3 (Метод 3) ── */}
+        <section id="price-m3" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+          <div className="g-2col g-pad96" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '0.85fr 1.15fr', gap: 80, padding: '96px 40px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ display: 'inline-block', width: 32, height: 2, background: 'var(--accent)' }} />
+                <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#888888' }}>Стоимость · Метод 3</span>
+              </div>
+              <h2 style={{ margin: '24px 0 0', fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(28px,4vw,38px)', fontWeight: 700, lineHeight: 1.2, color: 'var(--foreground)' }}>
+                Сравнение приоритетов
+              </h2>
+              <div style={{ width: 80, height: 3, background: 'var(--accent)', margin: '28px 0' }} />
+              <p style={{ margin: 0, maxWidth: 460, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
+                Вы называете свой порядок приоритетов до диагностики. Расчёт называет свой. Отчёт показывает, на каких направлениях вы расходитесь. Это то, ради чего собирают стратегическую сессию.
+              </p>
+              <p style={{ margin: '20px 0 0', maxWidth: 460, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
+                Отчёт говорит не о «направлении движения», а о том, куда позиция сдвинется и при каких условиях — это условный переход, а не прогноз траектории. И не о том, «что меняется», а о том, что назрело и что перегрето: назревшие и перегретые линии названы поимённо.
+              </p>
+            </div>
+            <div>
+              <div style={{ background: 'color-mix(in oklab, var(--muted) 70%, #000 6%)', borderRadius: 8, padding: '48px 40px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', textAlign: 'center' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#9a9a9a' }}>Оплата диагностики</div>
+                <h3 style={{ margin: '14px 0 0', fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(28px,3.6vw,34px)', fontWeight: 700, lineHeight: 1.1, color: 'var(--foreground)' }}>
+                  {pricingM3.title}
+                </h3>
+                <div style={{ marginTop: 28, display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 8 }}>
+                  <span style={{ fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(56px,9vw,80px)', fontWeight: 800, lineHeight: 1, color: 'var(--foreground)', letterSpacing: '-0.01em' }}>{priceM3Formatted}</span>
+                  <span style={{ fontSize: 32, fontWeight: 500, color: '#9a9a9a' }}>{pricingM3.currency}</span>
+                </div>
+                <div style={{ marginTop: 16, fontSize: 14, color: '#888888' }}>{pricingM3.description}</div>
+                <div style={{ borderTop: '1px solid rgba(0,0,0,0.1)', margin: '32px 0 4px' }} />
+                <div style={{ textAlign: 'left' }}>
+                  {pricingM3.features.map((row) => (
+                    <div key={row.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '18px 0', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                      <span style={{ fontSize: 15, color: '#6A6A6A' }}>{row.label}</span>
+                      <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--foreground)' }}>{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+                <a href="/login?next=/m3" style={{ marginTop: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', borderRadius: 6, background: '#8597C6', padding: '18px 24px', fontSize: 16, fontWeight: 500, color: '#ffffff', textDecoration: 'none' }}>
+                  Перейти к оплате <span aria-hidden="true">→</span>
+                </a>
+                <div style={{ marginTop: 14, fontSize: 13, lineHeight: 1.6, color: '#888888' }}>
+                  Оплата оформляется в личном кабинете: заказ привязывается к вашей учётной записи.
+                </div>
               </div>
             </div>
           </div>

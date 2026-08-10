@@ -9,7 +9,6 @@ GET  /api/sample-report/leads.csv  — экспорт CSV (admin).
 import io
 import csv
 import logging
-from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Request, HTTPException
@@ -27,7 +26,13 @@ from app.email import send_sample_report_email
 router = APIRouter(prefix="/api/sample-report", tags=["sample-report"])
 logger = logging.getLogger(__name__)
 
-SAMPLE_REPORT_FILE = Path("/var/www/64dao/uploads/sample_report.pdf")
+from app.sample_report_store import (
+    file_for as sample_report_file_for,
+    download_name_for as sample_report_name_for,
+)
+
+# Оставлено для совместимости: код вне этого модуля мог импортировать константу.
+SAMPLE_REPORT_FILE = sample_report_file_for(None)
 CHANNEL_LABEL = {"email": "E-mail", "telegram": "Telegram", "max": "Max"}
 
 
@@ -73,24 +78,27 @@ async def request_sample(
 
 
 @router.get("/view")
-async def view_sample_report():
-    if not SAMPLE_REPORT_FILE.exists():
+async def view_sample_report(method: str | None = None):
+    path = sample_report_file_for(method)
+    if not path.exists():
         raise HTTPException(status_code=404, detail="Отчёт пока не загружен")
+    name = sample_report_name_for(method)
     return FileResponse(
-        path=str(SAMPLE_REPORT_FILE),
+        path=str(path),
         media_type="application/pdf",
-        headers={"Content-Disposition": 'inline; filename="Example_report_64DAO.pdf"'},
+        headers={"Content-Disposition": f'inline; filename="{name}"'},
     )
 
 
 @router.get("")
-async def get_sample_report():
-    if not SAMPLE_REPORT_FILE.exists():
+async def get_sample_report(method: str | None = None):
+    path = sample_report_file_for(method)
+    if not path.exists():
         raise HTTPException(status_code=404, detail="Отчёт пока не загружен")
     return FileResponse(
-        path=str(SAMPLE_REPORT_FILE),
+        path=str(path),
         media_type="application/pdf",
-        filename="Example_report_64DAO.pdf",
+        filename=sample_report_name_for(method),
     )
 
 
