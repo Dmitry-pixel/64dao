@@ -1,4 +1,7 @@
+import html as _html
 import logging
+import re as _re
+
 import aiosmtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -8,6 +11,28 @@ from app.config import get_settings
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
+
+_CRLF = _re.compile(r"[\r\n]+")
+
+
+def esc(value: object) -> str:
+    """Экранирование значения для вставки в HTML письма.
+
+    Поля форм обратной связи уходят в письмо администратору как есть. Без
+    экранирования отправитель вставляет в него произвольную разметку —
+    ссылку с подменённым текстом, фальшивую подпись, скрытый блок. Это не
+    XSS в браузере пользователя, а фишинг в почтовом ящике поддержки.
+    """
+    return _html.escape(str(value), quote=True)
+
+
+def header_safe(value: str, limit: int = 120) -> str:
+    """Значение, пригодное для заголовка письма.
+
+    CR/LF в Subject позволяют дописать собственные заголовки, в том числе
+    Bcc. Python значения заголовков не валидирует — отсекаем здесь.
+    """
+    return _CRLF.sub(" ", value).strip()[:limit]
 
 # Дефолты, чтение, запись и подстановка живут в одном модуле: раньше
 # DEFAULT_TEMPLATES дублировался здесь и в routers/admin.py, и копии
@@ -87,25 +112,6 @@ async def send_account_status_email(to: str, name: str | None, activated: bool) 
         logger.warning("=== DEBUG STATUS EMAIL === email=%s key=%s ===", to, key)
         return
     await _send_message(to, subject, _wrap_html(body), _sender(key))
-
-
-async def send_support_email(from_email: str, from_name: str | None, message: str) -> None:
-    """Отправляет сообщение пользователя на адрес поддержки (smtp_from_address)."""
-    admin_email = settings.support_email_address
-    if not admin_email:
-        logger.warning("send_support_email: smtp_from_address не настроен")
-        return
-    name_display = from_name or from_email
-    subject = f"Поддержка 64DAO — сообщение от {name_display}"
-    body_html = (
-        f"<p><b>От:</b> {name_display} ({from_email})</p>"
-        f"<p><b>Сообщение:</b></p>"
-        f"<p style='white-space:pre-wrap;'>{message}</p>"
-    )
-    if settings.debug:
-        logger.info("=== DEBUG SUPPORT === from=%s message=%s ===", from_email, message)
-        return
-    await _send_message(admin_email, subject, _wrap_html(body_html))
 
 
 async def send_sample_report_email(to: str, name: str | None = None) -> None:

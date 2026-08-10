@@ -139,7 +139,6 @@ def mock_email_senders(monkeypatch):
         "send_otp_email": AsyncMock(return_value=None),
         "send_welcome_email": AsyncMock(return_value=None),
         "send_forgot_password_email": AsyncMock(return_value=None),
-        "send_support_email": AsyncMock(return_value=None),
     }
     for name, mock in mocks.items():
         monkeypatch.setattr(auth_router, name, mock)

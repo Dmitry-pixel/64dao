@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import require_admin, get_current_user, hash_password, create_impersonation_token, create_token, decode_token, set_auth_cookie
 from app.config import get_settings
 from app.db import get_db
+from app.limiter import limiter
 from app.models import User, Assessment, AssessmentContour, Report, Strategy, Order, LifecycleStage, AccessGrant
 from app.schemas import (
     AdminSetupRequest, AdminStats, LogEntry,
@@ -25,7 +26,9 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 # ── Setup (создание первого администратора) ───────────────────────────────────
 @router.post("/setup", response_model=SuccessResponse)
-async def admin_setup(body: AdminSetupRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/hour")
+async def admin_setup(request: Request, body: AdminSetupRequest,
+                      db: AsyncSession = Depends(get_db)):
     if not settings.admin_setup_key or body.setup_key != settings.admin_setup_key:
         raise HTTPException(status_code=401, detail="Неверный ключ")
 

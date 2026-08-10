@@ -15,7 +15,7 @@ from app.auth import (
 )
 from app.config import get_settings
 from app.db import get_db
-from app.email import send_otp_email, send_welcome_email, send_forgot_password_email, send_support_email
+from app.email import send_otp_email, send_welcome_email, send_forgot_password_email
 
 settings = get_settings()
 from app.limiter import limiter
@@ -234,62 +234,3 @@ async def logout(response: Response):
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)):
     return user
-
-
-# ── Support ───────────────────────────────────────────────────────────────────
-
-from pydantic import BaseModel as _BaseModel
-
-class SupportRequest(_BaseModel):
-    message: str
-
-@router.post("/support", response_model=SuccessResponse)
-async def support(
-    body: SupportRequest,
-    user: User = Depends(get_current_user),
-):
-    if not body.message.strip():
-        raise HTTPException(status_code=400, detail="Сообщение не может быть пустым")
-    try:
-        await send_support_email(
-            from_email=user.email,
-            from_name=user.full_name,
-            message=body.message.strip(),
-        )
-    except Exception as exc:
-        logger.error("send_support_email failed: %s", exc)
-        raise HTTPException(status_code=500, detail="Не удалось отправить сообщение")
-    return SuccessResponse(message="Сообщение отправлено")
-
-
-# ── Public contact form ────────────────────────────────────────────────────────
-
-class ContactRequest(_BaseModel):
-    name: str
-    email: str
-    message: str
-
-@router.post("/contact", response_model=SuccessResponse)
-async def contact(body: ContactRequest):
-    """Публичная форма обратной связи — не требует авторизации."""
-    if not body.message.strip():
-        raise HTTPException(status_code=400, detail="Сообщение не может быть пустым")
-    to = settings.support_email_address
-    if not to:
-        logger.warning("contact: support_email_address не настроен — письмо не отправлено")
-        return SuccessResponse(message="Сообщение получено")
-    try:
-        from app.email import _send_message, _wrap_html
-        name_safe = body.name.strip() or body.email
-        subject = f"Обратная связь 64DAO — {name_safe}"
-        body_html = (
-            f"<p><b>Имя:</b> {name_safe}</p>"
-            f"<p><b>Email:</b> {body.email}</p>"
-            f"<p><b>Сообщение:</b></p>"
-            f"<p style='white-space:pre-wrap;'>{body.message.strip()}</p>"
-        )
-        await _send_message(to, subject, _wrap_html(body_html))
-    except Exception as exc:
-        logger.error("contact form send failed: %s", exc)
-        raise HTTPException(status_code=500, detail="Не удалось отправить сообщение")
-    return SuccessResponse(message="Сообщение отправлено")

@@ -8,10 +8,11 @@ POST /api/contact/send — отправляет письмо на адрес п�
 """
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, EmailStr, Field
 
-from app.email import _send_message, _wrap_html
+from app.email import _send_message, _wrap_html, esc, header_safe
+from app.limiter import limiter
 
 router = APIRouter(prefix="/api/contact", tags=["contact"])
 logger = logging.getLogger(__name__)
@@ -26,17 +27,21 @@ class ContactRequest(BaseModel):
 
 
 @router.post("/send")
-async def send_contact_message(body: ContactRequest):
+@limiter.limit("3/minute")
+async def send_contact_message(request: Request, body: ContactRequest):
+    # Эндпоинт публичный и отправляет письмо на каждый вызов. Без лимита это
+    # открытый релей: чужой скрипт разгоняет ваш SMTP до блокировки у
+    # провайдера и просадки репутации домена.
     body_html = (
         f"<p><b>Сообщение с формы на лендинге 64dao.ru</b></p>"
-        f"<p><b>Имя:</b> {body.name}</p>"
-        f"<p><b>Email:</b> {body.email}</p>"
-        f"<p style='white-space:pre-wrap;'>{body.message}</p>"
+        f"<p><b>Имя:</b> {esc(body.name)}</p>"
+        f"<p><b>Email:</b> {esc(body.email)}</p>"
+        f"<p style='white-space:pre-wrap;'>{esc(body.message)}</p>"
     )
     try:
         await _send_message(
             to=SUPPORT_EMAIL,
-            subject=f"[Лендинг] Сообщение от {body.name}",
+            subject=header_safe(f"[Лендинг] Сообщение от {body.name}"),
             html=_wrap_html(body_html),
         )
     except Exception as e:

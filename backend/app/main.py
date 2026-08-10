@@ -9,7 +9,6 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from app.limiter import limiter
 from slowapi.errors import RateLimitExceeded
 
@@ -62,9 +61,16 @@ app.add_exception_handler(
 # ── CORS ──────────────────────────────────────────────────────────────────────
 # rstrip("/") — защита от trailing slash в APP_URL (https://64dao.ru/ → 403 preflight)
 # FastAPI при allow_credentials=True требует точного совпадения origin
+# localhost — только для локальной разработки. В проде он в списке лишний:
+# вместе с allow_credentials=True это доверенный origin, поднять который на
+# машине жертвы дешевле, чем кажется.
+_origins = [settings.app_url.rstrip("/")]
+if settings.debug:
+    _origins.append("http://localhost:3000")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.app_url.rstrip("/"), "http://localhost:3000"],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
@@ -102,10 +108,23 @@ app.include_router(m3.router)
 app.include_router(m3.reports_router)
 app.include_router(m3.admin_router)
 
-# ── Static uploads ────────────────────────────────────────────────────────────
-uploads_parent = str(Path(settings.uploads_dir).parent)
-Path(uploads_parent).mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=uploads_parent), name="uploads")
+# ── Статика /uploads снята намеренно ──────────────────────────────────────────
+# Здесь монтировался родительский каталог uploads целиком. Вместе с ним
+# наружу уходили все рантайм-настройки из тома dao64_uploads: проверено
+# запросом GET /uploads/tochka_settings.json — 200, 776 байт, JWT банка
+# открытым текстом. Наружу это не пробивалось лишь потому, что действующий
+# конфиг nginx не содержал location /uploads/ — при том что на диске лежал
+# 64dao-static.conf, который его проксировал, просто не подключённый.
+#
+# Потребителей у монтирования не было: во фронтенде ноль обращений к
+# /uploads, а всё содержимое каталога отдаётся своими эндпоинтами с
+# проверкой доступа — отчёты через /api/reports/{id}/download (владение и
+# отзыв после возврата), документы через /api/documents/{slug},
+# sample_report через /api/sample-report/view, соцссылки через
+# /api/social-links. strategies.image_url пуст у всех записей.
+#
+# Если появится загрузка изображений — монтировать ТОЛЬКО подкаталог
+# images/, никогда не родительский.
 
 # ── Health ────────────────────────────────────────────────────────────────────
 @app.get("/api/health", tags=["health"])
