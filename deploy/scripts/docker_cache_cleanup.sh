@@ -1,5 +1,10 @@
 #!/bin/bash
 LOG="/var/log/64dao-docker-cache.log"
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') ===" >> "$LOG"
-docker builder prune -af --filter "until=72h" >> "$LOG" 2>&1
+# Порог 72h защищал кэш моложе трёх суток — то есть ровно тот, что и растёт.
+# Восемь пересборок фронтенда за одну сессию дали 17 ГБ, которые эта
+# чистка обойти не могла. Суток достаточно: кэш нужен внутри рабочего дня.
+docker builder prune -af --filter "until=24h" >> "$LOG" 2>&1
+# Потолок по объёму — на случай всплеска между воскресеньями.
+docker builder prune -f --keep-storage 5GB >> "$LOG" 2>&1
 echo "" >> "$LOG"
