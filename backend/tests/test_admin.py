@@ -614,3 +614,34 @@ async def test_set_user_status_toggle_flow(admin_client, db_session, test_user):
         assert test_user.is_active is True
 
         assert mock_send.await_count == 2
+
+
+# ── Соцссылки ─────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_social_links_put_is_validated(admin_client):
+    """На PUT отвечает схема, а не сырой dict.
+
+    Обработчик был объявлен дважды: копия в admin.py принимала body: dict без
+    валидации и перехватывала запрос, потому что admin.router подключается
+    раньше. Валидированная версия в social_links.py была недостижима.
+    Тест фиксирует, что живёт именно она: лишние поля не сохраняются, а ответ
+    содержит сохранённые данные, а не {"ok": true}.
+    """
+    resp = await admin_client.put("/api/admin/social-links", json={
+        "telegram": "https://t.me/x", "vk": "", "max": "", "лишнее": "поле"})
+    assert resp.status_code == 200, resp.text
+
+    data = resp.json()
+    assert set(data) == {"telegram", "vk", "max"}
+    assert data["telegram"] == "https://t.me/x"
+
+    again = await admin_client.get("/api/admin/social-links")
+    assert again.json()["telegram"] == "https://t.me/x"
+
+
+@pytest.mark.asyncio
+async def test_social_links_public_endpoint_needs_no_auth(client):
+    resp = await client.get("/api/social-links")
+    assert resp.status_code == 200
+    assert set(resp.json()) >= {"telegram", "vk", "max"}

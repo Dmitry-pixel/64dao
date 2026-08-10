@@ -4,16 +4,22 @@ GET /api/social-links — публичные, без авторизации (д�
 GET/PUT /api/admin/social-links — управление, требует прав администратора.
 Хранение: JSON-файл, по образцу pricing.py.
 """
-import json
+import os
 from pathlib import Path
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.auth import require_admin
+from app.json_store import read_json, write_json
 from app.models import User
 
 router = APIRouter(tags=["social-links"])
-SOCIAL_LINKS_FILE = Path("/var/www/64dao/uploads/social_links.json")
+
+# Каталог из UPLOAD_DIR, как в остальных модулях настроек. С зашитым путём
+# тесты писали бы в боевой том — ровно то, от чего защищает
+# test_tax_settings.py для соседнего файла настроек.
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/var/www/64dao/uploads")
+SOCIAL_LINKS_FILE = Path(UPLOAD_DIR) / "social_links.json"
 
 DEFAULT_LINKS = {
     "telegram": "https://t.me/64dao_blog",
@@ -29,10 +35,7 @@ class SocialLinks(BaseModel):
 
 
 def _read_links() -> dict:
-    try:
-        return json.loads(SOCIAL_LINKS_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return DEFAULT_LINKS.copy()
+    return read_json(SOCIAL_LINKS_FILE, DEFAULT_LINKS)
 
 
 @router.get("/api/social-links")
@@ -55,9 +58,4 @@ async def update_social_links(
     Ссылки принимаются как есть, без валидации формата URL —
     решение подтверждено при проектировании фичи.
     """
-    data = body.model_dump()
-    SOCIAL_LINKS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    SOCIAL_LINKS_FILE.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-    return data
+    return write_json(SOCIAL_LINKS_FILE, body.model_dump())

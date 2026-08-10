@@ -293,3 +293,38 @@ async def test_admin_revoke_sessions_unknown_user_404(admin_client):
     import uuid as _uuid
     resp = await admin_client.post(f"/api/admin/users/{_uuid.uuid4()}/revoke-sessions")
     assert resp.status_code == 404
+
+
+# ── Профиль ───────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_update_profile_changes_name_and_company(auth_client, test_user):
+    """PUT /api/auth/profile сохраняет имя и компанию.
+
+    Эндпоинта не существовало: форма в кабинете слала сюда PUT и получала
+    404, показывая «Ошибка сохранения».
+    """
+    resp = await auth_client.put("/api/auth/profile", json={
+        "full_name": "  Новое Имя  ", "company_name": "ООО Новая"})
+    assert resp.status_code == 200, resp.text
+
+    body = resp.json()
+    assert body["full_name"] == "Новое Имя"      # пробелы по краям срезаются
+    assert body["company_name"] == "ООО Новая"
+    assert test_user.full_name == "Новое Имя"
+
+
+@pytest.mark.asyncio
+async def test_update_profile_allows_empty_company(auth_client, test_user):
+    """Компанию можно очистить: в кабинете поле не обязательное."""
+    resp = await auth_client.put("/api/auth/profile", json={
+        "full_name": "Имя", "company_name": ""})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["company_name"] is None
+
+
+@pytest.mark.asyncio
+async def test_update_profile_requires_auth(client):
+    resp = await client.put("/api/auth/profile", json={
+        "full_name": "Имя", "company_name": "Компания"})
+    assert resp.status_code == 401

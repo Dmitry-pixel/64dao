@@ -687,38 +687,12 @@ async def impersonation_status(
 
 
 # ── Социальные сети ───────────────────────────────────────────────────────────
-
-SOCIAL_LINKS_FILE = Path("/var/www/64dao/uploads/social_links.json")
-
-DEFAULT_SOCIAL_LINKS = {
-    "telegram": "",
-    "vk": "",
-    "max": "",
-}
-
-
-def _read_social_links() -> dict:
-    try:
-        return json.loads(SOCIAL_LINKS_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return DEFAULT_SOCIAL_LINKS.copy()
-
-
-def _write_social_links(data: dict) -> None:
-    SOCIAL_LINKS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    SOCIAL_LINKS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
-@router.get("/social-links")
-async def get_social_links(_: User = Depends(require_admin)):
-    return _read_social_links()
-
-
-@router.put("/social-links")
-async def update_social_links(body: dict, _: User = Depends(require_admin)):
-    _write_social_links(body)
-    return {"ok": True}
-
+# Обработчики переехали в app/routers/social_links.py. Здесь была вторая,
+# независимая копия GET/PUT /api/admin/social-links — и именно она отвечала
+# на запросы, потому что admin.router подключается раньше в main.py. Копия
+# принимала body: dict без схемы, а валидированная версия в отдельном модуле
+# была недостижима. Дефолты у копий тоже разошлись: здесь пустые строки,
+# там реальные ссылки.
 
 # ── Пример отчёта (PDF) ───────────────────────────────────────────────────────
 

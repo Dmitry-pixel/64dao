@@ -22,7 +22,7 @@ from app.models import User, OtpCode
 from app.site_mode import get_site_mode
 from app.schemas import (
     LoginRequest, RegisterRequest, VerifyOTPRequest,
-    ResendOTPRequest, UserOut, SuccessResponse,
+    ResendOTPRequest, UserOut, SuccessResponse, ProfileUpdateRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -204,4 +204,22 @@ async def logout_all(
 
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)):
+    return user
+
+
+@router.put("/profile", response_model=UserOut)
+async def update_profile(
+    body: ProfileUpdateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Имя и название компании из кабинета.
+
+    Эндпоинта не существовало вовсе: форма в профиле слала сюда PUT и всегда
+    получала 404, а пользователь видел «Ошибка сохранения». Изменить эти поля
+    через интерфейс было нельзя с самого начала.
+    """
+    user.full_name = body.full_name.strip()
+    user.company_name = body.company_name.strip() or None
+    await db.flush()
     return user

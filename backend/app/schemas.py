@@ -20,6 +20,13 @@ class ResendOTPRequest(BaseModel):
     email: EmailStr
 
 
+class ProfileUpdateRequest(BaseModel):
+    # company_name допускает пустую строку: в кабинете поле можно очистить,
+    # а min_length=1 превратил бы это в 422 и «Ошибка сохранения» без причины.
+    full_name:    str = Field(min_length=1, max_length=255)
+    company_name: str = Field(default="", max_length=255)
+
+
 class RegisterRequest(BaseModel):
     # Пароля нет: вход по одноразовому коду на почту, см. app/auth.py.
     email:        EmailStr
