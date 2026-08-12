@@ -87,8 +87,14 @@ def contour_section_html(
                 'padding:18px 20px;background:rgba(255,255,255,0.45);margin-bottom:16px;'
                 f'page-break-inside:avoid;">{inner}</div>')
 
-    def h2(num: str, text: str) -> str:
+    # Номер раздела считается на месте: раздел про вето условный, и при
+    # статичных номерах его отсутствие оставляло бы дыру в нумерации.
+    _sec = [0]
+
+    def h2(text: str) -> str:
+        _sec[0] += 1
         return (f'<h2 style="font-size:18px;font-weight:400;color:{ink};margin:22px 0 12px;">'
+                f'<span style="font-size:11px;color:{accent};margin-right:10px;">{_sec[0]:02d}</span>'
                 f'{e(text)}</h2>')
 
     # 1 — заголовок + текущая гексаграмма
@@ -151,6 +157,40 @@ def contour_section_html(
         f'<b>Нижняя триграмма (двигатель) — {e(low.get("title") or "")}:</b> {e(low.get("text") or "")}<br>'
         f'<b>Верхняя триграмма (руль) — {e(up.get("title") or "")}:</b> {e(up.get("text") or "")}'
         '</div>')
+
+    # 4b — три уровня (сань-цай): второй разрез тех же шести линий.
+    # Карточка собирается без заголовка: h2 увеличивает счётчик разделов и
+    # вызывается только внутри return, иначе номер отщёлкнется раньше времени.
+    _lv = interp.get("levels") or []
+    if _lv:
+        _inner = (f'<div style="font-size:12px;color:rgba(26,37,64,0.6);'
+                  f'font-family:Arial,sans-serif;line-height:1.6;margin-bottom:14px;">'
+                  f'{e(interp.get("levels_caveat") or "")}</div>')
+        for _l in _lv:
+            _tail = ""
+            if _l.get("label_resulting"):
+                _nums = ", ".join(str(n) for n in _l.get("moving_lines") or [])
+                _tail = (f'<div style="font-size:12px;color:{accent};'
+                         f'font-family:Arial,sans-serif;margin-top:4px;">'
+                         f'Подвижны линии {e(_nums)}: состояние переходит в '
+                         f'«{e(_l["label_resulting"])}».</div>')
+            _note = ""
+            if _l.get("caveat"):
+                _note = (f'<div style="font-size:11px;color:rgba(26,37,64,0.5);'
+                         f'font-family:Arial,sans-serif;margin-top:4px;">'
+                         f'{e(_l["caveat"])}</div>')
+            _inner += (
+                '<div style="margin-bottom:14px;page-break-inside:avoid;">'
+                f'<div style="font-size:13px;color:{ink};font-family:Arial,sans-serif;">'
+                f'<b>{e(_l["title"])} — {e(_l["state_title"])}</b>'
+                f'<span style="color:rgba(26,37,64,0.5);"> '
+                f'({e(" + ".join(_l["line_titles"]))})</span></div>'
+                f'<div style="font-size:12px;color:rgba(26,37,64,0.75);'
+                f'font-family:Arial,sans-serif;margin-top:3px;line-height:1.6;">'
+                f'{e(_l["text"])}</div>{_tail}{_note}</div>')
+        levels_card = card(_inner)
+    else:
+        levels_card = ""
 
     # 5 — напряжения
     tensions = interp.get("tensions") or []
@@ -264,17 +304,18 @@ def contour_section_html(
         f'<h2 style="font-size:22px;font-weight:400;color:{ink};margin:0 0 18px;">'
         f'<span style="font-size:11px;color:{accent};margin-right:10px;">{e(section_no)}</span>{e(title)}</h2>'
         f'{header}'
-        f'{h2("01","Диагноз")}{diagnosis}'
+        f'{h2("Диагноз")}{diagnosis}'
         f'{description_html}'
-        f'{h2("02","Профиль линий")}{card(profile)}'
-        f'{h2("03","Ресурс и направление")}{quadrant}'
-        f'{h2("04","Ключевые напряжения")}{tensions_html}'
-        + (f'{h2("05","Условие, блокирующее трансформацию")}{veto_html}' if vb else "")
-        + f'{h2("06","Приоритеты вмешательства")}{priorities_html}'
-        + f'{h2("07","Плановые шаги")}{planned_html}'
-        f'{h2("06","Маршрут перехода")}{route_html}'
-        f'{h2("07","Оговорки по данным")}{caveats_html}'
-        f'{h2("08","Следующие шаги")}{steps_html}'
+        f'{h2("Профиль линий")}{card(profile)}'
+        f'{h2("Ресурс и направление")}{quadrant}'
+        f'{(h2("Три уровня") + levels_card) if levels_card else ""}'
+        f'{h2("Ключевые напряжения")}{tensions_html}'
+        + (f'{h2("Условие, блокирующее трансформацию")}{veto_html}' if vb else "")
+        + f'{h2("Приоритеты вмешательства")}{priorities_html}'
+        + f'{h2("Плановые шаги")}{planned_html}'
+        f'{h2("Маршрут перехода")}{route_html}'
+        f'{h2("Оговорки по данным")}{caveats_html}'
+        f'{h2("Следующие шаги")}{steps_html}'
         '<div style="margin-top:24px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:10px;color:rgba(26,37,64,0.3);">'
         '<span>64dao.ru</span><span>© 2024 64DAO — Конфиденциально</span>'
         '</div></div>'

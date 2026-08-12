@@ -32,9 +32,17 @@ export default function ContourReportSection({
   const linesByNum: Record<number, any> = {}
   ;(fr?.lines || []).forEach((l: any) => { linesByNum[l.line] = l })
 
-  const cap = (t: string) => (
-    <div style={{ fontSize: 10, color: '#c0392b', letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'sans-serif', fontWeight: 700, marginBottom: 8 }}>{t}</div>
-  )
+  // Сквозная нумерация разделов: раздел про вето условный, и статичные номера
+  // при его отсутствии оставляли бы дыру. Порядок вызовов cap = порядок разметки.
+  let secNo = 0
+  const cap = (t: string) => {
+    secNo += 1
+    return (
+      <div style={{ fontSize: 10, color: '#c0392b', letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'sans-serif', fontWeight: 700, marginBottom: 8 }}>
+        <span style={{ opacity: 0.55, marginRight: 6 }}>{String(secNo).padStart(2, '0')}</span>{t}
+      </div>
+    )
+  }
   const fallback = { margin: 0, fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.5)' } as React.CSSProperties
 
   return (
@@ -99,6 +107,25 @@ export default function ContourReportSection({
           <p><strong>Верхняя ({it?.trigrams?.upper?.title}):</strong> {it?.trigrams?.upper?.text}</p>
         </div>
       </div>
+
+      {(it?.levels?.length ?? 0) > 0 && (
+        <div style={{ marginTop: 16 }}>
+          {cap('Три уровня')}
+          <div style={{ border: '1px solid rgba(26,37,64,0.1)', borderRadius: 6, padding: '14px 16px', background: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.72)', lineHeight: 1.7 }}>
+            <p style={{ marginTop: 0, marginBottom: 12, fontSize: 12, color: 'rgba(26,37,64,0.6)' }}>{it.levels_caveat}</p>
+            {it.levels.map((lv: any) => (
+              <div key={lv.level} style={{ marginBottom: 12 }}>
+                <div><strong>{lv.title} — {lv.state_title}</strong> <span style={{ color: 'rgba(26,37,64,0.5)' }}>({(lv.line_titles || []).join(' + ')})</span></div>
+                <div style={{ fontSize: 12, marginTop: 3 }}>{lv.text}</div>
+                {lv.label_resulting && (
+                  <div style={{ fontSize: 12, marginTop: 4, color: '#c0392b' }}>Подвижны линии {(lv.moving_lines || []).join(', ')}: состояние переходит в «{lv.label_resulting}».</div>
+                )}
+                {lv.caveat && <div style={{ fontSize: 11, marginTop: 4, color: 'rgba(26,37,64,0.5)' }}>{lv.caveat}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ marginTop: 16 }}>
         {cap('Ключевые напряжения')}

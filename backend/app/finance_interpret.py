@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from app.finance_items import BLOCKS
 from app.contour_route import build_route
+from app.contour_levels import CUTS_CAVEAT, levels_of
 
 PLACEHOLDER = "Не заполнено"
 
@@ -122,6 +123,13 @@ def build_interpretation(result: dict, content: dict, blocks: dict | None = None
                   "text": (up or {}).get("text", PLACEHOLDER)},
     }
 
+    # B2 — три уровня: второй разрез тех же шести линий, не второе мнение
+    levels = levels_of(result)
+    for _lv in levels:
+        _lp = c("level_state", _lv["content_key"])
+        _lv["state_title"] = (_lp or {}).get("title") or _lv["label"]
+        _lv["text"] = (_lp or {}).get("text", PLACEHOLDER)
+
     # C — паттерн текущей гексаграммы
     cur = result["combination_current"]
     pc = content.get("fin_pattern", {}).get(cur)
@@ -228,6 +236,8 @@ def build_interpretation(result: dict, content: dict, blocks: dict | None = None
         "veto_block": veto_block,
         "quadrant": quadrant,
         "trigrams": trigrams,
+        "levels": levels,
+        "levels_caveat": CUTS_CAVEAT if levels else None,
         "pattern_current": pattern_current,
         "tensions": tensions,
         "priorities": priorities,
