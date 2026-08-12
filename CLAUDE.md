@@ -68,9 +68,9 @@ docker compose build frontend && docker compose up -d frontend    # frontend-onl
 docker compose build && docker compose up -d                      # full
 ```
 
-**Backend has NO source volume** (`docker-compose.yml` mounts only `uploads`). `docker compose restart backend` runs the OLD image and does NOT pick up `.py` changes — you MUST `build` then `up -d`. Use `restart` only for env/config changes.
+**Backend source IS mounted** (`docker-compose.yml` mounts `./backend:/app` next to `uploads`). `uvicorn` runs without `--reload`, so a `.py` change needs `docker compose restart backend`, not a rebuild. Rebuild only when dependencies or the Dockerfile change. Frontend is the opposite: it is baked into the image and always needs `build` then `up -d`.
 
-After a schema change, run `alembic upgrade head` in the container as a separate step — it is not part of the build. A new migration only reaches the container after `docker compose build backend`.
+After a schema change, run `alembic upgrade head` in the container as a separate step: it is not part of the build. The migration file is visible to the container immediately (mounted source), but push it to `origin/main` BEFORE upgrading prod, or the version pointer in the database references a revision missing from git.
 
 **Logs / health:**
 ```bash
