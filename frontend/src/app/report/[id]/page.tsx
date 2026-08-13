@@ -157,15 +157,20 @@ export default function ReportPage() {
   const finNo = hasLc ? '04' : '03'
   const sumNo = hasLc ? '05' : '04'
 
+  // Пункт оглавления знает свой якорь: без него клик только подсвечивал
+  // строку и никуда не вёл. Якоря совпадают с id секций ниже по разметке.
   const sections = isMethod2Only
-    ? ['01 — Бизнес-модель (9 блоков)']
+    ? [{ label: '01 — Бизнес-модель (9 блоков)', anchor: 's0' }]
     : [
-        '01 — Текущее состояние',
-        '02 — Сценарий стратагемы',
-        ...(hasLc ? ['03 — Жизненный цикл компании'] : []),
-        ...(finReport?.has_finance ? [`${finNo} — Финансовая функция`] : []),
-        ...(finReport?.summary ? [`${sumNo} — Сводная карта контуров`] : []),
-        ...((finReport?.contours || []).map((c: any, ci: number) => `${String((hasLc ? 6 : 5) + ci).padStart(2, '0')} — ${c.title}`)),
+        { label: '01 — Текущее состояние', anchor: 's0' },
+        { label: '02 — Сценарий стратагемы', anchor: 's4' },
+        ...(hasLc ? [{ label: '03 — Жизненный цикл компании', anchor: 's-lc' }] : []),
+        ...(finReport?.has_finance ? [{ label: `${finNo} — Финансовая функция`, anchor: 'sf' }] : []),
+        ...(finReport?.summary ? [{ label: `${sumNo} — Сводная карта контуров`, anchor: 'ssum' }] : []),
+        ...((finReport?.contours || []).map((c: any, ci: number) => ({
+          label: `${String((hasLc ? 6 : 5) + ci).padStart(2, '0')} — ${c.title}`,
+          anchor: `s-${c.contour}`,
+        }))),
       ]
 
   // Дата с временем
@@ -233,7 +238,7 @@ export default function ReportPage() {
         <aside style={S.toc}>
           <h4 style={S.tocTitle}>Содержание</h4>
           {sections.map((s, i) => (
-            <a key={i} style={{ ...S.tocLink, ...(i === activeSection ? S.tocLinkOn : {}) }} onClick={() => setActiveSection(i)}>{s}</a>
+            <a key={i} href={`#${s.anchor}`} style={{ ...S.tocLink, ...(i === activeSection ? S.tocLinkOn : {}) }} onClick={() => setActiveSection(i)}>{s.label}</a>
           ))}
         </aside>
 
@@ -477,7 +482,7 @@ const S: Record<string, React.CSSProperties> = {
   coverMeta: { fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.6)', lineHeight: 1.7 },
   hexXl: { fontFamily: 'serif', fontSize: 64, color: '#1e3a8a', lineHeight: 1 },
   combBadge: { fontFamily: 'monospace', fontSize: 13, color: 'rgba(26,37,64,0.5)', letterSpacing: 3, marginTop: 8 },
-  section: { background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '28px 32px', marginBottom: 16 },
+  section: { scrollMarginTop: 20, background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '28px 32px', marginBottom: 16 },
   sectionH2: { fontFamily: 'Georgia,serif', fontSize: 22, fontWeight: 400, color: '#1a2540', margin: '0 0 16px', display: 'flex', alignItems: 'baseline', gap: 12 },
   // Номер раздела — плашка: верхнеуровневые разделы должны читаться как
   // оглавление на просмотре по диагонали. alignSelf перекрывает baseline

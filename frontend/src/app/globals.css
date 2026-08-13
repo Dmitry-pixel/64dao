@@ -776,3 +776,9 @@ a { color: inherit; text-decoration: none; }
   .strt-tbl th, .strt-tbl td { border:none; }
   .strt-tbl th { padding-bottom:4px; }
 }
+
+/* Переход по оглавлению отчёта: без этого якорь срабатывает прыжком и
+   читатель теряет, откуда он ушёл. Уважает системную настройку доступности. */
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
