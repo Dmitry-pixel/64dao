@@ -87,3 +87,16 @@ def test_caveat_and_titles_rendered():
 def test_placeholder_when_content_missing():
     interp, _ = _render(content={})
     assert [lv["text"] for lv in interp["levels"]] == ["Не заполнено"] * 3
+
+
+def test_badge_marks_only_the_section_heading():
+    """
+    Плашка — признак верхнего уровня. Если она протечёт во внутренние
+    заголовки, отчёт перестанет читаться оглавлением: одинаково выделенными
+    окажутся и «Финансовая функция», и «Профиль линий» внутри неё.
+    """
+    _, html = _render()
+    heads = re.findall(r"<h2[^>]*>(.*?)</h2>", html, re.S)
+    badged = [h for h in heads if "background:#c0392b" in h]
+    assert len(badged) == 1, f"плашек {len(badged)}, ожидал одну (заголовок секции)"
+    assert "Финансовая функция" in badged[0]

@@ -13,6 +13,8 @@ JSON-конфиг в volume по образцу contour_settings.py, чтобы 
 """
 import html as _html
 
+from app.finance_pdf import section_badge
+
 
 TEXT = {
     "maturity": "зрелость",
@@ -116,8 +118,8 @@ def dynamics_section_html(dyn: dict | None, section_no: str = "09",
 
     out = [
         "<h2 style='font-size:18px;font-weight:400;color:" + _INK + ";margin:26px 0 12px;'>"
-        "<span style='font-size:11px;color:" + _ACCENT + ";margin-right:10px;'>"
-        + _e(section_no) + "</span>" + _e(TEXT["title"]) + "</h2>"
+        + section_badge(section_no)
+        + _e(TEXT["title"]) + "</h2>"
     ]
 
     date_str = _fmt_date(compare_from)

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from app.finance_pdf import finance_section_html, contour_section_html, summary_card_html
+from app.finance_pdf import section_badge
 from app.method1_questions import BASE_QUESTIONS, LC_LABELS  # дефолты
 from app.config import get_settings
 
@@ -344,7 +345,7 @@ def _stratagema_table_html(scenario: dict | None, company_name: str = "") -> str
         f'font-family:Arial,sans-serif;">{e(company_name)} · таблица стратагемы</span>'
         '</div>'
         '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 6px;">'
-        '<span style="font-size:11px;color:#c0392b;margin-right:8px;">02</span>'
+        f'{section_badge("02")}'
         'Сценарий стратагемы</h2>'
         '<p style="font-size:12px;color:rgba(26,37,64,0.5);line-height:1.6;'
         'font-family:Arial,sans-serif;margin:0 0 16px;">Полные формулировки '
@@ -664,7 +665,7 @@ def company_lifecycle_html(lc: dict, lifecycle_stages=None,
         f'<span style="font-size:10px;color:rgba(26,37,64,0.3);font-family:Arial,sans-serif;">{e(company_name)} · жизненный цикл</span>'
         '</div>'
         f'<h2 style="font-size:22px;font-weight:400;color:{ink};margin:0 0 12px;">'
-        f'<span style="font-size:11px;color:{accent};margin-right:10px;">{e(section_no)}</span>Жизненный цикл компании</h2>'
+        f'{section_badge(section_no)}Жизненный цикл компании</h2>'
         + point + chart + arch + frame_html + tactics_html + vector_html + notes_html +
         '<div style="margin-top:24px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);'
         'display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:10px;color:rgba(26,37,64,0.3);">'
@@ -798,7 +799,7 @@ def build_report_html(
       {e(company_name)} · стр. 1
     </span>
   </div>
-  <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 10px;"><span style="font-size:11px;color:#c0392b;margin-right:8px;">01</span>Текущее состояние</h2>
+  <h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 10px;">{section_badge("01")}Текущее состояние</h2>
   {current_state_html}
   {_hex_diagram_html(combination, sc)}
   <div style="margin-top:32px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);

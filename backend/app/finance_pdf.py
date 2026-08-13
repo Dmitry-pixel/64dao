@@ -58,6 +58,23 @@ def _finance_hexagram_svg(combination: str, moving_lines, size: int = 96) -> str
             + "".join(rects) + "</svg>")
 
 
+def section_badge(no: str) -> str:
+    """
+    Номер верхнего раздела — плашка. Верхнеуровневые разделы должны читаться
+    оглавлением при просмотре по диагонали; номера внутри секции контура
+    остаются мелкими, иначе иерархия схлопывается в один уровень.
+
+    Стиль зеркалит S.num в вебе (frontend/src/app/report/[id]/page.tsx).
+    Подложка печатается: в body отчёта стоит print-color-adjust:exact.
+    """
+    return (
+        '<span style="display:inline-block;font-family:Arial,sans-serif;'
+        'font-size:13px;font-weight:500;color:#fff;background:#c0392b;'
+        'border-radius:4px;padding:4px 9px;letter-spacing:1px;'
+        f'margin-right:12px;white-space:nowrap;">{e(no)}</span>'
+    )
+
+
 def contour_section_html(
     finance_result: dict,
     interp: dict,
@@ -302,7 +319,7 @@ def contour_section_html(
         f'<span style="font-size:10px;color:rgba(26,37,64,0.3);font-family:Arial,sans-serif;">{e(company_name)} · {e(title.lower())}</span>'
         '</div>'
         f'<h2 style="font-size:22px;font-weight:400;color:{ink};margin:0 0 18px;">'
-        f'<span style="font-size:11px;color:{accent};margin-right:10px;">{e(section_no)}</span>{e(title)}</h2>'
+        f'{section_badge(section_no)}{e(title)}</h2>'
         f'{header}'
         f'{h2("Диагноз")}{diagnosis}'
         f'{description_html}'
@@ -470,7 +487,7 @@ def summary_card_html(summary: dict, company_name: str, section_no: str = "04") 
         f'<span style="font-size:10px;color:rgba(26,37,64,0.3);font-family:Arial,sans-serif;">{e(company_name)} · сводная карта</span>'
         '</div>'
         f'<h2 style="font-size:22px;font-weight:400;color:{ink};margin:0 0 8px;">'
-        f'<span style="font-size:11px;color:{accent};margin-right:10px;">{e(section_no)}</span>Сводная карта контуров</h2>'
+        f'{section_badge(section_no)}Сводная карта контуров</h2>'
         '<p style="font-size:12px;color:rgba(26,37,64,0.55);font-family:Arial,sans-serif;'
         'line-height:1.6;margin:0 0 18px;">Контуры оценены по одной шкале, поэтому их зрелость '
         'сравнима между собой. Гексаграммы контуров описывают зрелость функции и не связаны '
