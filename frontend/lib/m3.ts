@@ -147,6 +147,17 @@ export function saveAnswers(id: string, answers: M3AnswerIn[]) {
   })
 }
 
+export type M3Limits = {
+  objects_min: number
+  objects_max: number
+  portfolio_min: number
+  reduced_warning: string
+}
+
+export function getLimits() {
+  return request<M3Limits>('/api/m3/limits')
+}
+
 export function getArbiterRequired(id: string) {
   return request<M3ArbiterRow[]>(`/api/m3/portfolios/${id}/arbiter-required`)
 }
@@ -381,7 +392,9 @@ export function postTradeoff(id: string, body: M3TradeoffIn) {
 // пользователь получает 422 без указания, какое поле виновато. Сервер остаётся
 // источником истины — клиентская проверка только предупреждает раньше.
 
-export const OBJECTS_MIN = 3
+// Запасные значения на время загрузки. Истина — /api/m3/limits:
+// собственные копии этих чисел на фронте уже расходились с бэкендом.
+export const OBJECTS_MIN = 1
 export const OBJECTS_MAX = 8
 export const MIN_SHARE = 3
 export const MIN_COVERAGE = 80

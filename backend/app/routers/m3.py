@@ -21,6 +21,7 @@ from app import m3_service as svc
 from app.auth import get_current_user, require_admin
 from app.config import get_settings
 from app.db import get_db
+from app.m3_config import REDUCED_WARNING
 from app.m3_access import (
     attach_payment, ensure_result_access, reserve_payment,
 )
@@ -30,7 +31,8 @@ from app.m3_models import (
 )
 from app.m3_schemas import (
     M3AnswersIn, M3ArbiterOut, M3ChecklistStepOut, M3ChecklistToggle,
-    M3ContentUpsert, M3HintUpsert, M3ItemUpsert, M3ObjectsPut, M3OwnerRanks,
+    M3ContentUpsert, M3HintUpsert, M3ItemUpsert, M3LimitsOut,
+    M3ObjectsPut, M3OwnerRanks,
     M3PortfolioCreate, M3PortfolioOut, M3QuestionnaireOut, M3ReportOut,
     M3TradeoffIn, M3WeightUpsert,
 )
@@ -85,6 +87,24 @@ def _bad(e: Exception) -> HTTPException:
 
 
 # ── Справочники ───────────────────────────────────────────────────────────────
+@router.get("/limits", response_model=M3LimitsOut)
+async def limits():
+    """
+    Границы числа направлений и предупреждение о сокращённом режиме.
+
+    Отдельный эндпоинт, потому что фронт держал свои копии констант, и они
+    разошлись с бэкендом: там стояла жёсткая тройка, когда порог расчёта
+    уже опустился до единицы.
+    """
+    cfg = svc.get_config()
+    return M3LimitsOut(
+        objects_min=cfg["objects_min"],
+        objects_max=cfg["objects_max"],
+        portfolio_min=cfg["portfolio_min"],
+        reduced_warning=REDUCED_WARNING,
+    )
+
+
 @router.get("/industries")
 async def list_industries(
     _: User = Depends(get_current_user),

@@ -1,8 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  MIN_COVERAGE, MIN_SHARE, OBJECTS_MAX, OBJECTS_MIN,
+  MIN_COVERAGE, MIN_SHARE, OBJECTS_MAX, OBJECTS_MIN, getLimits,
+  type M3Limits,
   PROFITABILITY_LABELS,
   type M3Industry, type M3ObjectIn, type M3Profitability,
 } from '@/lib/m3'
@@ -148,6 +149,11 @@ export default function PortfolioForm({
   // брать value прямо оттуда, минус стирается сразу после набора.
   const [raw, setRaw] = useState<Record<string, string>>({})
 
+  // Границы и текст предупреждения приходят с сервера: собственные копии
+  // этих чисел на фронте уже расходились с бэкендом.
+  const [limits, setLimits] = useState<M3Limits | null>(null)
+  useEffect(() => { getLimits().then(setLimits).catch(() => {}) }, [])
+
   type NumField = 'revenue' | 'revenue_dynamics' | 'revenue_share'
 
   function numField(i: number, field: NumField) {
@@ -246,6 +252,12 @@ export default function PortfolioForm({
         они дисциплинируют самооценку в анкете и задают размер круга на карте
         портфеля.
       </p>
+      {limits && objects.length < limits.portfolio_min && (
+        <p style={{ ...S.text, maxWidth: 620, borderLeft: '3px solid #c0392b',
+                    borderRadius: 0, paddingLeft: 14, marginTop: 12 }}>
+          {limits.reduced_warning}
+        </p>
+      )}
 
       {objects.map((o, i) => (
         <div key={i} style={S.card}>

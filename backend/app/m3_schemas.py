@@ -177,6 +177,14 @@ class M3AnswersIn(BaseModel):
     answers: list[M3AnswerIn] = Field(min_length=1)
 
 
+class M3LimitsOut(BaseModel):
+    """Границы и предупреждение для экрана направлений — единый источник."""
+    objects_min: int
+    objects_max: int
+    portfolio_min: int
+    reduced_warning: str
+
+
 class M3ArbiterOut(BaseModel):
     object_id: uuid.UUID
     position: int
