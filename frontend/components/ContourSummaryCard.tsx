@@ -86,6 +86,40 @@ export default function ContourSummaryCard({ sectionNo, summary, styles: S }: Co
         )}
       </div>
 
+      {(summary.levels || []).length > 0 && (
+        <div style={{ marginTop: 16, border: '1px solid rgba(26,37,64,0.12)', borderRadius: 6, padding: '14px 18px', background: 'rgba(255,255,255,0.45)' }}>
+          {cap('Уровни по контурам')}
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'sans-serif', fontSize: 13 }}>
+            <thead>
+              <tr>
+                <th style={S.th}>Уровень</th>
+                {summary.levels[0].cells.map((c: any) => <th key={c.contour} style={S.th}>{c.title}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {summary.levels.map((row: any) => {
+                const bg = row.systemic_weak ? 'rgba(192,57,43,0.06)'
+                  : row.systemic_strong ? 'rgba(26,37,64,0.04)' : undefined
+                return (
+                  <tr key={row.level}>
+                    <td style={{ ...S.td, background: bg }}>{row.title}
+                      <span style={{ fontSize: 11, color: 'rgba(26,37,64,0.45)' }}> · {row.question}</span>
+                    </td>
+                    {row.cells.map((c: any) => (
+                      <td key={c.contour} style={{ ...S.td, background: bg, textAlign: 'center', color: c.code === 'BB' ? '#c0392b' : undefined }}>{c.label}</td>
+                    ))}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          {summary.levels.filter((r: any) => r.reading).map((r: any) => (
+            <p key={r.level} style={{ ...S.reportText, marginTop: 8 }}>{r.reading}</p>
+          ))}
+          {summary.levels_note && <p style={{ ...S.faint, marginTop: 8 }}>{summary.levels_note}</p>}
+        </div>
+      )}
+
       {summary.route?.stages?.length > 0 && (
         <div style={{ marginTop: 16, border: '1px solid rgba(26,37,64,0.12)', borderRadius: 6, padding: '14px 18px', background: 'rgba(255,255,255,0.45)' }}>
           {cap('Сводный маршрут компании')}

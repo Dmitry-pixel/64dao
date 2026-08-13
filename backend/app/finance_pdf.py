@@ -479,6 +479,48 @@ def summary_card_html(summary: dict, company_name: str, section_no: str = "04") 
             + _items + _stable_route + _focus_route +
             '</div>')
 
+    # Матрица «контуры x уровни». Не свёртка: агрегировать контуры в одну
+    # гексаграмму компании нечем. Даёт то, чего нет ни в зрелости, ни в
+    # контуре-ограничении: один уровень слаб сразу в нескольких функциях —
+    # это свойство организации, а не функции.
+    lv_rows = summary.get("levels") or []
+    levels_html = ""
+    if lv_rows:
+        _hdr = "".join(f'{th}{e(c["title"])}</th>' for c in lv_rows[0]["cells"])
+        _body = ""
+        for row in lv_rows:
+            bg = ("background:rgba(192,57,43,0.06);" if row.get("systemic_weak")
+                  else "background:rgba(26,37,64,0.04);" if row.get("systemic_strong")
+                  else "")
+            _tds = "".join(
+                f'<td style="padding:8px;text-align:center;font-size:12px;'
+                f'color:{accent if c["code"] == "BB" else ink};">{e(c["label"])}</td>'
+                for c in row["cells"])
+            _body += (
+                f'<tr style="{bg}">'
+                f'<td style="padding:8px;font-size:13px;color:{ink};">{e(row["title"])}'
+                f'<span style="font-size:10px;color:rgba(26,37,64,0.45);"> · '
+                f'{e(row["question"])}</span></td>' + _tds + '</tr>')
+        _read = "".join(
+            f'<p style="font-size:12px;color:{ink};font-family:Arial,sans-serif;'
+            f'line-height:1.6;margin:8px 0 0;">{e(r["reading"])}</p>'
+            for r in lv_rows if r.get("reading"))
+        if not _read and summary.get("levels_note"):
+            _read = ('<p style="font-size:12px;color:rgba(26,37,64,0.6);'
+                     'font-family:Arial,sans-serif;line-height:1.6;margin:8px 0 0;">'
+                     f'{e(summary["levels_note"])}</p>')
+        levels_html = (
+            '<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;'
+            'padding:14px 18px;background:rgba(255,255,255,0.45);margin-top:16px;'
+            'page-break-inside:avoid;">'
+            f'<div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;'
+            f'color:{accent};font-weight:600;font-family:Arial,sans-serif;'
+            'margin-bottom:8px;">Уровни по контурам</div>'
+            '<table style="width:100%;border-collapse:collapse;">'
+            '<thead><tr style="border-bottom:1px solid rgba(26,37,64,0.15);">'
+            f'{th}Уровень</th>{_hdr}</tr></thead>'
+            f'<tbody>{_body}</tbody></table>' + _read + '</div>')
+
     return (
         '<div style="padding:40px 50px;background:#e8e4db;page-break-before:always;">'
         '<div style="display:flex;justify-content:space-between;align-items:center;'
@@ -501,6 +543,7 @@ def summary_card_html(summary: dict, company_name: str, section_no: str = "04") 
         f'<p style="font-size:13px;color:{ink};font-family:Arial,sans-serif;line-height:1.7;margin:0;">{verdict}</p>'
         + stable_html +
         '</div>'
+        + levels_html
         + summary_route_html +
         '<div style="margin-top:24px;padding-top:12px;border-top:1px solid rgba(26,37,64,0.08);'
         'display:flex;justify-content:space-between;font-family:Arial,sans-serif;font-size:10px;color:rgba(26,37,64,0.3);">'
