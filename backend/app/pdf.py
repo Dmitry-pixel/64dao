@@ -344,7 +344,7 @@ def _stratagema_table_html(scenario: dict | None, company_name: str = "") -> str
         f'font-family:Arial,sans-serif;">{e(company_name)} · таблица стратагемы</span>'
         '</div>'
         '<h2 style="font-size:18px;font-weight:400;color:#1a2540;margin:0 0 6px;">'
-        '<span style="font-size:11px;color:#c0392b;margin-right:8px;">01</span>'
+        '<span style="font-size:11px;color:#c0392b;margin-right:8px;">02</span>'
         'Сценарий стратагемы</h2>'
         '<p style="font-size:12px;color:rgba(26,37,64,0.5);line-height:1.6;'
         'font-family:Arial,sans-serif;margin:0 0 16px;">Полные формулировки '
@@ -874,13 +874,21 @@ def build_report_html(
     # Цикл — свойство компании (контур-ограничение), поэтому это отдельный
     # раздел, а не часть финансового блока. Его наличие сдвигает нумерацию
     # финансов/сводной/контуров на +1.
+    # Номера разделов раздаются по порядку вывода в шаблоне, а не арифметикой
+    # от наличия соседей: условный раздел иначе оставляет дыру. 01 и 02 заняты
+    # «Текущим состоянием» и «Сценарием стратагемы», они есть всегда.
+    _next = [3]
+
+    def _no() -> str:
+        n = _next[0]
+        _next[0] += 1
+        return f"{n:02d}"
+
     lc = summary.get("company_lifecycle") if summary else None
     lifecycle_page = ""
-    _shift = 0
     if (not is_method2) and lc:
         lifecycle_page = company_lifecycle_html(
-            lc, lifecycle_stages, section_no="03", company_name=company_name)
-        _shift = 1
+            lc, lifecycle_stages, section_no=_no(), company_name=company_name)
 
     # ── Финансовая функция (Метод 1, только при наличии результата скоринга) ──
     finance_section = ""
@@ -888,7 +896,7 @@ def build_report_html(
         finance_section = finance_section_html(
             finance_result, finance_interpretation, company_name,
             _finance_description_html(finance_strategy, lifecycle_stages),
-            section_no=f"{3 + _shift:02d}",
+            section_no=_no(),
         )
 
     stratagema_page = (
@@ -909,19 +917,17 @@ def build_report_html(
     if not is_method2:
         if summary:
             summary_section = summary_card_html(
-                summary, company_name, section_no=f"{4 + _shift:02d}")
+                summary, company_name, section_no=_no())
         if extra_contours:
             from app.contours import get_spec as _spec_of
-            _cno = 5 + _shift
             for _c in extra_contours:
                 contour_sections += contour_section_html(
                     _c["result"], _c["interp"], company_name,
                     blocks=_spec_of(_c["contour"]).blocks,
                     title=_c["title"],
-                    section_no=f"{_cno:02d}",
+                    section_no=_no(),
                     description_html=_details_link_html(_c["combination"]),
                 )
-                _cno += 1
 
     # ── Раздел 09 «Динамика» (только повторный отчёт) ────────────────────
     # Номер фиксированный: раздел идёт последним и не участвует в сдвиге
@@ -932,7 +938,7 @@ def build_report_html(
         from app.contours import CONTOURS as _CONTOURS
         from app.dynamics_block import dynamics_section_html
         _dyn_body = dynamics_section_html(
-            dynamics, section_no="09",
+            dynamics, section_no=_no(),
             titles={_k: _s.title for _k, _s in _CONTOURS.items()},
         )
         if _dyn_body:

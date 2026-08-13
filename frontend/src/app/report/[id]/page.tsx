@@ -161,7 +161,7 @@ export default function ReportPage() {
     ? ['01 — Бизнес-модель (9 блоков)']
     : [
         '01 — Текущее состояние',
-        '02 — Целевой сценарий',
+        '02 — Сценарий стратагемы',
         ...(hasLc ? ['03 — Жизненный цикл компании'] : []),
         ...(finReport?.has_finance ? [`${finNo} — Финансовая функция`] : []),
         ...(finReport?.summary ? [`${sumNo} — Сводная карта контуров`] : []),
@@ -337,9 +337,9 @@ export default function ReportPage() {
             </div>
 
 
-            {/* Секция 02 — Целевой сценарий */}
+            {/* Секция 02 — Сценарий стратагемы */}
             <div style={S.section} id="s4">
-              <h2 style={S.sectionH2}><span style={S.num}>02</span>Целевой сценарий</h2>
+              <h2 style={S.sectionH2}><span style={S.num}>02</span>Сценарий стратагемы</h2>
               <TargetHexagramBlock strategy={strategy} labelStyle={S.labelRed} />
 
               {/* Описание перехода */}
@@ -479,7 +479,12 @@ const S: Record<string, React.CSSProperties> = {
   combBadge: { fontFamily: 'monospace', fontSize: 13, color: 'rgba(26,37,64,0.5)', letterSpacing: 3, marginTop: 8 },
   section: { background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '28px 32px', marginBottom: 16 },
   sectionH2: { fontFamily: 'Georgia,serif', fontSize: 22, fontWeight: 400, color: '#1a2540', margin: '0 0 16px', display: 'flex', alignItems: 'baseline', gap: 12 },
-  num: { fontFamily: 'sans-serif', fontSize: 11, color: '#c0392b', letterSpacing: 1, flexShrink: 0 },
+  // Номер раздела — плашка: верхнеуровневые разделы должны читаться как
+  // оглавление на просмотре по диагонали. alignSelf перекрывает baseline
+  // родителя, иначе подложка съезжает вниз относительно заголовка.
+  num: { fontFamily: 'sans-serif', fontSize: 13, fontWeight: 500, color: '#fff',
+         background: '#c0392b', borderRadius: 4, padding: '5px 9px',
+         letterSpacing: 1, flexShrink: 0, alignSelf: 'center' },
   muted: { fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.5)', lineHeight: 1.6, marginBottom: 16 },
   faint: { fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.4)' },
   stateGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 },
