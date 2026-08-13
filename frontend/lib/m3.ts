@@ -324,6 +324,7 @@ export interface M3Report {
     spearman: number | null
     flags: string[]
     verdicts_held: boolean
+    reduced: boolean
   }
   objects: { result: M3Result; narrative: M3NarrativeBlock[] }[]
   investment_order: string[]

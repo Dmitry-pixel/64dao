@@ -215,6 +215,10 @@ function Lines({ r }: { r: M3Result }) {
 // Разделы отчёта. Ярлыки короче заголовков намеренно: в колонке 200px
 // полное «Разбор направлений — в порядке приоритета вложения» переносится
 // на три строки и оглавление перестаёт читаться списком.
+// Разделы портфельного слоя. Ниже порога сравнения их нет ни в теле
+// отчёта, ни в оглавлении: пункт, ведущий в пустоту, хуже отсутствия пункта.
+const HIDDEN_WHEN_REDUCED = ['m3-03', 'm3-04']
+
 const M3_SECTIONS = [
   { label: '00 — Исходные данные', anchor: 'm3-00' },
   { label: '01 — Карта портфеля', anchor: 'm3-01' },
@@ -305,7 +309,7 @@ export default function M3ReportPage() {
     <div style={S.page}><div style={S.shell}>
       <aside style={S.toc}>
         <h4 style={S.tocTitle}>Содержание</h4>
-        {M3_SECTIONS.map((s, i) => (
+        {M3_SECTIONS.filter(s => !summary.reduced || !HIDDEN_WHEN_REDUCED.includes(s.anchor)).map((s, i) => (
           <a key={s.anchor} href={`#${s.anchor}`}
              style={{ ...S.tocLink, ...(i === activeSection ? S.tocLinkOn : {}) }}
              onClick={() => setActiveSection(i)}>{s.label}</a>
@@ -512,6 +516,7 @@ export default function M3ReportPage() {
         </section>
       ))}
 
+      {!summary.reduced && (<>
       <h2 id="m3-03" style={{ ...S.h2, scrollMarginTop: 20 }}><span style={S.num}>03</span>Портфельные ограничения</h2>
       <p>
         Раздел отвечает на вопрос, который нельзя задать, оценивая направления
@@ -584,6 +589,8 @@ export default function M3ReportPage() {
         </div>
       )}
 
+      </>)}
+      {!summary.reduced && (<>
       <h2 id="m3-04" style={{ ...S.h2, scrollMarginTop: 20 }}><span style={S.num}>04</span>Решение о распределении ресурсов</h2>
       <p>
         Два списка отвечают на разные вопросы. Приоритет вложения — куда
@@ -680,6 +687,7 @@ export default function M3ReportPage() {
         onDecide={handleDecide}
       />
 
+      </>)}
       <h2 id="m3-notes" style={{ ...S.h2, scrollMarginTop: 20 }}>Оговорки по данным</h2>
       <ul style={{ paddingLeft: 20 }}>
         {disclaimers.map((d, i) => (

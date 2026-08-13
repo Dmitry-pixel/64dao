@@ -718,6 +718,12 @@ def constraints_section(
         f'margin:12px 0;font-family:{SERIF};">{e(tact_note(results, summary))}</p>'
     )
 
+    # Ниже порога сравнения раздела нет: ограничение компании выводится
+    # строгим большинством направлений, а большинство из одного направления
+    # это само направление. Заслон нужен здесь отдельно от build_report:
+    # PDF собирает раздел сам, вызывая m3_portfolio, а не читает payload.
+    if (summary or {}).get("reduced"):
+        return ""
     return (
         section_title("03", "Портфельные ограничения")
         + intro + yin_html + blocks + metrics_html + tact
@@ -986,6 +992,10 @@ def decision_section(
         + checklist_table(steps, objects_by_id, generated_at)
     )
 
+    # Распределение ресурса между направлениями при одном направлении
+    # не определено, а при двух вырождается в выбор из двух.
+    if (summary or {}).get("reduced"):
+        return ""
     return (
         section_title("04", "Решение о распределении ресурсов")
         # Сравнение идёт перед списками: оно объясняет, почему расчётный

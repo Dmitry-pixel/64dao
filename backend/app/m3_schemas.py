@@ -311,6 +311,8 @@ class M3PortfolioSummaryOut(BaseModel):
     owner_ranks: list[int] | None = None
     flags: list[str]
     verdicts_held: bool
+    # Портфельный слой не считался: направлений меньше portfolio_min.
+    reduced: bool = False
 
 
 class M3NarrativeBlock(BaseModel):
