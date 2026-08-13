@@ -505,7 +505,8 @@ def disclaimers(calc: dict) -> list[str]:
     return out
 
 
-def enrich_result(item: dict, share: float | None) -> dict:
+def enrich_result(item: dict, share: float | None,
+                  reduced: bool = False) -> dict:
     """
     Дописывает в результат направления вердикт, траекторию и причину места
     в очереди исполнения. Мутирует переданный словарь и возвращает его же.
@@ -516,6 +517,10 @@ def enrich_result(item: dict, share: float | None) -> dict:
     Всё три величины — производные от снимка, а не контент. Их считает
     m3_verdict, и те же функции на том же словаре вызывает m3_pdf.
     """
+    # Признак ставится на сам результат, а не прокидывается параметром:
+    # verdict_for зовут ещё два места в m3_pdf на тех же словарях, и так
+    # переопределение доезжает до них без правки сигнатур.
+    item["reduced"] = reduced
     item["verdict"] = vd.verdict_for(item)
     item["trajectory"] = {
         "target": vd.transition(item, "target"),
@@ -619,6 +624,7 @@ async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
         enrich_result(
             item,
             float(o.revenue_share) if o.revenue_share is not None else None,
+            bool(summary and summary.reduced),
         )
         packed.append({"result": item, "narrative": compose_narrative(item, content)})
 

@@ -86,6 +86,21 @@ VERDICTS: dict[tuple[Stance, Mobility], str] = {
     ("exit",    "stable"): "Пересборка или выход",
 }
 
+# Переопределения для сокращённого режима: только те ключи, где формулировка
+# отвечает на вопрос «среди чего выбирать». При одном направлении выбирать
+# не среди чего, и «точечно», «избирательно», «селективно» повисают в воздухе,
+# а «отложить» означает «займись другими» — а других нет.
+# Остальные двадцать один ярлык берутся из базовой таблицы: копировать их
+# значит завести две версии, которые разойдутся при первой правке.
+VERDICTS_REDUCED: dict[tuple[Stance, Mobility], str] = {
+    ("build",   "target"): "Вкладывать в назревшее, а не в рост целиком",
+    ("build",   "risk"):   "Развивать по назревшим линиям, закрепив достигнутое",
+    ("build",   "both"):   "Развивать по назревшим линиям, окно ограничено",
+    ("build",   "stable"): "Рынок хорош, взять его нечем: сначала строить силу",
+    ("limited", "both"):   "По назревшим линиям, окно ограничено",
+}
+
+
 MOBILITY_NOTE: dict[Mobility, str] = {
     "target": "есть назревшее изменение — энергия для него есть сейчас",
     "risk": "позиция перегрета: без закрепления она деградирует",
@@ -127,7 +142,11 @@ def verdict_for(result: dict[str, Any]) -> dict[str, Any]:
     """
     stance, zone_ru, zone_en = zone_of(result)
     state = mobility_state(result)
-    verdict = VERDICTS[(stance, state)]
+    key = (stance, state)
+    # Признак ставится на результат при сборке отчёта, поэтому все три места
+    # вызова verdict_for видят его без правки сигнатуры.
+    verdict = (VERDICTS_REDUCED.get(key) or VERDICTS[key]) if result.get("reduced") \
+        else VERDICTS[key]
 
     notes: list[str] = [MOBILITY_NOTE[state]]
     if result.get("v_rank") == 1:
