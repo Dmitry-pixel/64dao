@@ -297,7 +297,10 @@ async def calculate(db: AsyncSession, portfolio: M3Portfolio) -> dict:
     """
     config = get_config()
     objects = list(portfolio.objects)
-    if not sc.DEFAULT_M3_CONFIG["objects_min"] <= len(objects) <= sc.DEFAULT_M3_CONFIG["objects_max"]:
+    # Границы из config, а не из DEFAULT_M3_CONFIG: раньше проверка читала
+    # дефолты, а сообщение — переопределение из админки, и при правке
+    # порога текст ошибки расходился с самой проверкой.
+    if not config["objects_min"] <= len(objects) <= config["objects_max"]:
         raise M3ServiceError(
             f"Направлений в портфеле: {len(objects)}. Допустимо от "
             f"{config['objects_min']} до {config['objects_max']}."
@@ -366,6 +369,7 @@ async def calculate(db: AsyncSession, portfolio: M3Portfolio) -> dict:
         delta=p["delta"], distinct_cells=p["distinct_cells"],
         spearman=p["spearman"], flags=p["flags"],
         verdicts_held=p["verdicts_held"],
+        reduced=p["reduced"],
     ))
 
     portfolio.status = "calculated"

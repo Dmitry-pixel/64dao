@@ -635,6 +635,7 @@ def score_portfolio(
             f"до {cfg['objects_max']}."
         )
 
+    reduced = n < cfg["portfolio_min"]
     sum_positions = sum(r["symbols"].count(YANG) for r in results)
     turbulence = sum(r["moving_count"] for r in results)
     old_yin_total = sum(r["old_yin_count"] for r in results)
@@ -647,7 +648,7 @@ def score_portfolio(
     for r, vr, zr in zip(results, v_ranks, z_ranks):
         r["v_rank"], r["z_rank"] = vr, zr
 
-    rho = spearman(v_ranks, owner_ranks) if owner_ranks else None
+    rho = spearman(v_ranks, owner_ranks) if (owner_ranks and not reduced) else None
 
     all_scores = [s for r in results for s in r["scores"].values()]
     si = cfg["self_inflation"]
@@ -656,13 +657,23 @@ def score_portfolio(
         if all_scores else 0.0
     )
 
+    # Все три флага меряют разброс МЕЖДУ направлениями и ниже порога
+    # сравнения либо срабатывают механически, либо не определены.
+    # UNIFORM_PORTFOLIO: при одном направлении distinct_cells всегда 1.
+    # RANK_MISMATCH: порядок из одного элемента не с чем сравнивать.
+    # SELF_INFLATION: считается по линиям и формально определён, но его
+    # различающая сила берётся из широты портфеля. «Все направления
+    # высокие» подозрительно, «одно направление высокое» — просто сильное
+    # направление. Порог калиброван на 18-48 баллах; при шести он держал бы
+    # вердикт у сильных одиночек, а вердикт там главный вывод.
     flags: list[str] = []
-    if distinct_cells == 1:
-        flags.append("UNIFORM_PORTFOLIO")
-    if inflated_share >= si["share_min"]:
-        flags.append("SELF_INFLATION")
-    if rho is not None and rho < cfg["rank_mismatch_spearman_max"]:
-        flags.append("RANK_MISMATCH")
+    if not reduced:
+        if distinct_cells == 1:
+            flags.append("UNIFORM_PORTFOLIO")
+        if inflated_share >= si["share_min"]:
+            flags.append("SELF_INFLATION")
+        if rho is not None and rho < cfg["rank_mismatch_spearman_max"]:
+            flags.append("RANK_MISMATCH")
 
     # Критерии приёмки пилота (§11) — считаются всегда, вердиктов не меняют.
     spread_share = (
@@ -672,6 +683,7 @@ def score_portfolio(
 
     return {
         "objects": n,
+        "reduced": reduced,
         "owner_ranks": list(owner_ranks) if owner_ranks else None,
         "sum_positions": sum_positions,
         "sum_positions_max": 6 * n,

@@ -353,10 +353,34 @@ class TestControlPortfolio:
         assert p["spread_share"] == 0.50     # критерий 2: не более 0,50
 
     def test_portfolio_size_bounds(self):
+        """Пустой портфель и перебор по числу направлений — по-прежнему ошибка."""
         with pytest.raises(PortfolioSizeError):
-            calculate({**CONTROL_CASE, "objects": CONTROL_CASE["objects"][:2]})
+            calculate({**CONTROL_CASE, "objects": []})
         with pytest.raises(PortfolioSizeError):
             calculate({**CONTROL_CASE, "objects": CONTROL_CASE["objects"] * 2})
+
+    def test_reduced_mode_below_portfolio_min(self):
+        """
+        Ниже portfolio_min расчёт проходит, портфельный слой не считается.
+        Правило изменено решением владельца 13 августа: позиция направления
+        в матрице — абсолютный индекс по его собственным критериям, и
+        сравнение с другими направлениями в её определении не участвует.
+        """
+        for n in (1, 2):
+            out = calculate({**CONTROL_CASE, "owner_ranks": None,
+                             "objects": CONTROL_CASE["objects"][:n]})
+            p = out["portfolio"]
+            assert p["reduced"] is True, n
+            assert p["objects"] == n
+            assert len(out["objects"]) == n
+            assert p["flags"] == [], p["flags"]
+            assert p["verdicts_held"] is False
+            assert p["spearman"] is None
+
+    def test_full_mode_from_portfolio_min(self):
+        out = calculate({**CONTROL_CASE, "owner_ranks": None,
+                         "objects": CONTROL_CASE["objects"][:3]})
+        assert out["portfolio"]["reduced"] is False
 
 
 # ── 4. Свойство шкалы ─────────────────────────────────────────────────────────
