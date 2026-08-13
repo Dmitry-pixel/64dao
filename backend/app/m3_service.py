@@ -481,8 +481,21 @@ def compose_narrative(result: dict, content: dict) -> list[dict]:
     return out
 
 
+DISCLAIMER_REDUCED = (
+    "Диагностика проведена по {what}. Портфельный слой не рассчитан: профиль "
+    "линий по портфелю, сравнение с порядком приоритетов и карта долей выручки "
+    "определены только при сравнении направлений. Позиция в матрице, разбор "
+    "линий и маршрут перехода действительны."
+)
+
+
 def disclaimers(calc: dict) -> list[str]:
     out = [DISCLAIMER_WEIGHTS, DISCLAIMER_HEXAGRAM, DISCLAIMER_LINES]
+    if calc["portfolio"].get("reduced"):
+        # Первой строкой: она объясняет, почему в отчёте нет половины разделов.
+        n = calc["portfolio"]["objects"]
+        out.insert(0, DISCLAIMER_REDUCED.format(
+            what="одному направлению" if n == 1 else "двум направлениям"))
     if calc["portfolio"]["verdicts_held"]:
         out.insert(0, DISCLAIMER_HELD)
     if any(r["symbols"][4] == sc.YIN for r in calc["objects"]):
@@ -638,19 +651,32 @@ async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
         "owner_ranks": list(portfolio.owner_ranks or []) or None,
         "flags": list(summary.flags or []) if summary else [],
         "verdicts_held": bool(summary and summary.verdicts_held),
+        "reduced": bool(summary and summary.reduced),
     }
 
     # Раздел 03. Ограничения компании выводятся из снимка строгим большинством,
     # а не берутся из таблицы контента: линия, слабая у большинства направлений,
     # перестаёт быть свойством продукта и становится свойством компании.
     results_only = [x["result"] for x in packed]
-    analysis = {
-        "yin_table": pf.yin_table(results_only),
-        "constraints": pf.constraints(results_only),
-        "metrics": pf.metric_readings(summary_out),
-        "tact_note": pf.tact_note(results_only, summary_out),
-        "rank_comparison": _rank_comparison_payload(results_only, summary_out),
-    }
+    if summary_out["reduced"]:
+        # Ниже порога сравнения портфельный разбор не считается. Функции его
+        # переживают, но врут: ограничение компании выводится строгим
+        # большинством направлений, а большинство из одного направления —
+        # это само направление, и свойство продукта выдаётся за свойство
+        # компании. Подавление стоит здесь, а не в рендерах: правило одно,
+        # отчёта два.
+        analysis = {
+            "yin_table": [], "constraints": [], "metrics": [],
+            "tact_note": None, "rank_comparison": None,
+        }
+    else:
+        analysis = {
+            "yin_table": pf.yin_table(results_only),
+            "constraints": pf.constraints(results_only),
+            "metrics": pf.metric_readings(summary_out),
+            "tact_note": pf.tact_note(results_only, summary_out),
+            "rank_comparison": _rank_comparison_payload(results_only, summary_out),
+        }
 
     return {
         "portfolio": portfolio,
