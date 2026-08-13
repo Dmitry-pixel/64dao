@@ -58,7 +58,7 @@ def _finance_hexagram_svg(combination: str, moving_lines, size: int = 96) -> str
             + "".join(rects) + "</svg>")
 
 
-def section_badge(no: str) -> str:
+def section_badge(no: str, small: bool = False) -> str:
     """
     Номер верхнего раздела — плашка. Верхнеуровневые разделы должны читаться
     оглавлением при просмотре по диагонали; номера внутри секции контура
@@ -67,11 +67,15 @@ def section_badge(no: str) -> str:
     Стиль зеркалит S.num в вебе (frontend/src/app/report/[id]/page.tsx).
     Подложка печатается: в body отчёта стоит print-color-adjust:exact.
     """
+    # small — для Метода 3: его заголовок 13px и капителью, плашка в полный
+    # размер там перевешивает название раздела.
+    size, pad, radius, gap = (("11px", "3px 7px", "3px", "10px") if small
+                              else ("13px", "4px 9px", "4px", "12px"))
     return (
         '<span style="display:inline-block;font-family:Arial,sans-serif;'
-        'font-size:13px;font-weight:500;color:#fff;background:#c0392b;'
-        'border-radius:4px;padding:4px 9px;letter-spacing:1px;'
-        f'margin-right:12px;white-space:nowrap;">{e(no)}</span>'
+        f'font-size:{size};font-weight:500;color:#fff;background:#c0392b;'
+        f'border-radius:{radius};padding:{pad};letter-spacing:1px;'
+        f'margin-right:{gap};white-space:nowrap;">{e(no)}</span>'
     )
 
 

@@ -17,6 +17,17 @@ const C = {
 
 const S = {
   page: { minHeight: '100vh', background: C.bg, color: C.dark } as React.CSSProperties,
+  // Оглавление: стили повторяют отчёт Метода 1, чтобы два отчёта
+  // не разошлись видом. Колонка липкая — отчёт длинный.
+  shell: { maxWidth: 1180, margin: '0 auto', padding: '0 24px', display: 'grid',
+    gridTemplateColumns: '200px 1fr', gap: 32, alignItems: 'start' } as React.CSSProperties,
+  toc: { position: 'sticky', top: 24, alignSelf: 'flex-start', paddingTop: 48 } as React.CSSProperties,
+  tocTitle: { fontFamily: 'sans-serif', fontSize: 11, letterSpacing: 1, color: 'rgba(26,37,64,0.4)',
+    textTransform: 'uppercase', marginBottom: 12, fontWeight: 600 } as React.CSSProperties,
+  tocLink: { display: 'block', fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.5)',
+    padding: '6px 10px', borderRadius: 4, cursor: 'pointer', marginBottom: 2,
+    textDecoration: 'none' } as React.CSSProperties,
+  tocLinkOn: { background: 'rgba(26,37,64,0.06)', color: '#1a2540' } as React.CSSProperties,
   stage: {
     maxWidth: 900, margin: '0 auto', padding: '48px 32px 96px',
     fontFamily: 'Georgia,"Times New Roman",serif', fontSize: 15, lineHeight: 1.6,
@@ -37,7 +48,11 @@ const S = {
     fontWeight: 400, color: C.muted, borderBottom: `1px solid ${C.line}`,
     paddingBottom: 7, margin: '52px 0 20px',
   } as React.CSSProperties,
-  num: { color: C.red, marginRight: 10 } as React.CSSProperties,
+  // Плашка как в отчёте Метода 1, но на калибр меньше: здесь заголовок
+  // 13px капителью, и плашка в полный размер перевешивает название.
+  num: { display: 'inline-block', fontFamily: 'sans-serif', fontSize: 11,
+    fontWeight: 500, color: '#fff', background: C.red, borderRadius: 3,
+    padding: '3px 7px', letterSpacing: 1, marginRight: 10 } as React.CSSProperties,
   h3: { fontSize: 19, fontWeight: 400, margin: '0 0 6px' } as React.CSSProperties,
   h4: {
     fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase' as const,
@@ -197,6 +212,18 @@ function Lines({ r }: { r: M3Result }) {
   )
 }
 
+// Разделы отчёта. Ярлыки короче заголовков намеренно: в колонке 200px
+// полное «Разбор направлений — в порядке приоритета вложения» переносится
+// на три строки и оглавление перестаёт читаться списком.
+const M3_SECTIONS = [
+  { label: '00 — Исходные данные', anchor: 'm3-00' },
+  { label: '01 — Карта портфеля', anchor: 'm3-01' },
+  { label: '02 — Разбор направлений', anchor: 'm3-02' },
+  { label: '03 — Портфельные ограничения', anchor: 'm3-03' },
+  { label: '04 — Решение о распределении', anchor: 'm3-04' },
+  { label: 'Оговорки по данным', anchor: 'm3-notes' },
+]
+
 export default function M3ReportPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
@@ -206,6 +233,7 @@ export default function M3ReportPage() {
   const [steps, setSteps] = useState<M3ChecklistStep[]>([])
   const [decided, setDecided] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [activeSection, setActiveSection] = useState(0)
 
   const load = useCallback(async () => {
     const [rep, ch] = await Promise.all([getReport(id), getChecklist(id)])
@@ -274,7 +302,16 @@ export default function M3ReportPage() {
   const company = portfolio.company_name || portfolio.title || 'Компания'
 
   return (
-    <div style={S.page}><div style={S.stage}>
+    <div style={S.page}><div style={S.shell}>
+      <aside style={S.toc}>
+        <h4 style={S.tocTitle}>Содержание</h4>
+        {M3_SECTIONS.map((s, i) => (
+          <a key={s.anchor} href={`#${s.anchor}`}
+             style={{ ...S.tocLink, ...(i === activeSection ? S.tocLinkOn : {}) }}
+             onClick={() => setActiveSection(i)}>{s.label}</a>
+        ))}
+      </aside>
+      <div style={S.stage}>
       <header style={S.header}>
         <div style={S.brand}>64DAO · Метод 3</div>
         <h1 style={S.h1}>Матрица силы · {company}</h1>
@@ -313,7 +350,7 @@ export default function M3ReportPage() {
         </div>
       )}
 
-      <h2 style={S.h2}><span style={S.num}>00</span>Исходные данные</h2>
+      <h2 id="m3-00" style={{ ...S.h2, scrollMarginTop: 20 }}><span style={S.num}>00</span>Исходные данные</h2>
       <table style={S.table}>
         <thead>
           <tr>
@@ -344,7 +381,7 @@ export default function M3ReportPage() {
         </tbody>
       </table>
 
-      <h2 style={S.h2}><span style={S.num}>01</span>Карта портфеля</h2>
+      <h2 id="m3-01" style={{ ...S.h2, scrollMarginTop: 20 }}><span style={S.num}>01</span>Карта портфеля</h2>
       <PortfolioMap results={results} shares={shares} />
       <p style={S.muted}>
         Ячейку задаёт сумма отраслевых весов сильных линий, положение внутри ячейки —
@@ -395,7 +432,7 @@ export default function M3ReportPage() {
         </tbody>
       </table>
 
-      <h2 style={S.h2}>
+      <h2 id="m3-02" style={{ ...S.h2, scrollMarginTop: 20 }}>
         <span style={S.num}>02</span>Разбор направлений — в порядке приоритета вложения
       </h2>
 
@@ -475,7 +512,7 @@ export default function M3ReportPage() {
         </section>
       ))}
 
-      <h2 style={S.h2}><span style={S.num}>03</span>Портфельные ограничения</h2>
+      <h2 id="m3-03" style={{ ...S.h2, scrollMarginTop: 20 }}><span style={S.num}>03</span>Портфельные ограничения</h2>
       <p>
         Раздел отвечает на вопрос, который нельзя задать, оценивая направления
         по отдельности: какая слабость повторяется и, значит, принадлежит
@@ -547,7 +584,7 @@ export default function M3ReportPage() {
         </div>
       )}
 
-      <h2 style={S.h2}><span style={S.num}>04</span>Решение о распределении ресурсов</h2>
+      <h2 id="m3-04" style={{ ...S.h2, scrollMarginTop: 20 }}><span style={S.num}>04</span>Решение о распределении ресурсов</h2>
       <p>
         Два списка отвечают на разные вопросы. Приоритет вложения — куда
         осмысленно направить деньги на рост. Очередь исполнения — что нельзя
@@ -643,7 +680,7 @@ export default function M3ReportPage() {
         onDecide={handleDecide}
       />
 
-      <h2 style={S.h2}>Оговорки по данным</h2>
+      <h2 id="m3-notes" style={{ ...S.h2, scrollMarginTop: 20 }}>Оговорки по данным</h2>
       <ul style={{ paddingLeft: 20 }}>
         {disclaimers.map((d, i) => (
           <li key={i} style={{ margin: '7px 0', fontSize: 13.5 }}>{d}</li>
@@ -654,6 +691,6 @@ export default function M3ReportPage() {
         <button style={S.btnGhost} onClick={() => router.push('/m3')}>← К портфелям</button>
         <button style={S.btnGhost} onClick={() => router.push('/dashboard')}>← В кабинет</button>
       </div>
-    </div></div>
+    </div></div></div>
   )
 }

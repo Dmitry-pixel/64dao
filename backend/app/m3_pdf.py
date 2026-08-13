@@ -140,11 +140,13 @@ PDF_MARGIN = {"top": "16mm", "right": "0", "bottom": "14mm", "left": "0"}
 
 
 def section_title(number: str, title: str) -> str:
+    from app.finance_pdf import section_badge
+
     return (
         f'<h2 style="font-size:13px;letter-spacing:0.10em;text-transform:uppercase;'
         f'font-weight:normal;color:{MUTED};border-bottom:1px solid {LINE};'
         f'padding-bottom:6px;margin:20px 0 13px;font-family:{SERIF};">'
-        f'<span style="color:{RED};margin-right:10px;">{e(number)}</span>{e(title)}</h2>'
+        f'{section_badge(number, small=True)}{e(title)}</h2>'
     )
 
 
