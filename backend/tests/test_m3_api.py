@@ -175,6 +175,10 @@ class TestFeatureFlag:
     """
     404, а не 403: при выключенном флаге раздела не существует. 403 сообщал бы,
     что функциональность есть и она закрыта, — лишняя информация до релиза.
+
+    Исключение одно: admin_router. Гейт с него снят, потому что тексты
+    разбора и калибровку заводят ДО релиза раздела, иначе их некуда
+    класть. Пользовательские router и reports_router под гейтом остаются.
     """
 
     @pytest.mark.parametrize("method,path", [
@@ -192,9 +196,14 @@ class TestFeatureFlag:
         r = await getattr(auth_client, method)(path, **kwargs)
         assert r.status_code == 404
 
-    async def test_admin_404_when_disabled(self, admin_client, m3_off):
+    async def test_admin_works_when_disabled(self, admin_client, m3_off):
+        """
+        Админка живёт независимо от флага, и это решение владельца,
+        а не послабление: контент заводят до релиза. Доступ держит
+        require_admin на самом роутере.
+        """
         r = await admin_client.get("/api/admin/m3/items")
-        assert r.status_code == 404
+        assert r.status_code == 200
 
     async def test_anonymous_also_gets_404_when_disabled(self, client, m3_off):
         """
@@ -205,8 +214,12 @@ class TestFeatureFlag:
         """
         r = await client.get(f"{M3}/portfolios")
         assert r.status_code == 404
+        # Админский путь отвечает 401, а не 404: гейт с него снят.
+        # Это осознанная плата за возможность заводить контент до
+        # релиза. Сам по себе 401 на /api/admin/* ничего не выдаёт:
+        # остальные админские разделы отвечают так же.
         r = await client.get("/api/admin/m3/items")
-        assert r.status_code == 404
+        assert r.status_code == 401
         r = await client.get(f"{REPORTS}/{uuid.uuid4()}")
         assert r.status_code == 404
 

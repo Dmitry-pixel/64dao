@@ -418,3 +418,106 @@ export const LINE_TITLES: Record<number, string> = {
   5: 'Структура рынка и маржа',
   6: 'Макро и регулирование',
 }
+
+// ── Админка ───────────────────────────────────────────────────────────────────
+// Раздел не закрыт флагом m3_enabled: контент и калибровку правят до релиза
+// раздела. Доступ держит require_admin на самом роутере.
+
+export interface M3ContentSlot {
+  key: string
+  title: string
+}
+
+export interface M3ContentKind {
+  kind: string
+  kind_title: string
+  slots: M3ContentSlot[]
+}
+
+export interface M3ContentRow {
+  id: string
+  kind: string
+  key: string
+  title: string
+  body: string
+  mistake: string | null
+  industry_id: number | null
+  is_active: boolean
+}
+
+export interface M3WeightRow {
+  industry_id: number
+  name: string
+  w_l1: number
+  w_l2: number
+  w_l3: number
+  w_l4: number
+  w_l5: number
+  w_l6: number
+}
+
+export interface M3HintRow {
+  id: string
+  industry_id: number
+  item_code: string
+  text: string
+}
+
+export interface M3AdminItem {
+  id: string
+  block: string
+  number: number
+  code: string
+  line: number
+  text: string
+  is_reverse: boolean
+  industry_id: number | null
+  item_version: number
+  is_active: boolean
+}
+
+export function adminCatalog() {
+  return request<{ kinds: M3ContentKind[] }>('/api/admin/m3/catalog')
+}
+export function adminContent() {
+  return request<M3ContentRow[]>('/api/admin/m3/content')
+}
+export function adminPutContent(row: {
+  kind: string; key: string; title: string; body: string
+  mistake?: string | null; industry_id?: number | null; is_active?: boolean
+}) {
+  return request<{ id: string }>('/api/admin/m3/content', {
+    method: 'PUT',
+    body: JSON.stringify(row),
+  })
+}
+export function adminWeights() {
+  return request<M3WeightRow[]>('/api/admin/m3/weights')
+}
+export function adminPutWeight(w: M3WeightRow) {
+  return request<{ industry_id: number }>(`/api/admin/m3/weights/${w.industry_id}`, {
+    method: 'PUT',
+    body: JSON.stringify(w),
+  })
+}
+export function adminHints() {
+  return request<M3HintRow[]>('/api/admin/m3/hints')
+}
+export function adminPutHint(h: { industry_id: number; item_code: string; text: string }) {
+  return request<{ id: string }>('/api/admin/m3/hints', {
+    method: 'PUT',
+    body: JSON.stringify(h),
+  })
+}
+export function adminItems() {
+  return request<M3AdminItem[]>('/api/admin/m3/items')
+}
+export function adminUpsertItem(i: {
+  code: string; block: string; number: number; line: number
+  text: string; is_reverse?: boolean; industry_id?: number | null
+}) {
+  return request<{ id: string; code: string; item_version: number }>('/api/admin/m3/items', {
+    method: 'POST',
+    body: JSON.stringify(i),
+  })
+}

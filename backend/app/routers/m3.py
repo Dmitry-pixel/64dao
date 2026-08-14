@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app import m3_catalog
 from app import m3_service as svc
 from app.auth import get_current_user, require_admin
 from app.config import get_settings
@@ -57,8 +58,13 @@ async def _flag_gate() -> None:
 
 router = APIRouter(prefix="/api/m3", tags=["m3"],
                    dependencies=[Depends(_flag_gate)])
+# Гейт флага снят намеренно: контент и калибровку правят ДО релиза
+# раздела, иначе тексты некуда заводить. Доступ держит require_admin
+# на самом роутере, а не только в теле каждого эндпоинта: зависимости
+# роутера резолвятся раньше, и аноним отбивается до обработчика.
+# Пользовательский router и reports_router под гейтом остаются.
 admin_router = APIRouter(prefix="/api/admin/m3", tags=["m3-admin"],
-                         dependencies=[Depends(_flag_gate)])
+                         dependencies=[Depends(require_admin)])
 reports_router = APIRouter(prefix="/api/reports/m3", tags=["m3"],
                            dependencies=[Depends(_flag_gate)])
 
@@ -416,6 +422,19 @@ async def patch_checklist(
 
 
 # ── Админка ───────────────────────────────────────────────────────────────────
+@admin_router.get("/catalog")
+async def admin_content_catalog():
+    """
+    Какие блоки разбора метод ожидает заполненными.
+
+    Список ключей отдаётся с бэкенда, чтобы экран админки не держал его
+    копию: девять ячеек матрицы, шесть линий и десять напряжений заданы
+    методом, а не оформлением. Копия константы на фронте в этом проекте
+    расходилась уже дважды, оба раза молча.
+    """
+    return {"kinds": m3_catalog.content_catalog()}
+
+
 @admin_router.get("/items")
 async def admin_list_items(
     _: User = Depends(require_admin),
