@@ -145,6 +145,13 @@ async def build_questionnaire(db: AsyncSession, portfolio: M3Portfolio) -> dict:
     items = await load_items(db, industries)
     hints = await load_hints(db, {i for i in industries if i is not None})
 
+    # Пропуск блока Р* привязан к ЧИСЛУ НАПРАВЛЕНИЙ, РАВНОМУ ЕДИНИЦЕ, а не
+    # к флагу reduced: при двух направлениях reduced тоже истинен, но уровни
+    # портфеля и направления уже различимы, и шаг нужен. При одном они
+    # совпадают, и шесть пунктов Р* переспрашивают блок Р. Расчёт не меняется:
+    # resolve_line_items берёт ответ Р для линий 5 и 6, когда Р* нет.
+    single_object = len(objects) == 1
+
     # Подсказка привязана к отрасли портфеля: у направлений отрасли могут
     # различаться, и одну подсказку под общим пунктом выбрать нельзя.
     def hint_for(code: str) -> str | None:
@@ -176,7 +183,7 @@ async def build_questionnaire(db: AsyncSession, portfolio: M3Portfolio) -> dict:
         "portfolio_id": portfolio.id,
         "market_items": pack(market),
         "object_items": pack(obj_codes),
-        "override_items": pack(override),
+        "override_items": [] if single_object else pack(override),
         "arbiter_items": pack(arb_codes, arbiter=True),
         "objects": objects,
     }
@@ -453,6 +460,27 @@ async def load_content(db: AsyncSession) -> dict[tuple[str, str], M3Content]:
     return best
 
 
+def _zone_block(result: dict, content: dict):
+    """
+    Блок зоны с откатом. В сокращённом режиме сначала ищется zone_reduced,
+    и только при его отсутствии берётся общий zone.
+
+    Откат, а не обязательная пара: две зоны из девяти в одиночном отчёте
+    лгут прямым текстом («источник денег для остального портфеля»,
+    «останется одним из»), остальные семь читаются нормально. Заводить им
+    строки-дубликаты значит завести семь мест, где тексты разойдутся.
+
+    Тот же приём, что у контурного переопределения в fin_content: запись
+    существует только там, где она что-то меняет.
+    """
+    key = result["cell_key"]
+    if result.get("reduced"):
+        override = content.get(("zone_reduced", key))
+        if override is not None:
+            return override
+    return content.get(("zone", key))
+
+
 def compose_narrative(result: dict, content: dict) -> list[dict]:
     """
     Композиционная сборка вместо 64 уникальных текстов:
@@ -461,22 +489,32 @@ def compose_narrative(result: dict, content: dict) -> list[dict]:
 
     Отсутствующий блок пропускается молча: контентная работа идёт
     параллельно разработке, и незаполненный текст не должен ронять отчёт.
+
+    Наружу зона отдаётся с kind 'zone' в обоих режимах. На этом значении
+    завязаны обе вёрстки: m3_pdf печатает по нему баннер «Типичная ошибка»,
+    веб — свой блок. Режим меняет текст, а не структуру отчёта.
     """
+    out = []
+
+    zone = _zone_block(result, content)
+    if zone is not None:
+        out.append({
+            "kind": "zone", "key": result["cell_key"],
+            "title": zone.title, "body": zone.body, "mistake": zone.mistake,
+        })
+
     keys = [
-        ("zone", result["cell_key"]),
         ("weak_line", f"weak_L{result['weak_line']}"),
         ("strong_line", f"strong_L{result['strong_line']}"),
     ] + [("tension", t) for t in result["tensions"]]
 
-    out = []
     for kind, key in keys:
         block = content.get((kind, key))
         if block is None:
             continue
         out.append({
             "kind": kind, "key": key, "title": block.title,
-            "body": block.body,
-            "mistake": block.mistake if kind == "zone" else None,
+            "body": block.body, "mistake": None,
         })
     return out
 

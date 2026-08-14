@@ -244,7 +244,7 @@ class M3Content(Base):
     __table_args__ = (
         UniqueConstraint("kind", "key", "industry_id", name="uq_m3_content"),
         CheckConstraint(
-            "kind IN ('zone','weak_line','strong_line','tension')",
+            "kind IN ('zone','zone_reduced','weak_line','strong_line','tension')",
             name="chk_m3_content_kind",
         ),
     )
