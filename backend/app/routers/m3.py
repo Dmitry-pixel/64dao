@@ -535,7 +535,7 @@ async def admin_put_content(
         row = M3Content(kind=body.kind, key=body.key, industry_id=body.industry_id)
         db.add(row)
     row.title, row.body, row.mistake = body.title, body.body, body.mistake
-    row.is_active = True
+    row.is_active = body.is_active
     await db.flush()
     return {"id": row.id, "kind": row.kind, "key": row.key}
 

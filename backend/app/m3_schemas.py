@@ -26,6 +26,25 @@ MIN_SHARE = 3.0            # доля ниже 3% не различима на �
 MIN_COVERAGE = 80.0        # покрытие выручки портфелем
 
 
+def _bounds() -> tuple[int, int]:
+    """
+    Действующие границы числа направлений: из конфига, иначе дефолты выше.
+
+    Литералы OBJECTS_MIN/MAX остаются потолком позиции и запасным вариантом,
+    но проверку количества больше не задают. Копия константы в схеме уже
+    стоила режима: расчёт опустил минимум до единицы, а PUT objects
+    продолжал отбивать портфель из одного направления, и войти
+    в сокращённый режим через интерфейс было нельзя.
+    """
+    from app.m3_config import DEFAULT_M3_CONFIG, read_m3_config
+    try:
+        cfg = read_m3_config()
+    except Exception:
+        cfg = DEFAULT_M3_CONFIG
+    return (int(cfg.get("objects_min", OBJECTS_MIN)),
+            int(cfg.get("objects_max", OBJECTS_MAX)))
+
+
 # ── Портфель ──────────────────────────────────────────────────────────────────
 class M3PortfolioCreate(BaseModel):
     title: str | None = Field(default=None, max_length=255)
@@ -53,10 +72,10 @@ class M3ObjectsPut(BaseModel):
     @field_validator("objects")
     @classmethod
     def check_count(cls, v: list[M3ObjectIn]) -> list[M3ObjectIn]:
-        if not OBJECTS_MIN <= len(v) <= OBJECTS_MAX:
+        lo, hi = _bounds()
+        if not lo <= len(v) <= hi:
             raise ValueError(
-                f"Направлений должно быть от {OBJECTS_MIN} до {OBJECTS_MAX}, "
-                f"получено {len(v)}"
+                f"Направлений должно быть от {lo} до {hi}, получено {len(v)}"
             )
         positions = [o.position for o in v]
         if len(set(positions)) != len(positions):
@@ -483,12 +502,19 @@ class M3WeightUpsert(BaseModel):
 
 
 class M3ContentUpsert(BaseModel):
-    kind: Literal["zone", "weak_line", "strong_line", "tension"]
+    # zone_reduced: версия блока зоны для одиночного режима. Без него
+    # админка упиралась бы в 422 ровно на тех записях, ради которых
+    # экран и делается.
+    kind: Literal["zone", "zone_reduced", "weak_line",
+                  "strong_line", "tension"]
     key: str = Field(min_length=1, max_length=20)
     title: str = Field(min_length=1, max_length=255)
     body: str = Field(min_length=1)
     mistake: str | None = None
     industry_id: int | None = Field(default=None, ge=1, le=18)
+    # Флажок «Активно» в админке. Раньше PUT всегда ставил True,
+    # и выключить блок из интерфейса было нельзя.
+    is_active: bool = True
 
 
 class M3HintUpsert(BaseModel):
