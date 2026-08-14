@@ -140,7 +140,15 @@ export default function M3Survey({
   const [busy, setBusy] = useState(false)
 
   const steps: Step[] = useMemo(() => {
-    const out: Step[] = [{ kind: 'ranks' }, { kind: 'market' }]
+    // Порядок приоритета определён только через сравнение направлений.
+    // При одном ранжировать нечего: селект с единственным местом это вопрос
+    // без содержания, а rank_comparison при reduced в отчёте подавлен и
+    // spearman не считается. Граница та же, что у блока Р*, и по той же
+    // причине: единица, а не флаг reduced. При двух направлениях порядок
+    // осмыслен, и шаг остаётся.
+    const out: Step[] = objects.length > 1
+      ? [{ kind: 'ranks' }, { kind: 'market' }]
+      : [{ kind: 'market' }]
     for (const o of objects) {
       out.push({ kind: 'object', objectId: o.id, name: o.name, position: o.position })
     }
