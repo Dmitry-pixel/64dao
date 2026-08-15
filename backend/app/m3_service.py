@@ -151,6 +151,10 @@ async def build_questionnaire(db: AsyncSession, portfolio: M3Portfolio) -> dict:
     # совпадают, и шесть пунктов Р* переспрашивают блок Р. Расчёт не меняется:
     # resolve_line_items берёт ответ Р для линий 5 и 6, когда Р* нет.
     single_object = len(objects) == 1
+    # Порядок приоритета сравнивается с расчётным только в полном режиме:
+    # при reduced rank_comparison подавлен, и ответ не выводится никуда.
+    # Граница здесь portfolio_min, а НЕ единица, в отличие от Р* выше.
+    ask_ranks = len(objects) >= get_config()["portfolio_min"]
 
     # Подсказка привязана к отрасли портфеля: у направлений отрасли могут
     # различаться, и одну подсказку под общим пунктом выбрать нельзя.
@@ -186,6 +190,7 @@ async def build_questionnaire(db: AsyncSession, portfolio: M3Portfolio) -> dict:
         "override_items": [] if single_object else pack(override),
         "arbiter_items": pack(arb_codes, arbiter=True),
         "objects": objects,
+        "ask_ranks": ask_ranks,
     }
 
 

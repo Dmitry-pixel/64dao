@@ -421,6 +421,18 @@ class TestQuestionnaire:
         assert all(not i["is_arbiter"] for i in q["object_items"])
         assert all(i["is_arbiter"] for i in q["arbiter_items"])
 
+    @pytest.mark.parametrize("n,expected", [(1, False), (2, False), (3, True)])
+    async def test_ask_ranks_follows_portfolio_min(self, auth_client, m3_on, seeded, n, expected):
+        """Граница здесь portfolio_min, а не единица, в отличие от блока Р*:
+        при reduced rank_comparison подавлен и ответу некуда деться."""
+        pid = (await auth_client.post(f"{M3}/portfolios", json={"industry_id": 2})).json()["id"]
+        objs = [{"position": i + 1, "name": f"Направление {i + 1}"} for i in range(n)]
+        rp = await auth_client.put(f"{M3}/portfolios/{pid}/objects", json={"objects": objs})
+        assert rp.status_code < 300, rp.text
+        q = (await auth_client.get(f"{M3}/portfolios/{pid}/questionnaire")).json()
+        assert q["ask_ranks"] is expected
+        assert bool(q["override_items"]) is (n > 1)
+
     async def test_industry_hint_attached(self, auth_client, m3_on, seeded):
         r = await auth_client.post(f"{M3}/portfolios", json={"industry_id": 12})
         pid = r.json()["id"]

@@ -130,7 +130,7 @@ export default function M3Survey({
   questionnaire, saving = false, error = null,
   onSaveRanks, onSave, onArbiters, onCalculate, onCancel,
 }: M3SurveyProps) {
-  const { market_items, object_items, override_items, objects } = questionnaire
+  const { market_items, object_items, override_items, objects, ask_ranks } = questionnaire
 
   const [answers, setAnswers] = useState<Record<string, number | null>>({})
   const [ranks, setRanks] = useState<Record<string, number | null>>({})
@@ -140,13 +140,11 @@ export default function M3Survey({
   const [busy, setBusy] = useState(false)
 
   const steps: Step[] = useMemo(() => {
-    // Порядок приоритета определён только через сравнение направлений.
-    // При одном ранжировать нечего: селект с единственным местом это вопрос
-    // без содержания, а rank_comparison при reduced в отчёте подавлен и
-    // spearman не считается. Граница та же, что у блока Р*, и по той же
-    // причине: единица, а не флаг reduced. При двух направлениях порядок
-    // осмыслен, и шаг остаётся.
-    const out: Step[] = objects.length > 1
+    // Спрашивать ли порядок приоритета, решает сервер: поле ask_ranks
+    // в анкете. Граница там portfolio_min, а не единица, — при двух
+    // направлениях rank_comparison в отчёте подавлен и ответу некуда
+    // деться. Не переписывать обратно на objects.length > 1.
+    const out: Step[] = ask_ranks
       ? [{ kind: 'ranks' }, { kind: 'market' }]
       : [{ kind: 'market' }]
     for (const o of objects) {
@@ -154,7 +152,7 @@ export default function M3Survey({
     }
     out.push({ kind: 'arbiter' }, { kind: 'review' })
     return out
-  }, [objects])
+  }, [objects, ask_ranks])
 
   const step = steps[idx]
 

@@ -182,6 +182,7 @@ class M3QuestionnaireOut(BaseModel):
     override_items: list[M3ItemOut]
     arbiter_items: list[M3ItemOut]
     objects: list[M3ObjectOut]
+    ask_ranks: bool
 
 
 class M3AnswerIn(BaseModel):

@@ -119,6 +119,7 @@ export interface M3Questionnaire {
   object_items: M3Item[]
   override_items: M3Item[]
   arbiter_items: M3Item[]
+  ask_ranks: boolean
   objects: M3Object[]
 }
 
