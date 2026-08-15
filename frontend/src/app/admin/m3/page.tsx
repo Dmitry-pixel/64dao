@@ -241,9 +241,16 @@ export default function M3AdminPage() {
                         {' '}Активно
                       </label>
                     </div>
-                    {!saved && (
+                    {!saved && (kind === 'zone_reduced' ? (
+                      // Пустой слот здесь не недоделка, а действующий откат
+                      // к общему тексту зоны. Красное «Не заполнено» на семи
+                      // карточках из девяти читалось как незаконченная работа.
+                      <p style={S.mute}>
+                        Переопределения нет: в одиночный отчёт идёт общий текст зоны
+                      </p>
+                    ) : (
                       <p style={{ ...S.mute, color: '#c0392b' }}>Не заполнено</p>
-                    )}
+                    ))}
                     <label style={S.label}>Заголовок</label>
                     <input style={S.input} value={d.title}
                       onChange={e => edit(kind, slot.key, { title: e.target.value })} />
