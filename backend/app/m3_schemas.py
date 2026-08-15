@@ -416,7 +416,9 @@ class M3AnalysisOut(BaseModel):
     yin_table: list[M3YinRow]
     constraints: list[M3ConstraintOut]
     metrics: list[M3MetricReading]
-    tact_note: str
+    # None при reduced: раздел 03 не считается. Пустая строка сказала бы,
+    # что он посчитан и вышел пустым, а это разные вещи.
+    tact_note: str | None = None
     # None, если порядок не назван: сравнивать нечего.
     rank_comparison: M3RankComparison | None = None
 

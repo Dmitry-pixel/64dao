@@ -433,6 +433,56 @@ class TestQuestionnaire:
         assert q["ask_ranks"] is expected
         assert bool(q["override_items"]) is (n > 1)
 
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    async def test_ranks_asked_iff_comparison_shown(self, auth_client, m3_on, seeded, n):
+        """
+        Анкета спрашивает порядок приоритета тогда и только тогда, когда
+        отчёт показывает сравнение с ним. Дефект, ради которого тест
+        написан, выглядел иначе: раздел отчёта заглушили, а вопрос
+        в анкете остался, и ответ уходил в снимок впустую.
+
+        Две стороны правятся в разных файлах, и тест связывает их в одном
+        утверждении: изменится любая в одиночку — упадёт.
+
+        Отвечать надо всякий раз, когда спросили. rank_comparison равен
+        None ещё и когда порядок не назван, и без ответа инвариант
+        выполнялся бы по ложной причине.
+        """
+        pid = (await auth_client.post(
+            f"{M3}/portfolios", json={"industry_id": 2})).json()["id"]
+        objs = [{"position": i + 1, "name": f"Направление {i + 1}"} for i in range(n)]
+        rp = await auth_client.put(f"{M3}/portfolios/{pid}/objects", json={"objects": objs})
+        assert rp.status_code == 200, rp.text
+
+        q = (await auth_client.get(f"{M3}/portfolios/{pid}/questionnaire")).json()
+
+        # Отвечаем только на то, что анкета спросила: при одном направлении
+        # блока Р* в ней нет, и лишние коды слать неоткуда взять.
+        asked = {i["code"] for i in q["market_items"]}
+        payload = [{"item_code": c, "value": v}
+                   for c, v in MARKET_ANSWERS.items() if c in asked]
+        ra = await auth_client.post(f"{M3}/portfolios/{pid}/answers", json={"answers": payload})
+        assert ra.status_code == 200, ra.text
+
+        by_pos = {o["position"]: o["id"] for o in q["objects"]}
+        for pos in range(1, n + 1):
+            payload = [{"item_code": c, "value": v, "object_id": by_pos[pos]}
+                       for c, v in OBJECT_ANSWERS[pos].items()]
+            ra = await auth_client.post(
+                f"{M3}/portfolios/{pid}/answers", json={"answers": payload})
+            assert ra.status_code == 200, ra.text
+
+        if q["ask_ranks"]:
+            rr = await auth_client.put(f"{M3}/portfolios/{pid}/owner-ranks",
+                                       json={"ranks": list(range(n, 0, -1))})
+            assert rr.status_code == 200, rr.text
+
+        rc = await auth_client.post(f"{M3}/portfolios/{pid}/calculate")
+        assert rc.status_code == 200, rc.text
+        rep = (await auth_client.get(f"{REPORTS}/{pid}")).json()
+
+        assert q["ask_ranks"] is (rep["analysis"]["rank_comparison"] is not None)
+
     async def test_industry_hint_attached(self, auth_client, m3_on, seeded):
         r = await auth_client.post(f"{M3}/portfolios", json={"industry_id": 12})
         pid = r.json()["id"]

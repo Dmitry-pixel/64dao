@@ -268,7 +268,7 @@ export interface M3Analysis {
   yin_table: M3YinRow[]
   constraints: M3Constraint[]
   metrics: M3MetricReading[]
-  tact_note: string
+  tact_note: string | null
   /** null, если порядок не назван: сравнивать нечего. */
   rank_comparison: M3RankComparison | null
 }
