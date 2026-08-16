@@ -18,8 +18,8 @@ def block(title, body, mistake=None):
 
 def content():
     return {
-        ("zone", "high_low"): block("Сбор урожая", "общий", "ошибка общая"),
-        ("zone_reduced", "high_low"): block("Сбор урожая", "одиночный", "ошибка одиночная"),
+        ("zone", "high_low"): block("Рынок исчерпан, удержание", "общий", "ошибка общая"),
+        ("zone_reduced", "high_low"): block("Рынок исчерпан, удержание", "одиночный", "ошибка одиночная"),
         ("zone", "mid_high"): block("Незавершённое ядро", "общий", "ошибка общая"),
         ("weak_line", "weak_L3"): block("Слабая 3", "тело"),
         ("strong_line", "strong_L2"): block("Сильная 2", "тело"),

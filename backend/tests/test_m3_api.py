@@ -866,7 +866,7 @@ class TestAdmin:
 
     async def test_content_upsert(self, admin_client, m3_on, seeded):
         r = await admin_client.put("/api/admin/m3/content", json={
-            "kind": "zone", "key": "high_low", "title": "Сбор урожая",
+            "kind": "zone", "key": "high_low", "title": "Рынок исчерпан, удержание",
             "body": "Правленый текст зоны.", "mistake": "Правленая ошибка.",
         })
         assert r.status_code == 200
