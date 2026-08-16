@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import {
-  MIN_COVERAGE, MIN_SHARE, OBJECTS_MAX, OBJECTS_MIN, getLimits,
+  MIN_COVERAGE, MIN_SHARE, OBJECTS_MAX, OBJECTS_MIN, PORTFOLIO_MIN, getLimits,
   type M3Limits,
   PROFITABILITY_LABELS,
   type M3Industry, type M3ObjectIn, type M3Profitability,
@@ -200,33 +200,44 @@ export default function PortfolioForm({
       out.push('У каждого направления должно быть название.')
     }
 
-    const shares = objects.map(o => o.revenue_share).filter((s): s is number => s !== null)
-    if (shares.length) {
-      if (shares.some(s => s < MIN_SHARE)) {
-        out.push(
-          `Минимальная доля направления — ${MIN_SHARE}%. Направление меньшего ` +
-          'размера не различимо на карте портфеля и искажает индекс защиты.',
-        )
-      }
-      const total = shares.reduce((a, b) => a + b, 0)
-      if (total > 100) {
-        out.push(`Сумма долей ${total.toFixed(1)}% превышает 100%.`)
-      }
-      if (shares.length === objects.length && total < MIN_COVERAGE) {
-        out.push(
-          `Направления покрывают ${total.toFixed(1)}% выручки при минимуме ` +
-          `${MIN_COVERAGE}%. Портфель, из которого выпала половина бизнеса, ` +
-          'не отвечает на вопрос о распределении ресурса.',
-        )
-      }
-    }
-
     if (objects.filter(o => o.is_new_venture).length > 1) {
       out.push('Новым направлением может быть отмечено только одно.')
     }
 
+    const shares = objects.map(o => o.revenue_share).filter((s): s is number => s !== null)
+    if (shares.length) {
+      const total = shares.reduce((a, b) => a + b, 0)
+      if (total > 100) {
+        out.push(`Сумма долей ${total.toFixed(1)}% превышает 100%.`)
+      }
+
+      // Оба порога ниже охраняют портфельные разделы отчёта: карту долей
+      // выручки и индекс защиты. Ниже portfolio_min отчёт их не печатает,
+      // и сервер эти проверки не применяет. Границу и сами числа берём
+      // оттуда же: свои копии на фронте уже расходились с бэкендом дважды.
+      const pmin = limits?.portfolio_min ?? PORTFOLIO_MIN
+      const minShare = limits?.min_share ?? MIN_SHARE
+      const minCoverage = limits?.min_coverage ?? MIN_COVERAGE
+
+      if (objects.length >= pmin) {
+        if (shares.some(s => s < minShare)) {
+          out.push(
+            `Минимальная доля направления — ${minShare}%. Направление меньшего ` +
+            'размера не различимо на карте портфеля и искажает индекс защиты.',
+          )
+        }
+        if (shares.length === objects.length && total < minCoverage) {
+          out.push(
+            `Направления покрывают ${total.toFixed(1)}% выручки при минимуме ` +
+            `${minCoverage}%. Портфель, из которого выпала половина бизнеса, ` +
+            'не отвечает на вопрос о распределении ресурса.',
+          )
+        }
+      }
+    }
+
     return out
-  }, [objects])
+  }, [objects, limits])
 
   const shareTotal = objects
     .map(o => o.revenue_share)

@@ -22,8 +22,29 @@ CellLevel = Literal["low", "mid", "high"]
 # не зависит.
 OBJECTS_MIN = 3
 OBJECTS_MAX = 8
+PORTFOLIO_MIN = 3          # ниже порога портфельный слой не считается
 MIN_SHARE = 3.0            # доля ниже 3% не различима на карте портфеля
 MIN_COVERAGE = 80.0        # покрытие выручки портфелем
+
+
+def _cfg() -> dict:
+    """Действующий конфиг Метода 3, при недоступности файла — дефолты."""
+    from app.m3_config import DEFAULT_M3_CONFIG, read_m3_config
+    try:
+        return read_m3_config()
+    except Exception:
+        return DEFAULT_M3_CONFIG
+
+
+def _portfolio_min() -> int:
+    """
+    Порог, ниже которого портфельный слой не считается.
+
+    Источник тот же, что у расчёта (m3_scoring: reduced = n < portfolio_min)
+    и у состава анкеты (m3_service.build_questionnaire: ask_ranks). Литерал
+    PORTFOLIO_MIN остаётся только запасным вариантом.
+    """
+    return int(_cfg().get("portfolio_min", PORTFOLIO_MIN))
 
 
 def _bounds() -> tuple[int, int]:
@@ -36,11 +57,7 @@ def _bounds() -> tuple[int, int]:
     продолжал отбивать портфель из одного направления, и войти
     в сокращённый режим через интерфейс было нельзя.
     """
-    from app.m3_config import DEFAULT_M3_CONFIG, read_m3_config
-    try:
-        cfg = read_m3_config()
-    except Exception:
-        cfg = DEFAULT_M3_CONFIG
+    cfg = _cfg()
     return (int(cfg.get("objects_min", OBJECTS_MIN)),
             int(cfg.get("objects_max", OBJECTS_MAX)))
 
@@ -84,26 +101,44 @@ class M3ObjectsPut(BaseModel):
 
     @model_validator(mode="after")
     def check_shares(self):
+        # Отметка нового направления от долей не зависит. Стояла последней,
+        # после раннего возврата по пустым долям, и портфель без единой доли
+        # мог прийти с двумя новыми направлениями. Проверка перенесена вверх.
+        if sum(1 for o in self.objects if o.is_new_venture) > 1:
+            raise ValueError("Новым направлением может быть отмечено только одно")
+
         shares = [o.revenue_share for o in self.objects if o.revenue_share is not None]
         if not shares:
             return self
+
+        total = sum(shares)
+        if total > 100.0 + 1e-6:
+            raise ValueError(f"Сумма долей {total:g}% превышает 100%")
+
+        # Обе проверки ниже охраняют портфельные разделы: карту долей выручки
+        # и индекс защиты. Ниже portfolio_min отчёт их не печатает, и правило
+        # отбивает ввод ради раздела, которого не будет. Это третий случай
+        # ловушки «подавление раздела не отменяет вопроса на входе»: до него
+        # были шаг Р* и порядок приоритетов.
+        #
+        # Доля при этом остаётся рабочим полем и в сокращённом режиме: на ней
+        # держится флаг SCALE_CONTRADICTION уровня направления. Поэтому порог
+        # снимается, а поле не убирается.
+        if len(self.objects) < _portfolio_min():
+            return self
+
         if any(s < MIN_SHARE for s in shares):
             raise ValueError(
                 f"Минимальная доля направления — {MIN_SHARE:g}%. Направление "
                 "меньшего размера не различимо на карте портфеля и искажает "
                 "индекс защиты."
             )
-        total = sum(shares)
-        if total > 100.0 + 1e-6:
-            raise ValueError(f"Сумма долей {total:g}% превышает 100%")
         if len(shares) == len(self.objects) and total < MIN_COVERAGE:
             raise ValueError(
                 f"Направления покрывают {total:g}% выручки при минимуме "
                 f"{MIN_COVERAGE:g}%. Портфель, из которого выпала половина "
                 "бизнеса, не отвечает на вопрос о распределении ресурса."
             )
-        if sum(1 for o in self.objects if o.is_new_venture) > 1:
-            raise ValueError("Новым направлением может быть отмечено только одно")
         return self
 
 
@@ -202,6 +237,10 @@ class M3LimitsOut(BaseModel):
     objects_min: int
     objects_max: int
     portfolio_min: int
+    # Отдаются наружу, потому что форма держала свои копии и продолжила бы
+    # отбивать ввод после того, как сервер порог снял.
+    min_share: float
+    min_coverage: float
     reduced_warning: str
 
 

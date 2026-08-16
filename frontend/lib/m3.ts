@@ -152,6 +152,8 @@ export type M3Limits = {
   objects_min: number
   objects_max: number
   portfolio_min: number
+  min_share: number
+  min_coverage: number
   reduced_warning: string
 }
 
@@ -397,6 +399,7 @@ export function postTradeoff(id: string, body: M3TradeoffIn) {
 // собственные копии этих чисел на фронте уже расходились с бэкендом.
 export const OBJECTS_MIN = 1
 export const OBJECTS_MAX = 8
+export const PORTFOLIO_MIN = 3
 export const MIN_SHARE = 3
 export const MIN_COVERAGE = 80
 

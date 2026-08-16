@@ -293,14 +293,37 @@ class TestAccess:
 
 # ── Состав портфеля ───────────────────────────────────────────────────────────
 class TestObjects:
-    async def test_too_few_rejected(self, auth_client, m3_on):
+    async def test_empty_objects_rejected(self, auth_client, m3_on):
+        """
+        «Слишком мало» — это ноль, а не два.
+
+        Раньше тест подавал два направления контрольного кейса и ждал 422.
+        Но objects_min равен единице, и счётчик два направления никогда
+        не отбивал: их отбивал MIN_COVERAGE, потому что доли 45 и 30 дают
+        75% при минимуме 80. Тест проходил по другой причине, чем обещает
+        имя. Снятие порога ниже portfolio_min это обнажило.
+        """
+        r = await auth_client.post(f"{M3}/portfolios", json={})
+        pid = r.json()["id"]
+        r = await auth_client.put(
+            f"{M3}/portfolios/{pid}/objects",
+            json={"objects": []},
+        )
+        assert r.status_code == 422
+
+    async def test_two_objects_accepted_as_reduced(self, auth_client, m3_on):
+        """
+        Два направления — законный сокращённый портфель, а не ошибка ввода.
+        Покрытие 75% ниже portfolio_min не проверяется: карты долей в отчёте
+        не будет, охранять нечего.
+        """
         r = await auth_client.post(f"{M3}/portfolios", json={})
         pid = r.json()["id"]
         r = await auth_client.put(
             f"{M3}/portfolios/{pid}/objects",
             json={"objects": CONTROL_OBJECTS[:2]},
         )
-        assert r.status_code == 422
+        assert r.status_code == 200
 
     async def test_too_many_rejected(self, auth_client, m3_on):
         r = await auth_client.post(f"{M3}/portfolios", json={})

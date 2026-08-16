@@ -31,6 +31,7 @@ from app.m3_models import (
     M3TradeoffDecision, M3Weight,
 )
 from app.m3_schemas import (
+    MIN_COVERAGE, MIN_SHARE,
     M3AnswersIn, M3ArbiterOut, M3ChecklistStepOut, M3ChecklistToggle,
     M3ContentUpsert, M3HintUpsert, M3ItemUpsert, M3LimitsOut,
     M3ObjectsPut, M3OwnerRanks,
@@ -107,6 +108,8 @@ async def limits():
         objects_min=cfg["objects_min"],
         objects_max=cfg["objects_max"],
         portfolio_min=cfg["portfolio_min"],
+        min_share=MIN_SHARE,
+        min_coverage=MIN_COVERAGE,
         reduced_warning=REDUCED_WARNING,
     )
 
