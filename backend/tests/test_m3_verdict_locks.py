@@ -6,8 +6,6 @@
 расчёт. Жанр тот же, что у test_single_object_share_below_coverage_rejected:
 поведение закреплено, чтобы его не изменили мимоходом.
 """
-import pytest
-
 from app import m3_verdict as vd
 
 
@@ -64,12 +62,6 @@ def test_every_reachable_combination_has_verdict():
     assert missing == [], f"Комбинации без вердикта: {missing}"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="('limited','stable') и ('exit','stable') несут дословно "
-           "одинаковый текст «Пересборка или выход». Найдено ревизией "
-           "15 августа, текст за владельцем. Снять маркер вместе с правкой.",
-)
 def test_verdicts_are_pairwise_distinct():
     """
     Таблица двумерна ровно затем, чтобы разные состояния расходились
@@ -78,6 +70,11 @@ def test_verdicts_are_pairwise_distinct():
     различие, которое метод измеряет.
 
     Ожидается 28 ключей и 28 разных строк.
+
+    Один дубль был: ('limited','stable') и ('exit','stable') несли дословно
+    «Пересборка или выход». Найден вычиткой, а не тестом: проверки тогда
+    ещё не существовало. Закрыт правкой текста exit+stable, limited+stable
+    оставлен как есть — там средний рынок, и пересборка обоснована.
     """
     seen: dict[str, tuple] = {}
     collisions = []
