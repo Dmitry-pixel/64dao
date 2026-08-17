@@ -120,6 +120,15 @@ export default function SampleReportModal({
           consent: true,
         }),
       })
+      // 429 приходит от лимитера по IP. Раньше он падал в общий catch и
+      // человек видел «попробуйте ещё раз» — пробовал, получал то же самое
+      // и уходил. Сообщение должно называть причину, иначе повтор бесполезен.
+      if (res.status === 429) {
+        if (tab) tab.close()
+        setError('Слишком много запросов с вашего адреса. Попробуйте через минуту.')
+        setLoading(false)
+        return
+      }
       if (!res.ok) throw new Error(await res.text())
       const data = await res.json()
       // Файл могли ещё не загрузить в админку: контакт при этом сохранён,

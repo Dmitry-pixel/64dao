@@ -18,6 +18,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.limiter import limiter
+from app.routers.sample_report import REQUEST_RATE_LIMIT
 from app.models import SampleLead
 from app.sample_report_store import file_for
 
@@ -196,17 +197,22 @@ async def test_leads_expose_new_columns(client: AsyncClient, admin_client: Async
 
 @pytest.mark.asyncio
 async def test_rate_limit_applies(client: AsyncClient):
-    """Шестой запрос за минуту отбивается.
+    """Запрос сверх потолка отбивается.
+
+    Число берём из REQUEST_RATE_LIMIT, а не пишем цифрой: потолок уже
+    поднимали с 5 до 20, и захардкоженный тест пришлось бы править следом
+    — либо он молча проверял бы не то.
 
     Отдельный IP в заголовке — чтобы тест не зависел от того, сколько
     запросов сделали соседние тесты: _client_ip читает x-real-ip первым.
     """
+    limit = int(REQUEST_RATE_LIMIT.split("/")[0])
     _write_pdf("1")
     headers = {"x-real-ip": "203.0.113.77"}
     limiter.enabled = True
     try:
         codes = []
-        for _ in range(6):
+        for _ in range(limit + 1):
             res = await client.post(
                 "/api/sample-report/request",
                 json={**PAYLOAD, "method": "1"},
@@ -216,8 +222,8 @@ async def test_rate_limit_applies(client: AsyncClient):
     finally:
         limiter.enabled = False
 
-    assert codes[:5] == [200] * 5
-    assert codes[5] == 429
+    assert codes[:limit] == [200] * limit
+    assert codes[limit] == 429
 
 
 @pytest.mark.asyncio

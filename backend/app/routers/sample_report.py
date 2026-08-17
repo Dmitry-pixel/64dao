@@ -42,6 +42,14 @@ SOURCE_BY_PRODUCT = {
     "m3": "sample_m3",
     "methodology": "methodology",
 }
+# Потолок на IP, а не на человека: ключ — x-real-ip, и офис за одним NAT
+# делит счётчик на всех. При 5/мин шестой коллега, открывший ссылку из
+# корпоративного чата, не мог оставить контакт. 20 выбрано как запас на
+# такую группу; злоупотребление формой ограничено тем, что адрес указывает
+# сам заявитель — разослать письма третьим лицам через неё нельзя.
+# Тест читает значение отсюда, менять только здесь.
+REQUEST_RATE_LIMIT = "20/minute"
+
 SOURCE_LABEL = {
     "sample_m12": "Пример отчёта · Методы 1-2",
     "sample_m3": "Пример отчёта · Метод 3",
@@ -68,7 +76,7 @@ class SampleLeadRequest(BaseModel):
 
 
 @router.post("/request")
-@limiter.limit("5/minute")
+@limiter.limit(REQUEST_RATE_LIMIT)
 async def request_sample(
     body: SampleLeadRequest,
     request: Request,
