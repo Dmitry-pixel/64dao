@@ -20,17 +20,25 @@ UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/var/www/64dao/uploads")
 FILES = {
     "m12": Path(UPLOAD_DIR) / "sample_report.pdf",
     "m3": Path(UPLOAD_DIR) / "sample_report_m3.pdf",
+    # Описание методологии — не пример отчёта, а отдельный документ. Слот заведён
+    # здесь, а не отдельным модулем: хранение, загрузка и выдача у него ровно те
+    # же, отличаются только имя файла и подпись в админке.
+    "methodology": Path(UPLOAD_DIR) / "methodology_64dao.pdf",
 }
 
 DOWNLOAD_NAMES = {
     "m12": "Example_report_64DAO.pdf",
     "m3": "Example_report_64DAO_Method3.pdf",
+    "methodology": "Methodology_64DAO.pdf",
 }
 
 DEFAULT_PRODUCT = "m12"
 
 # Лендинг и админка оперируют номером метода, бэкенд — кодом продукта.
-_BY_METHOD = {"1": "m12", "2": "m12", "12": "m12", "3": "m3"}
+_BY_METHOD = {
+    "1": "m12", "2": "m12", "12": "m12", "3": "m3",
+    "methodology": "methodology",
+}
 
 
 def product_for(method: str | None) -> str:

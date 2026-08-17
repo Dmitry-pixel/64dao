@@ -307,8 +307,18 @@ class SampleLead(Base):
 
     id:         Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
     name:       Mapped[str]       = mapped_column(String(200), nullable=False)
+    # channel/address оставлены как есть: на них завязаны старые строки, отправка
+    # письма и CSV. У новой формы канал всегда 'email', address дублирует email —
+    # так строки до и после переезда формы остаются сравнимыми.
     channel:    Mapped[str]       = mapped_column(String(20), nullable=False)   # email | telegram | max
     address:    Mapped[str]       = mapped_column(String(320), nullable=False)
+    # Контакты новой формы. Nullable — у строк, собранных старой формой, их нет.
+    email:      Mapped[str | None]= mapped_column(String(320), nullable=True)
+    phone:      Mapped[str | None]= mapped_column(String(64), nullable=True)
+    max_addr:   Mapped[str | None]= mapped_column("max_address", String(320), nullable=True)
+    tg_addr:    Mapped[str | None]= mapped_column("telegram_address", String(320), nullable=True)
+    # Какая кнопка привела лида: одна форма обслуживает методику и два примера.
+    source:     Mapped[str | None]= mapped_column(String(32), nullable=True)
     consent:    Mapped[bool]      = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     ip:         Mapped[str | None]= mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime]  = mapped_column(DateTime(timezone=True), server_default=func.now())

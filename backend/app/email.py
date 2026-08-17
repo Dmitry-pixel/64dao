@@ -105,21 +105,46 @@ async def send_account_status_email(to: str, name: str | None, activated: bool) 
     await _send_message(to, subject, _wrap_html(body), _sender(key))
 
 
-async def send_sample_report_email(to: str, name: str | None = None) -> None:
-    """Письмо с примером отчёта (PDF во вложении)."""
+# Подписи документов, которые уходят этой формой. Держим здесь, а не в
+# роутере: письмо — единственное место, где они видны получателю.
+_SAMPLE_DOC_TITLE = {
+    "m12": ("Пример отчёта — 64 ДАО", "пример стратегического отчёта"),
+    "m3": ("Пример отчёта · Метод 3 — 64 ДАО", "пример отчёта по Методу 3 «Матрица силы»"),
+    "methodology": ("Методика 64DAO", "описание методологии"),
+}
+
+
+async def send_sample_report_email(
+    to: str, name: str | None = None, method: str | None = None
+) -> None:
+    """Письмо с запрошенным документом (PDF во вложении).
+
+    Раньше вложение было зашито на файл примера Методов 1-2, из-за чего запрос
+    Метода 3 или методики приводил к письму с чужим PDF. Файл берём из того же
+    хранилища, что и выдача по HTTP.
+    """
+    from app.sample_report_store import (
+        file_for as _file_for,
+        product_for as _product_for,
+        download_name_for as _download_name_for,
+    )
+
+    product = _product_for(method)
+    subject, doc_phrase = _SAMPLE_DOC_TITLE[product]
+
     name_part = f", {name}" if name else ""
     body_html = _wrap_html(
         f"<p>Здравствуйте{name_part}!</p>"
-        "<p>Во вложении — пример стратегического отчёта <b>64 ДАО</b>. "
+        f"<p>Во вложении — {doc_phrase} <b>64 ДАО</b>. "
         "Он также открылся у вас в браузере.</p>"
         "<p style=\"color:#999;font-size:12px;\">Команда 64DAO</p>"
     )
     if settings.debug:
-        logger.info("=== DEBUG SAMPLE REPORT === email=%s ===", to)
+        logger.info("=== DEBUG SAMPLE REPORT === email=%s product=%s ===", to, product)
         return
 
     msg = MIMEMultipart("mixed")
-    msg["Subject"] = "Пример отчёта — 64 ДАО"
+    msg["Subject"] = subject
     msg["From"] = f"64DAO <{settings.smtp_from_address}>"
     msg["To"] = to
 
@@ -127,10 +152,10 @@ async def send_sample_report_email(to: str, name: str | None = None) -> None:
     alt.attach(MIMEText(body_html, "html", "utf-8"))
     msg.attach(alt)
 
-    sample_file = Path("/var/www/64dao/uploads/sample_report.pdf")
+    sample_file = _file_for(method)
     if sample_file.exists():
         part = MIMEApplication(sample_file.read_bytes(), _subtype="pdf")
-        part.add_header("Content-Disposition", "attachment", filename="64dao-sample-report.pdf")
+        part.add_header("Content-Disposition", "attachment", filename=_download_name_for(method))
         msg.attach(part)
 
     await aiosmtplib.send(

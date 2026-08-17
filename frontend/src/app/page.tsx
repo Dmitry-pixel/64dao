@@ -8,6 +8,7 @@ import ContactSection from '@/components/ContactSection'
 import CookieBanner from '@/components/CookieBanner'
 import LandingFonts from '@/components/LandingFonts'
 import JsonLd from '@/components/JsonLd'
+import SampleReportButton from '@/components/SampleReportButton'
 import { buildFaqSchema } from '@/lib/faqData'
 
 export const metadata: Metadata = {
@@ -578,10 +579,10 @@ export default async function HomePage() {
               <p style={{ marginTop: 24, maxWidth: 420, fontSize: 16, lineHeight: 1.6, color: 'rgba(255,255,255,0.7)' }}>
                 Обезличенный отчёт реальной компании — пролистайте структуру, тон и глубину разбора, чтобы решать осознанно, а не вслепую.
               </p>
-              {/* TODO: заменить на /api/sample-report, когда backend-эндпоинт будет готов (отдельный шаг) */}
-              <a href="/api/sample-report" style={{ marginTop: 40, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2, background: 'var(--background)', padding: '14px 24px', fontSize: 14, fontWeight: 500, color: 'var(--foreground)', textDecoration: 'none' }}>
+              {/* Форма сбора контактов — как у «Посмотреть пример отчёта» в первом экране. */}
+              <SampleReportButton method="1" style={{ marginTop: 40, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2, background: 'var(--background)', padding: '14px 24px', fontSize: 14, fontWeight: 500, color: 'var(--foreground)', textDecoration: 'none' }}>
                 Скачать пример отчёта
-              </a>
+              </SampleReportButton>
             </div>
             <div>
               <div style={{ borderRadius: 2, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.04)', padding: 32 }}>
@@ -750,9 +751,9 @@ export default async function HomePage() {
                 <a href="/m3" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, borderRadius: 6, background: 'var(--brand-navy)', padding: '15px 26px', fontSize: 15, fontWeight: 500, color: 'var(--background)', textDecoration: 'none' }}>
                   Пройти диагностику <span aria-hidden="true">→</span>
                 </a>
-                <a href="/api/sample-report?method=3" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, borderRadius: 6, border: '1px solid rgba(26,37,64,0.22)', background: 'var(--background)', padding: '15px 26px', fontSize: 15, fontWeight: 500, color: 'var(--foreground)', textDecoration: 'none' }}>
+                <SampleReportButton method="3" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, borderRadius: 6, border: '1px solid rgba(26,37,64,0.22)', background: 'var(--background)', padding: '15px 26px', fontSize: 15, fontWeight: 500, color: 'var(--foreground)', textDecoration: 'none' }}>
                   Скачать пример отчёта
-                </a>
+                </SampleReportButton>
               </div>
             </div>
 

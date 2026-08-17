@@ -4,13 +4,15 @@ import { useRouter } from 'next/navigation'
 import { getMe, adminApi } from '@/lib/api'
 import { AdminNav, AdminSide } from '@/components/AdminNav'
 
-// Слотов два: Методы 1-2 продаются одним тарифом и показываются одним блоком
-// лендинга, поэтому пример у них общий. У Метода 3 свой.
+// Слотов три. Методы 1-2 продаются одним тарифом и показываются одним блоком
+// лендинга, поэтому пример у них общий; у Метода 3 свой. Методика — не пример
+// отчёта, а описание методологии, но загрузка и выдача у неё те же, поэтому
+// она живёт здесь же отдельным слотом, а не на своей странице.
 const SLOTS = [
   {
     method: '1',
     title: 'Методы 1 и 2',
-    hint: 'Кнопки «Посмотреть пример отчёта» в первом экране и в блоке «Что в отчёте»',
+    hint: 'Кнопки «Посмотреть пример отчёта» и «Скачать пример отчёта» в первом экране и в блоке «Что в отчёте»',
     viewUrl: '/api/sample-report/view',
   },
   {
@@ -18,6 +20,12 @@ const SLOTS = [
     title: 'Метод 3 · Матрица силы',
     hint: 'Кнопка «Скачать пример отчёта» в блоке «Матрица силы»',
     viewUrl: '/api/sample-report/view?method=3',
+  },
+  {
+    method: 'methodology',
+    title: 'Методика 64DAO',
+    hint: 'Кнопка «Методика 64DAO» в шапке сайта',
+    viewUrl: '/api/sample-report/view?method=methodology',
   },
 ] as const
 
@@ -167,10 +175,10 @@ export default function AdminSampleReportPage() {
           <div style={{ marginBottom: 28 }}>
             <span className="label-red">Документы</span>
             <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 28, fontWeight: 400, color: 'var(--text)', margin: '6px 0 4px' }}>
-              Пример отчёта
+              Документы лендинга
             </h1>
             <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'var(--text-mute)', margin: 0 }}>
-              PDF-файлы, доступные посетителям лендинга без регистрации. По одному на тариф.
+              PDF-файлы, которые посетитель получает после заполнения формы с контактами. Контакты — в разделе «Сбор адресов».
             </p>
           </div>
 

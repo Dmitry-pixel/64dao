@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
+import SampleReportModal from '@/components/SampleReportModal'
 
 /**
  * SiteNav — липкая шапка сайта.
@@ -16,8 +17,12 @@ import { useState } from 'react'
  */
 export default function SiteNav() {
   const [open, setOpen] = useState(false)
+  // Методика отдаётся через ту же форму сбора контактов, что и примеры
+  // отчётов: отдельная страница-скачивание дублировала бы и форму, и лид.
+  const [methodOpen, setMethodOpen] = useState(false)
 
   return (
+    <>
     <header
       className="site-nav"
       style={{
@@ -67,6 +72,31 @@ export default function SiteNav() {
         </nav>
 
         {/* CTA (desktop) */}
+        <div className="site-nav__cta-group" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button
+          type="button"
+          onClick={() => setMethodOpen(true)}
+          className="site-nav__method"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 2,
+            background: 'transparent',
+            border: '1px solid rgba(31,58,82,0.35)',
+            padding: '11px 18px',
+            fontSize: 12,
+            fontWeight: 500,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: '#1f3a52',
+            whiteSpace: 'nowrap',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          Методика 64DAO
+        </button>
         <a href="/login"
           className="site-nav__cta"
           style={{
@@ -85,6 +115,7 @@ export default function SiteNav() {
         >
           Пройти диагностику
         </a>
+        </div>
 
         {/* Бургер-кнопка (mobile) */}
         <button
@@ -131,6 +162,29 @@ export default function SiteNav() {
         <Link href="/about" onClick={() => setOpen(false)} style={{ color: '#1f3a52', textDecoration: 'none', padding: '10px 0' }}>О нас</Link>
         <a href="#contact" onClick={() => setOpen(false)} style={{ color: '#1f3a52', textDecoration: 'none', padding: '10px 0' }}>Контакты</a>
         <Link href="/login" onClick={() => setOpen(false)} style={{ color: '#1f3a52', textDecoration: 'none', padding: '10px 0' }}>Вход / Регистрация</Link>
+        <button
+          type="button"
+          onClick={() => { setOpen(false); setMethodOpen(true) }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 2,
+            background: 'transparent',
+            border: '1px solid rgba(31,58,82,0.35)',
+            padding: '12px 20px',
+            marginTop: 8,
+            fontSize: 13,
+            fontWeight: 500,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: '#1f3a52',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          Методика 64DAO
+        </button>
         <a href="/login"
           onClick={() => setOpen(false)}
           style={{
@@ -159,7 +213,8 @@ export default function SiteNav() {
           .site-nav__links {
             display: none !important;
           }
-          .site-nav__cta {
+          .site-nav__cta,
+          .site-nav__cta-group {
             display: none !important;
           }
           .site-nav__burger {
@@ -179,5 +234,11 @@ export default function SiteNav() {
         }
       `}</style>
     </header>
+
+    {/* Модалка вынесена из <header>: у него backdrop-filter, а он создаёт
+        containing block для position:fixed — внутри шапки оверлей прижался бы
+        к её высоте вместо всего экрана. */}
+    <SampleReportModal open={methodOpen} onClose={() => setMethodOpen(false)} method="methodology" />
+    </>
   )
 }
