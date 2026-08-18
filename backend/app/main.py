@@ -9,6 +9,9 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import asyncpg
+from sqlalchemy.exc import DBAPIError
+
 from app.limiter import limiter
 from slowapi.errors import RateLimitExceeded
 
@@ -75,6 +78,49 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+# ── Ошибки данных в запросе ───────────────────────────────────────────────────
+def _is_data_error(exc: BaseException | None) -> bool:
+    """Есть ли в цепочке причин asyncpg.DataError.
+
+    SQLAlchemy заворачивает исключение драйвера дважды: DBAPIError.orig — это
+    AsyncAdapt_asyncpg_dbapi.Error, а настоящий DataError лежит в его
+    __cause__. Проверять по строке сообщения нельзя — текст меняется от
+    версии к версии драйвера.
+    """
+    seen: set[int] = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        if isinstance(exc, asyncpg.exceptions.DataError):
+            return True
+        exc = getattr(exc, "__cause__", None)
+    return False
+
+
+@app.exception_handler(DBAPIError)
+async def db_error_handler(request: Request, exc: DBAPIError):
+    """Некорректный идентификатор в пути -> 400, а не 500 со стектрейсом.
+
+    Фронт умеет подставить в путь литерал "null": на /purchases кнопка
+    «Открыть» строила ссылку из order.assessment_id, который пуст у заказов
+    Метода 3 и у кредитов, купленных заранее. asyncpg отвечал DataError
+    «invalid UUID», и каждый такой заход писал в логи полный стектрейс как
+    внутреннюю ошибку сервера.
+
+    Один обработчик вместо валидации в 26 эндпоинтах с UUID в пути: он
+    закрывает и те, что появятся позже. Настоящие ошибки БД по-прежнему
+    уходят в 500 с трассировкой.
+    """
+    if _is_data_error(getattr(exc, "orig", None)):
+        logger.warning("Некорректный параметр в запросе %s: %s",
+                       request.url.path, getattr(exc, "orig", exc))
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "Некорректный идентификатор в запросе"},
+        )
+    logger.error("Ошибка БД на %s: %s", request.url.path, exc, exc_info=True)
+    return JSONResponse(status_code=500, content={"error": "Внутренняя ошибка сервера"})
+
 
 # ── Global error handler ──────────────────────────────────────────────────────
 @app.exception_handler(Exception)
