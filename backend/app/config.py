@@ -98,6 +98,12 @@ class Settings(BaseSettings):
     tochka_webhook_secret: str = ""    # НЕ используется в новой схеме проверки (см. ниже) —
                                         # оставлено для обратной совместимости, можно удалить.
 
+    # Путь к CA-бандлу для проверки TLS-сертификата enter.tochka.com.
+    # Бандл (стандартные CA + Минцифры) собирается в backend/Dockerfile,
+    # значение по умолчанию приходит из ENV TOCHKA_CA_BUNDLE того же образа.
+    # Пустая строка или несуществующий файл -> дефолтное хранилище httpx.
+    tochka_ca_bundle: str = ""
+
     # Налоговый режим для чека (54-ФЗ). ИП на УСН доходы.
     tochka_tax_system_code: str = "usn_income"  # osn | usn_income | usn_income_outcome | esn | patent
     # Ставка НДС в чеке НЕ здесь — см. app/tax_settings.py (переключатель
