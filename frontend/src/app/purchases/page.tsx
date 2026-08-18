@@ -144,9 +144,17 @@ export default function PurchasesPage() {
                         </span>
                       </td>
                       <td style={{ ...S.td, display: 'flex', gap: 8 }}>
-                        <button style={S.btnAction} onClick={() => router.push(`/report/${o.assessment_id}`)}>
-                          Открыть
-                        </button>
+                        {/* Источник 500 на /api/assessments/null: у заказов Метода 3
+                            и у кредитов, купленных заранее, привязки к диагностике
+                            нет, а шаблонная строка превращала null в "null". */}
+                        {o.assessment_id && (
+                          <button style={S.btnAction} onClick={() => router.push(`/report/${o.assessment_id}`)}>
+                            Открыть
+                          </button>
+                        )}
+                        {!o.assessment_id && !reportId && (
+                          <span style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.4)' }}>—</span>
+                        )}
                         {reportId && (
                           <a href={`${API}/api/reports/${reportId}/download`} target="_blank" rel="noreferrer" style={S.btnActionGhost}>
                             ↓ PDF
