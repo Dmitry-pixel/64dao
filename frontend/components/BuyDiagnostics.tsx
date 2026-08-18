@@ -9,6 +9,7 @@
  * Балансы продуктов раздельные: кредит Методов 1 и 2 нельзя потратить на
  * Метод 3 — цены разные.
  */
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { getPricing, type PricingProduct } from '@/lib/api'
 
@@ -115,6 +116,20 @@ export default function BuyDiagnostics({ m3Enabled }: { m3Enabled: boolean }) {
           </div>
         )
       })}
+
+      {/* Путь восстановления, а не предупреждение: клиент, у которого браузер
+          заблокировал страницу оплаты Точки, возвращается сюда кнопкой «назад».
+          Сервер эту ошибку не видит — TLS падает до редиректа, failRedirectUrl
+          не срабатывает. Подробности: DEPLOY.md, раздел 8a. */}
+      <div style={{
+        fontFamily: 'sans-serif', fontSize: 11, lineHeight: 1.5,
+        color: 'rgba(26,37,64,0.45)', marginBottom: 10,
+      }}>
+        Не открывается страница оплаты?{' '}
+        <Link href="/help/payment-certificate" style={{ color: 'rgba(26,37,64,0.6)' }}>
+          Возможно, нужен сертификат Минцифры →
+        </Link>
+      </div>
 
       {note && (
         <div style={{
