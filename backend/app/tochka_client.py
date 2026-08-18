@@ -12,6 +12,8 @@
      и теперь передаёт обязательные поля paymentMode, Items, Client.email,
      taxSystemCode — без них Точка отвечала бы 400 (эти поля required в схеме).
 """
+import logging
+import os
 import time
 
 import httpx
@@ -21,9 +23,46 @@ from jwt.algorithms import RSAAlgorithm
 from app.config import get_settings
 from app.tochka_settings import get_jwt_token
 
+logger = logging.getLogger(__name__)
+
 settings = get_settings()
 
 TOCHKA_PUBLIC_KEY_URL = "https://enter.tochka.com/doc/openapi/static/keys/public"
+
+
+def _resolve_ca_bundle() -> str | bool:
+    """Что передавать в httpx verify= для вызовов к Точке.
+
+    Бандл (стандартные CA + корневой и выпускающий Минцифры) собирается в
+    backend/Dockerfile, путь приходит из ENV TOCHKA_CA_BUNDLE. Нужен на случай
+    перехода Точки с TrustAsia на НУЦ Минцифры: этого CA нет ни в certifi,
+    ни в ca-certificates Debian.
+
+    Возврат True = дефолтное хранилище. Это фолбэк, а не «выключить проверку»:
+    verify=False здесь недопустим — JWT банка уходит в заголовке Authorization,
+    соединение без проверки цепочки означает риск утечки токена.
+    """
+    path = (settings.tochka_ca_bundle or "").strip()
+    if not path:
+        logger.warning(
+            "TOCHKA_CA_BUNDLE не задан — используется дефолтное хранилище CA. "
+            "См. backend/certs/README.md"
+        )
+        return True
+    if not os.path.isfile(path):
+        logger.error(
+            "TOCHKA_CA_BUNDLE=%s не существует — откат на дефолтное хранилище CA. "
+            "Проверьте, что образ пересобран (docker compose build backend), "
+            "а не только перезапущен.",
+            path,
+        )
+        return True
+    return path
+
+
+# Считается один раз при импорте: путь в рантайме не меняется, а os.path.isfile
+# на каждый запрос — лишний syscall. После правки .env нужен рестарт контейнера.
+TOCHKA_SSL_VERIFY: str | bool = _resolve_ca_bundle()
 _PUBLIC_KEY_TTL_SECONDS = 3600  # раз в час; ключ может обновляться на стороне Точки
 
 _public_key_cache: dict = {"key": None, "fetched_at": 0.0}
@@ -39,7 +78,7 @@ async def _get_tochka_public_key():
     if _public_key_cache["key"] and now - _public_key_cache["fetched_at"] < _PUBLIC_KEY_TTL_SECONDS:
         return _public_key_cache["key"]
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=10.0, verify=TOCHKA_SSL_VERIFY) as client:
         resp = await client.get(TOCHKA_PUBLIC_KEY_URL)
         resp.raise_for_status()
         jwk_dict = resp.json()
@@ -128,7 +167,7 @@ class TochkaClient:
             data["merchantId"] = self.merchant_id
 
         payload = {"Data": data}
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, verify=TOCHKA_SSL_VERIFY) as client:
             resp = await client.post(
                 f"{self.base_url}/uapi/acquiring/v1.0/payments_with_receipt",
                 json=payload,
@@ -138,7 +177,7 @@ class TochkaClient:
             return resp.json()
 
     async def get_payment_status(self, operation_id: str) -> dict:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, verify=TOCHKA_SSL_VERIFY) as client:
             resp = await client.get(
                 f"{self.base_url}/uapi/acquiring/v1.0/payments/{operation_id}",
                 headers=self._headers(),
@@ -157,7 +196,7 @@ class TochkaClient:
         # "Field Data : Field required" (воспроизведено на боевом возврате
         # тестового платежа 1 ₽). Рабочее тело — {"Data": {"amount": N}}.
         payload = {"Data": {"amount": float(amount)}}
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, verify=TOCHKA_SSL_VERIFY) as client:
             resp = await client.post(
                 f"{self.base_url}/uapi/acquiring/v1.0/payments/{operation_id}/refund",
                 json=payload,
