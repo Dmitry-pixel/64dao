@@ -154,6 +154,7 @@ export function AdminSide({ current }: AdminSideProps) {
       </Link>
       <Link href="/admin/pricing" className={current === 'pricing' ? 'on' : ''}>Тариф & цена</Link>
       <Link href="/admin/payment-settings" className={current === 'payment-settings' ? 'on' : ''}>Настройка оплаты</Link>
+      <Link href="/admin/orders" className={current === 'orders' ? 'on' : ''}>Заказы и возвраты</Link>
       <Link href="/admin/test-payment" className={current === 'test-payment' ? 'on' : ''}>Тест оплаты</Link>
       <Link href="/admin/email-templates" className={current === 'email-templates' ? 'on' : ''}>Email-шаблоны</Link>
       <Link href="/admin/reminders" className={current === 'reminders' ? 'on' : ''}>Рассылка</Link>

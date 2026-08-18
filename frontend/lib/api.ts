@@ -296,8 +296,49 @@ export interface RemindersSettings {
   repeat_days:    number
 }
 
+export interface AdminOrder {
+  id: string
+  user_email: string
+  product: 'm12' | 'm3'
+  amount: number
+  currency: string
+  status: 'pending' | 'paid' | 'failed' | 'refunded'
+  tochka_operation_id: string | null
+  paid_at: string | null
+  created_at: string
+  /** Считается бэкендом по тем же условиям, что проверяет refund_order. */
+  can_refund: boolean
+}
+
+export interface AdminOrdersResponse {
+  items: AdminOrder[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface RefundResult {
+  status: string
+  revoked_assessments: number
+  revoked_followup_rights: number
+}
+
 export const adminApi = {
   stats:          () => request('/api/admin/stats'),
+
+  orders: (params: { status?: string; q?: string; limit?: number; offset?: number } = {}) => {
+    const qs = new URLSearchParams()
+    if (params.status) qs.set('status', params.status)
+    if (params.q) qs.set('q', params.q)
+    qs.set('limit', String(params.limit ?? 100))
+    qs.set('offset', String(params.offset ?? 0))
+    return request<AdminOrdersResponse>(`/api/payments/admin/orders?${qs.toString()}`)
+  },
+  // Путь без /admin: эндпоинт возврата живёт в payments-роутере с самого
+  // начала и защищён require_admin — переносить его ради симметрии URL
+  // значило бы ломать существующий контракт.
+  refundOrder: (orderId: string) =>
+    request<RefundResult>(`/api/payments/${orderId}/refund`, { method: 'POST' }),
   users:          () => request('/api/admin/users'),
   strategies:     () => request('/api/admin/strategies'),
   getStrategy:    (id: string) => request(`/api/admin/strategies/${id}`),

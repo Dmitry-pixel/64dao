@@ -650,7 +650,7 @@ async def get_order_status(
 @router.post("/{order_id}/refund")
 async def refund_order(
     order_id: str,
-    _admin: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -695,6 +695,11 @@ async def refund_order(
     revoked = await revoke_order_access(db, order)
 
     await db.commit()
+    # След в логах обязателен: возврат — движение денег, а таблица orders
+    # хранит только итоговый статус и не помнит, кто его поставил.
+    logger.info("Refund by admin %s: order %s, amount %s %s, operation %s",
+                admin.email, order.id, order.amount, order.currency,
+                order.tochka_operation_id)
     return {"status": "refunded",
             "revoked_assessments": revoked["assessments"],
             "revoked_followup_rights": revoked["followup_rights"]}
@@ -742,6 +747,66 @@ async def reconcile_orders(
     await db.commit()
     return {"checked": len(rows), "marked_paid": marked_paid,
             "marked_refunded": marked_refunded, "errors": errors}
+
+
+@router.get("/admin/orders")
+async def admin_list_orders(
+    status: str | None = None,
+    q: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Все заказы с email покупателя — источник данных для кнопки возврата.
+
+    До появления этого эндпоинта возврат существовал только как
+    POST /{order_id}/refund без интерфейса, и операция выполнялась из консоли
+    браузера. Для движения денег это недопустимо: ошибка в id возвращала
+    средства не тому клиенту, без подтверждения и без следа в UI.
+
+    q ищет по email покупателя и по идентификатору операции Точки. Поиск по
+    id заказа не делаем: это UUID, который админ в глаза не видел, — email
+    и сумма опознаются быстрее.
+
+    can_refund считается здесь, а не на фронте: условия должны совпадать с
+    проверками refund_order, иначе кнопка будет предлагать невозможное.
+    """
+    base = select(Order, User.email).join(User, User.id == Order.user_id)
+
+    if status:
+        base = base.where(Order.status == status)
+    if q and q.strip():
+        pattern = f"%{q.strip()}%"
+        base = base.where(
+            User.email.ilike(pattern)
+            | func.coalesce(Order.tochka_operation_id, "").ilike(pattern)
+        )
+
+    total = (await db.execute(
+        select(func.count()).select_from(base.subquery())
+    )).scalar_one()
+
+    rows = (await db.execute(
+        base.order_by(Order.created_at.desc())
+            .limit(max(1, min(limit, 500)))
+            .offset(max(offset, 0))
+    )).all()
+
+    items = [{
+        "id": str(o.id),
+        "user_email": email,
+        "product": o.product,
+        "amount": float(o.amount),
+        "currency": o.currency,
+        "status": o.status,
+        "tochka_operation_id": o.tochka_operation_id,
+        "paid_at": o.paid_at.isoformat() if o.paid_at else None,
+        "created_at": o.created_at.isoformat(),
+        "can_refund": o.status == "paid" and bool(o.tochka_operation_id),
+    } for o, email in rows]
+
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 # ── НДС: переключатель (для будущего admin UI) ──────────────────────────────
