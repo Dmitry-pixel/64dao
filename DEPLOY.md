@@ -361,10 +361,12 @@ TrustAsia отзовут, Точка перейдёт на НУЦ Минцифр
 cd /var/www/64dao
 ./deploy/scripts/fetch-russian-ca.sh
 docker compose build backend
-docker compose up -d backend
+docker compose up -d --force-recreate backend
 ```
 
 docker compose restart НЕДОСТАТОЧНО: сертификаты вкомпилированы в образ.
+--force-recreate тоже обязателен — без него compose оставляет работать
+контейнер на старом образе (наступали 2026-08-18, см. раздел 11).
 
 Проверенные отпечатки SHA-256:
 
@@ -581,6 +583,26 @@ bash deploy/scripts/deploy.sh --mode docker
 ```bash
 bash /var/www/64dao/deploy/scripts/deploy.sh --mode systemd
 ```
+
+### Ручная пересборка одного сервиса
+
+```bash
+docker compose build frontend
+docker compose up -d --force-recreate frontend
+```
+
+`--force-recreate` обязателен. Без него `docker compose up -d` может оставить
+контейнер на прежнем образе и ответить `Running` вместо `Started` — сборка
+проходит, а в проде остаётся старый код. Проверка, что развернулось именно то,
+что собрано:
+
+```bash
+docker inspect --format 'контейнер: {{.Image}}' dao64_frontend
+docker images --no-trunc --format 'образ:      {{.ID}}' 64dao-frontend
+```
+
+Идентификаторы должны совпадать. Скрипт `deploy.sh` этой ошибке не подвержен:
+он вызывает `up -d --force-recreate`.
 
 ### Быстрый перезапуск без пересборки
 ```bash
