@@ -26,15 +26,9 @@ RUN playwright install --with-deps chromium
 COPY certs/russian_trusted_root_ca.crt certs/russian_trusted_sub_ca.crt \
      /usr/local/share/ca-certificates/russian-trusted/
 
-RUN update-ca-certificates && \
-    mkdir -p /etc/ssl/tochka && \
-    { python -c "import certifi; print(open(certifi.where()).read())" \
-        2>/dev/null || cat /etc/ssl/certs/ca-certificates.crt; } \
-      > /etc/ssl/tochka/tochka-ca-bundle.pem && \
-    cat /usr/local/share/ca-certificates/russian-trusted/russian_trusted_root_ca.crt \
-        /usr/local/share/ca-certificates/russian-trusted/russian_trusted_sub_ca.crt \
-      >> /etc/ssl/tochka/tochka-ca-bundle.pem && \
-    test "$(grep -c 'BEGIN CERTIFICATE' /etc/ssl/tochka/tochka-ca-bundle.pem)" -gt 50
+COPY scripts/build_ca_bundle.py /usr/local/bin/build_ca_bundle.py
+
+RUN update-ca-certificates && python /usr/local/bin/build_ca_bundle.py
 
 # Бандл «стандартные CA + Минцифры». Явный verify= в клиенте Точки оставляет
 # доверие к CA Минцифры в границах вызовов к банку.

@@ -36,6 +36,10 @@ fetch() {
     rm -f "$out.tmp"; exit 1
   fi
 
+  # gu-st.ru отдаёт CRLF и без хвостового перевода строки — нормализуем,
+  # иначе конкатенация в бандл склеит END и BEGIN в одну строку.
+  sed -i "s/\r$//" "$out.tmp"
+  [ -n "$(tail -c1 "$out.tmp")" ] && echo >> "$out.tmp"
   mv "$out.tmp" "$out"
 }
 
