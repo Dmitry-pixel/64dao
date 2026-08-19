@@ -63,7 +63,9 @@ def test_layout_matches_web_reference(case_name):
     case = CASES[case_name]
     placed = layout(case["results"], case["shares"])
 
-    for result, expected in zip(case["results"], REFERENCE[case_name]):
+    # Без strict короткий эталон молча уменьшал бы число проверенных точек,
+    # и тест проходил бы, сверив меньше, чем обещает.
+    for result, expected in zip(case["results"], REFERENCE[case_name], strict=True):
         p = placed[result["object_id"]]
         where = f"{case_name}/{result['object_id']}"
         assert p.x == expected["x"], f"{where}: координата X разошлась с вебом"

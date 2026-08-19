@@ -1026,7 +1026,9 @@ def test_route_and_verdict_move_together():
     verdict = _enclosing_styles(html, "Зона матрицы")
     assert route and verdict, "не нашли ни маршрут, ни вердикт"
 
-    common = [a for a, b in zip(route, verdict) if a == b]
+    # Цепочки предков у маршрута и вердикта разной глубины — сравнивается их
+    # общий префикс, поэтому усечение по короткой здесь и есть нужное поведение.
+    common = [a for a, b in zip(route, verdict, strict=False) if a == b]
     assert any("page-break-inside:avoid" in style for style in common), (
         "маршрут и вердикт должны лежать в общей обёртке с запретом разрыва")
 

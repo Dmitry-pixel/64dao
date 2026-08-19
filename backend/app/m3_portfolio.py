@@ -284,7 +284,7 @@ def rank_comparison(
 
     ordered = sorted(results, key=lambda r: r["position"])
     rows = []
-    for r, owner in zip(ordered, owner_ranks):
+    for r, owner in zip(ordered, owner_ranks, strict=True):
         rows.append({
             "position": r["position"],
             "name": r["name"],

@@ -46,7 +46,7 @@ def _tsx_pairs(rel_path: str) -> list[tuple[str, str]]:
     b = re.findall(r"b: '(.*?)'", src)[:6]
     if len(a) != 6 or len(b) != 6:
         pytest.skip(f"{rel_path}: формулировки больше не объявлены локально ({len(a)}/{len(b)})")
-    return list(zip(a, b))
+    return list(zip(a, b, strict=True))
 
 
 def test_structure_is_complete():
