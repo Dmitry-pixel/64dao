@@ -43,7 +43,9 @@ def test_no_finance_flag_on_draft_method1_ok():
 
 
 def test_completed_with_valid_finance_scores():
-    res, comb = resolve_submission_finance(control_answers(), status="completed", is_method1=True, finance_required=True)
+    res, comb = resolve_submission_finance(
+        control_answers(), status="completed", is_method1=True, finance_required=True
+    )
     assert comb == "AAAABB"
     assert res["hexagram_current"]["number"] == 34
 
