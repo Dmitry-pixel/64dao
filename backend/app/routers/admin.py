@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File
@@ -12,12 +13,15 @@ from app.config import get_settings
 from app.db import get_db
 from app.limiter import limiter
 from app.models import User, Assessment, AssessmentContour, Report, Strategy, Order, LifecycleStage, AccessGrant
+from app.pricing_store import read_pricing, write_pricing
+from app.sample_report_store import file_for as sample_report_file_for
 from app.schemas import (
     AdminSetupRequest, AdminStats, LogEntry,
     StrategyCreate, StrategyUpdate, StrategyOut, StrategyListItem,
     UserOut, AssessmentOut, ImpersonateStatus, SuccessResponse, ContourBrief,
     AccessGrantCreate, AccessGrantOut,
 )
+from app.tochka_settings import masked_view as _tochka_masked_view, write_tochka_settings
 
 settings = get_settings()
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -516,14 +520,10 @@ async def start_impersonation(
     return SuccessResponse(message=f"Вы вошли как {target.email}")
 
 
-import json
-
-
 # ── Тариф и цена ──────────────────────────────────────────────────────────────
 # Раньше здесь были собственные DEFAULT_PRICING/PRICING_FILE/_read_pricing/
 # _write_pricing — продублированные с routers/pricing.py. Теперь оба места
 # (и payments.py) читают/пишут через общий app/pricing_store.py.
-from app.pricing_store import read_pricing, write_pricing
 
 
 @router.get("/pricing")
@@ -544,7 +544,6 @@ async def update_pricing(body: dict, _: User = Depends(require_admin)):
 
 
 # ── Точка Банк: JWT-токен и Client ID (редактируются без пересборки) ─────────
-from app.tochka_settings import masked_view as _tochka_masked_view, write_tochka_settings
 
 
 @router.get("/tochka-settings")
@@ -698,7 +697,6 @@ async def impersonation_status(
 
 # Примеров два: Методы 1-2 и Метод 3. Пути — в sample_report_store, чтобы
 # константа не расползлась по двум роутерам, как было до этого.
-from app.sample_report_store import file_for as sample_report_file_for
 
 # Оставлено для совместимости со старым кодом и тестами.
 SAMPLE_REPORT_FILE = sample_report_file_for(None)

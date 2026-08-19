@@ -13,7 +13,9 @@ from playwright.async_api import Browser, Playwright, async_playwright
 
 from app.config import get_settings
 from app.finance_pdf import contour_section_html, finance_section_html, section_badge, summary_card_html
+from app.hexagrams import _HEXAGRAM_BY_COMBO
 from app.method1_questions import BASE_QUESTIONS, LC_LABELS  # дефолты
+from app.transition_block import transition_block
 
 # ── Singleton state ───────────────────────────────────────────────────────────
 _pw: Playwright | None = None
@@ -247,11 +249,6 @@ HEX_SYMBOLS = [
     "䷌","䷍","䷎","䷏","䷐","䷑","䷒","䷓","䷔","䷕","䷖","䷗",
     "䷘","䷙","䷚","䷛","䷜","䷝","䷞","䷟","䷠","䷡","䷢","䷣",
 ]
-
-# ── Hexagram data ─────────────────────────────────────────────────────────────
-# (number, name, combination)
-from app.hexagrams import _HEXAGRAM_BY_COMBO
-from app.transition_block import transition_block
 
 # Подписи блоков ЖЦ — из единого источника вопросов, без локальной копии.
 _LC_LABELS = LC_LABELS

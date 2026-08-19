@@ -12,6 +12,9 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from app.finance_interpret import build_interpretation
+from app.finance_scoring import compute_finance_result
+
 # Реестр гексаграмм — единый источник истины в app.hexagrams; pdf.py его
 # только потребляет и реэкспортирует не полностью (_HEXAGRAM_LIST там нет,
 # отсюда ImportError при коллекции). Тест реестра ходит в источник.
@@ -270,9 +273,6 @@ class TestLiveAPI:
 
 
 # ── Finance: next_steps / planned_steps ───────────────────────────────────────
-
-from app.finance_interpret import build_interpretation
-from app.finance_scoring import compute_finance_result
 
 _FIN_CONTENT_STUB = {
     "tonality": {}, "quadrant": {}, "trigram": {}, "tension_rule": {},
