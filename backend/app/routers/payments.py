@@ -2,6 +2,7 @@ import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from jwt import InvalidTokenError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -553,9 +554,19 @@ async def tochka_webhook(
 
     try:
         claims = await client.verify_and_decode_webhook(raw_body)
-    except Exception as e:
+    except (InvalidTokenError, UnicodeDecodeError) as e:
+        # Подпись не сходится или тело не разобрать: повтор ничего не изменит,
+        # а тестовому запросу Точки при создании подписки нужен именно 200.
         logger.warning("Tochka webhook: signature verification failed: %s", e)
         return {"status": "ignored", "reason": "invalid signature"}
+    except Exception as e:
+        # Здесь другое: подпись проверить НЕ УДАЛОСЬ — недоступен JWKS Точки,
+        # таймаут, сбой сети. Ответить 200 значило бы сказать банку
+        # «доставлено»: повторов больше не будет, и оплаченный заказ навсегда
+        # останется pending. 503 заставляет Точку повторить (30 раз с шагом
+        # 10 с), чего в этой ситуации мы и хотим.
+        logger.exception("Tochka webhook: проверка подписи недоступна — просим повтор")
+        raise HTTPException(status_code=503, detail="signature check unavailable") from e
 
     operation_id = claims.get("operationId")
     status = claims.get("status")
@@ -575,6 +586,18 @@ async def tochka_webhook(
     if not order:
         logger.info("Tochka webhook: no order for operationId=%s (test/unknown webhook)", operation_id)
         return {"status": "ignored", "reason": "order not found"}
+
+    # Публичный ключ у Точки общий для всех клиентов банка, поэтому валидная
+    # подпись сама по себе не значит «вебхук наш». Сверяем торговую точку.
+    # Пустое значение с любой стороны проверку пропускает: у заказов до
+    # появления поля merchant_id пуст, и ломать их обработку нельзя.
+    configured_merchant = (get_settings().tochka_merchant_id or "").strip()
+    expected_merchant = (order.merchant_id or "").strip() or configured_merchant
+    claim_merchant = str(claims.get("merchantId") or "").strip()
+    if expected_merchant and claim_merchant and claim_merchant != expected_merchant:
+        logger.warning("Tochka webhook: merchantId=%s не наш (ожидали %s), заказ %s не тронут",
+                       claim_merchant, expected_merchant, order.id)
+        return {"status": "ignored", "reason": "merchant mismatch"}
 
     # Сверка возврата с банком. Идемпотентно: повторный вебхук по уже
     # возвращённому заказу ничего не ломает.
