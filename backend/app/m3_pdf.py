@@ -1081,7 +1081,7 @@ def disclaimers_section(
         rows.append([e(flag), "Портфель целиком",
                      e(portfolio_flag_labels.get(flag, flag))])
     for item in objects:
-        result = item["result"] if "result" in item else item
+        result = item.get("result", item)
         for flag in result.get("flags") or []:
             rows.append([
                 e(flag),

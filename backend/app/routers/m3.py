@@ -364,7 +364,7 @@ async def post_tradeoff(
 
     known = {o.id for o in p.objects}
     assigned: set[uuid.UUID] = set()
-    for wave, ids in body.waves.items():
+    for ids in body.waves.values():
         for oid in ids:
             if oid not in known:
                 raise HTTPException(

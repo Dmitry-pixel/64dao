@@ -76,18 +76,20 @@ async def setup_test_database():
 
 @pytest_asyncio.fixture
 async def db_session(setup_test_database):
-    async with test_engine.connect() as connection:
-        async with connection.begin() as outer_transaction:
-            session = AsyncSession(
-                bind=connection,
-                expire_on_commit=False,
-                join_transaction_mode="create_savepoint",
-            )
-            try:
-                yield session
-            finally:
-                await session.close()
-                await outer_transaction.rollback()
+    async with (
+        test_engine.connect() as connection,
+        connection.begin() as outer_transaction,
+    ):
+        session = AsyncSession(
+            bind=connection,
+            expire_on_commit=False,
+            join_transaction_mode="create_savepoint",
+        )
+        try:
+            yield session
+        finally:
+            await session.close()
+            await outer_transaction.rollback()
 
 
 @pytest_asyncio.fixture

@@ -85,9 +85,11 @@ def probe_issuer(host: str = TOCHKA_HOST, bundle: str | None = None) -> str:
     ctx = ssl.create_default_context()
     if bundle:
         ctx.load_verify_locations(bundle)
-    with socket.create_connection((host, 443), timeout=15) as sock:
-        with ctx.wrap_socket(sock, server_hostname=host) as tls:
-            cert = tls.getpeercert() or {}
+    with (
+        socket.create_connection((host, 443), timeout=15) as sock,
+        ctx.wrap_socket(sock, server_hostname=host) as tls,
+    ):
+        cert = tls.getpeercert() or {}
     for rdn in cert.get("issuer", ()):
         for key, value in rdn:
             if key == "commonName":

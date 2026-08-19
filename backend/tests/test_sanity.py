@@ -3,6 +3,7 @@ Sanity-тесты для 64DAO backend.
 Запуск: cd backend && python -m pytest tests/test_sanity.py -v --tb=short
 """
 
+import contextlib
 import os
 import re
 import sys
@@ -39,10 +40,8 @@ class TestHexagramSVG:
         for m in re.finditer(r'<rect\s[^/]*/>', svg):
             attrs = {}
             for a in re.finditer(r'(\w+)="([^"]+)"', m.group()):
-                try:
+                with contextlib.suppress(ValueError):
                     attrs[a.group(1)] = float(a.group(2))
-                except ValueError:
-                    pass
             out.append(attrs)
         return out
 

@@ -47,7 +47,10 @@ _LINE_FLAG_TEXT = {
 def evaluate_rules(lines: list[dict]) -> list[str]:
     """Возвращает ID сработавших правил в порядке R1..R12."""
     L = {l["line"]: l for l in lines}
-    sym = lambda n: L[n]["symbol"]
+
+    def sym(n):
+        return L[n]["symbol"]
+
     moving = [n for n in L if L[n]["moving"]]
     has_moving = len(moving) >= 1
 

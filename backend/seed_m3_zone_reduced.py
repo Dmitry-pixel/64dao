@@ -74,7 +74,7 @@ async def main() -> None:
                              is_active=True))
             inserted += 1
         await db.commit()
-    print("INSERTED=%d SKIPPED=%d" % (inserted, skipped))
+    print(f"INSERTED={inserted} SKIPPED={skipped}")
 
 
 if __name__ == "__main__":
