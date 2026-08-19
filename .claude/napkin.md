@@ -132,6 +132,12 @@
 5. **[2026-07-30] Credit spend is bound to an order, not counted globally**
    Do instead: set `assessments.order_id` when spending (mirror of `grant_id`). Follow-up diagnostics are part of the parent purchase and must never consume a credit.
 
+6. **[2026-08-19] HTTP 200 to Tochka means "delivered" — never answer it on an error you could retry through**
+   Do instead: in the webhook, answer 200 only when a retry is pointless — bad signature, unknown order, foreign merchant, and the bank's own test request when a subscription is created. Anything that means "we could not check" (JWKS unreachable, timeout, DB failure) must raise 503 so Tochka retries 30 times at 10s intervals. A general `except Exception` returning 200 silently lost paid orders in `pending`, and the only safety net — `POST /api/payments/admin/reconcile` — is manual.
+
+7. **[2026-08-19] Tochka's public key is shared across all bank clients**
+   Do instead: a valid signature does NOT prove the webhook is ours — compare `claims["merchantId"]` with `order.merchant_id` (falling back to `tochka_merchant_id` when the order predates the column). An empty value on either side skips the check on purpose: old orders must keep working.
+
 ---
 ## Async SQLAlchemy & Schema (added 2026-07-30)
 1. **[2026-07-30] `orders.assessment_id` + `assessments.order_id` form an FK cycle**
