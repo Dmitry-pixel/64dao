@@ -1002,7 +1002,7 @@ async def notify_access_grant(
     try:
         await send_access_grant_email(user.email, user.full_name, grant.quota, grant.expires_at)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Не удалось отправить письмо: %s" % exc) from exc
+        raise HTTPException(status_code=502, detail=f"Не удалось отправить письмо: {exc}") from exc
     grant.email_sent_at = datetime.now(UTC)
     await db.flush()
     return _grant_out(grant, await grant_state(db, grant), user)

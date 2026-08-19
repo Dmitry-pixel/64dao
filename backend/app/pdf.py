@@ -270,7 +270,7 @@ def _lifecycle_blocks(strategy: Any, combination: str, with_lc: bool = True,
     labels = ([(q["lc_key"], q["label"]) for q in questions] if questions else _LC_LABELS)
 
     blocks_html = ""
-    for i, (field, label) in enumerate(labels):
+    for field, label in labels:
         value = (getattr(strategy, field, None) or "") if strategy else ""
         blocks_html += f"""
 <div style="background:rgba(255,255,255,0.5);border:1px solid rgba(26,37,64,0.1);border-radius:6px;padding:12px 14px;">
@@ -426,12 +426,15 @@ _LC_CHART_Y = [192, 98, 52, 138, 78]
 
 
 def _catmull(pts) -> str:
-    d = "M %.1f %.1f" % pts[0]
+    # %-формат с распаковкой кортежа точки читается лучше, чем f-string
+    # с двойной индексацией: f"M {pts[0][0]:.1f} {pts[0][1]:.1f}".
+    d = "M %.1f %.1f" % pts[0]  # noqa: UP031
     for i in range(len(pts) - 1):
         p0 = pts[i - 1] if i > 0 else pts[i]
         p1, p2 = pts[i], pts[i + 1]
         p3 = pts[i + 2] if i + 2 < len(pts) else pts[i + 1]
-        d += " C %.1f %.1f, %.1f %.1f, %.1f %.1f" % (
+        # Шесть координат подряд: f-string здесь длиннее и хуже читается.
+        d += " C %.1f %.1f, %.1f %.1f, %.1f %.1f" % (  # noqa: UP031
             p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6,
             p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6,
             p2[0], p2[1],

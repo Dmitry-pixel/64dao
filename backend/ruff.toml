@@ -20,10 +20,6 @@ ignore = [
   "E701", "E702",  # несколько инструкций в одной строке (25)
   "E402",   # отложенные импорты против циклических зависимостей (20)
   "B905",   # zip без strict= — правка меняет поведение (7)
-  "UP031",  # printf-форматирование (5)
-  "B007",   # unused-loop-control-variable (3)
-  "SIM105", "SIM117", "SIM401",  # стилистические упрощения (4)
-  "E731",   # lambda-assignment (1)
 ]
 
 exclude = [".venv", "venv", "__pycache__", "alembic/versions", "migrations"]

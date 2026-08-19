@@ -63,7 +63,7 @@ def test_render_substitutes_variables(isolated):
     assert "97" in body
     assert "https://64dao.ru/companies" in body
     for token in ("{name_part}", "{company_part}", "{days_since}", "{app_url}"):
-        assert token not in body, "плейсхолдер %s остался неподставленным" % token
+        assert token not in body, f"плейсхолдер {token} остался неподставленным"
 
 
 def test_render_unknown_key_returns_empty(isolated):

@@ -86,7 +86,7 @@ async def main():
         print("Старые стратегии удалены.")
 
         # Вставляем 64 новых
-        for n, name, combo, stage in HEXAGRAMS:
+        for _n, name, combo, stage in HEXAGRAMS:
             s = Strategy(
                 id=uuid.uuid4(),
                 combination=combo,

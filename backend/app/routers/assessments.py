@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import os
 import tempfile
@@ -465,10 +466,8 @@ async def stream_pdf_on_demand(
         with open(tmp_path, "rb") as f:  # noqa: ASYNC230
             pdf_bytes = f.read()
     finally:
-        try:
+        with contextlib.suppress(Exception):
             os.unlink(tmp_path)
-        except Exception:
-            pass
 
     safe_name = f"64dao-report-{str(assessment_id)[:8]}.pdf"
     return Response(
