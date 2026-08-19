@@ -11,6 +11,8 @@
 """
 from typing import TypedDict
 
+from app.contour_scoring import ContourSpec
+
 
 class FinanceItem(TypedDict):
     item_id: str
@@ -105,8 +107,6 @@ ITEMS_BY_BLOCK: dict[int, list[FinanceItem]] = {
 
 
 # ── Спецификация контура для обобщённого скоринга (этап 2 плана контуров) ─────
-from app.contour_scoring import ContourSpec
-
 FINANCE_SPEC = ContourSpec(
     key="finance",
     title="Финансовая функция",

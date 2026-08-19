@@ -14,8 +14,12 @@ from types import SimpleNamespace
 import pytest
 
 from app.m3_pdf import (
+    FLAG_LABELS,
     banner,
+    build_portfolio_report_html,
     data_status_banner,
+    disclaimers_section,
+    flag_location,
     footer_template,
     header_template,
     map_section,
@@ -27,6 +31,9 @@ from app.m3_pdf import (
     signed,
     signed_percent,
     table,
+)
+from app.m3_pdf import (
+    PORTFOLIO_FLAG_LABELS as PFL,
 )
 from tests import m3_factory as factory
 
@@ -783,14 +790,6 @@ def test_checklist_escapes_step_text():
 
 
 # ── Оговорки и сборка документа ───────────────────────────────────────────────
-from app.m3_pdf import (  # noqa: E402  # noqa: E402
-    FLAG_LABELS,
-    build_portfolio_report_html,
-    disclaimers_section,
-    flag_location,
-)
-from app.m3_pdf import PORTFOLIO_FLAG_LABELS as PFL
-
 
 def _scored(**over):
     """То же направление 1, но с баллами: нужно флагам, у которых есть адрес."""

@@ -7,7 +7,18 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from pathlib import Path
+
 from app.config import get_settings
+# Дефолты, чтение, запись и подстановка живут в одном модуле: раньше
+# DEFAULT_TEMPLATES дублировался здесь и в routers/admin.py, и копии
+# успели разойтись по полю description.
+from app.email_templates_store import (  # noqa: F401
+    DEFAULT_TEMPLATES,
+    TEMPLATES_FILE,
+    read_templates as _load_templates,
+    render as _render,
+    sender as _sender,
+)
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -33,17 +44,6 @@ def header_safe(value: str, limit: int = 120) -> str:
     Bcc. Python значения заголовков не валидирует — отсекаем здесь.
     """
     return _CRLF.sub(" ", value).strip()[:limit]
-
-# Дефолты, чтение, запись и подстановка живут в одном модуле: раньше
-# DEFAULT_TEMPLATES дублировался здесь и в routers/admin.py, и копии
-# успели разойтись по полю description.
-from app.email_templates_store import (  # noqa: F401
-    DEFAULT_TEMPLATES,
-    TEMPLATES_FILE,
-    read_templates as _load_templates,
-    render as _render,
-    sender as _sender,
-)
 
 
 def _wrap_html(body_html: str) -> str:

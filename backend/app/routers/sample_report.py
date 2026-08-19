@@ -21,10 +21,6 @@ from app.db import get_db
 from app.email import send_sample_report_email
 from app.limiter import limiter
 from app.models import SampleLead, User
-
-router = APIRouter(prefix="/api/sample-report", tags=["sample-report"])
-logger = logging.getLogger(__name__)
-
 from app.sample_report_store import (
     download_name_for as sample_report_name_for,
 )
@@ -34,6 +30,9 @@ from app.sample_report_store import (
 from app.sample_report_store import (
     product_for as sample_report_product_for,
 )
+
+router = APIRouter(prefix="/api/sample-report", tags=["sample-report"])
+logger = logging.getLogger(__name__)
 
 # Оставлено для совместимости: код вне этого модуля мог импортировать константу.
 SAMPLE_REPORT_FILE = sample_report_file_for(None)

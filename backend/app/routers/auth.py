@@ -15,11 +15,8 @@ from app.auth import (
     set_auth_cookie,
     verify_otp_code,
 )
-from app.config import get_settings
 from app.db import get_db
 from app.email import send_otp_email, send_welcome_email
-
-settings = get_settings()
 from app.limiter import limiter
 from app.models import OtpCode, User
 from app.schemas import (
