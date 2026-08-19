@@ -11,16 +11,23 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import m3_portfolio as pf
 from app import m3_scoring as sc
 from app import m3_verdict as vd
-from app.m3_config import DEFAULT_M3_CONFIG, industry_weights, read_m3_config
+from app.m3_config import industry_weights, read_m3_config
 from app.m3_models import (
-    M3Answer, M3ChecklistStep, M3Content, M3Hint, M3Item, M3Object,
-    M3Portfolio, M3PortfolioResult, M3Result, M3Weight,
+    M3Answer,
+    M3ChecklistStep,
+    M3Content,
+    M3Hint,
+    M3Item,
+    M3Portfolio,
+    M3PortfolioResult,
+    M3Result,
+    M3Weight,
 )
 
 LINE_TITLES = {

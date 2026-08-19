@@ -49,7 +49,7 @@ def test_empty_bundle_falls_back_to_default_store(monkeypatch):
 def test_existing_bundle_is_used(monkeypatch, tmp_path):
     bundle = tmp_path / "bundle.pem"
     bundle.write_text("-----BEGIN CERTIFICATE-----\n")
-    assert _reload_client(monkeypatch, str(bundle)).TOCHKA_SSL_VERIFY == str(bundle)
+    assert str(bundle) == _reload_client(monkeypatch, str(bundle)).TOCHKA_SSL_VERIFY
 
 
 @pytest.mark.parametrize("value", ["", "/nonexistent.pem", "/etc/hosts"])

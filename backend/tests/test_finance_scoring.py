@@ -5,10 +5,13 @@
 """
 import pytest
 
-from app.finance_items import REVERSE_ITEMS, VETO_ITEMS, ITEM_IDS
+from app.finance_items import ITEM_IDS, REVERSE_ITEMS, VETO_ITEMS
 from app.finance_scoring import (
-    compute_finance_result, validate_answers, _effective,
-    BlockUnderfilledError, InvalidAnswersError,
+    BlockUnderfilledError,
+    InvalidAnswersError,
+    _effective,
+    compute_finance_result,
+    validate_answers,
 )
 from app.hexagrams import HEXAGRAM_LIST
 
@@ -126,8 +129,8 @@ def test_underfilled_block_two_skips_raises():
 
 # ── 5. Реверсивность применяется ровно к 6 пунктам ────────────────────────────
 def test_reverse_set_exact():
-    assert REVERSE_ITEMS == {"1.3", "2.3", "3.3", "4.4", "5.3", "6.3"}
-    assert VETO_ITEMS == {"4.1"}
+    assert {"1.3", "2.3", "3.3", "4.4", "5.3", "6.3"} == REVERSE_ITEMS
+    assert {"4.1"} == VETO_ITEMS
 
 
 def test_effective_inversion():

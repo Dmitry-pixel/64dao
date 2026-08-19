@@ -6,6 +6,7 @@ GET/PUT /api/admin/social-links — управление, требует пра�
 """
 import os
 from pathlib import Path
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 

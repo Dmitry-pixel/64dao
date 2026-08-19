@@ -52,15 +52,15 @@ def _tsx_pairs(rel_path: str) -> list[tuple[str, str]]:
 def test_structure_is_complete():
     assert len(BASE_QUESTIONS) == 6
     for i, q in enumerate(BASE_QUESTIONS, start=1):
-        assert REQUIRED_KEYS <= set(q), f"Вопрос {i}: не хватает ключей {REQUIRED_KEYS - set(q)}"
+        assert set(q) >= REQUIRED_KEYS, f"Вопрос {i}: не хватает ключей {REQUIRED_KEYS - set(q)}"
         assert all(str(q[k]).strip() for k in REQUIRED_KEYS), f"Вопрос {i}: пустое поле"
 
 
 def test_derived_views_match_source():
-    assert LC_FIELDS == [q["lc_key"] for q in BASE_QUESTIONS]
-    assert LC_LABELS == [(q["lc_key"], q["label"]) for q in BASE_QUESTIONS]
-    assert QUESTION_LABELS == [q["label"] for q in BASE_QUESTIONS]
-    assert ANSWERS == [(q["a_full"], q["b_full"]) for q in BASE_QUESTIONS]
+    assert [q["lc_key"] for q in BASE_QUESTIONS] == LC_FIELDS
+    assert [(q["lc_key"], q["label"]) for q in BASE_QUESTIONS] == LC_LABELS
+    assert [q["label"] for q in BASE_QUESTIONS] == QUESTION_LABELS
+    assert [(q["a_full"], q["b_full"]) for q in BASE_QUESTIONS] == ANSWERS
 
 
 def test_question_two_orientation_is_pinned():

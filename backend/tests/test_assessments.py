@@ -15,7 +15,6 @@ from sqlalchemy import select
 
 from app.models import Assessment, AssessmentContour, Report, Strategy
 
-
 VALID_COMBINATION = "AABABA"  # 6 символов A/B — проходит regex-валидацию схемы
 
 

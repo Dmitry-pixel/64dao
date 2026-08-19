@@ -13,12 +13,22 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests import m3_factory as factory
 from app.m3_pdf import (
-    banner, data_status_banner, footer_template, header_template, map_section,
-    num, objects_section, page, report_header, section_title, signed,
-    signed_percent, table,
+    banner,
+    data_status_banner,
+    footer_template,
+    header_template,
+    map_section,
+    num,
+    objects_section,
+    page,
+    report_header,
+    section_title,
+    signed,
+    signed_percent,
+    table,
 )
+from tests import m3_factory as factory
 
 PORTFOLIO_FLAG_LABELS = {
     "UNIFORM_PORTFOLIO": "все направления в одной ячейке",
@@ -307,7 +317,11 @@ def test_no_react_only_attributes_leak_into_html():
 from types import SimpleNamespace as _NS  # noqa: E402
 
 from app.m3_pdf import (  # noqa: E402
-    hexagram_line, line_glyph, lines_block, object_card, route_block,
+    hexagram_line,
+    line_glyph,
+    lines_block,
+    object_card,
+    route_block,
     verdict_block,
 )
 from app.m3_verdict import verdict_for  # noqa: E402
@@ -769,10 +783,13 @@ def test_checklist_escapes_step_text():
 
 
 # ── Оговорки и сборка документа ───────────────────────────────────────────────
-from app.m3_pdf import (  # noqa: E402
-    build_portfolio_report_html, disclaimers_section, flag_location,
+from app.m3_pdf import (  # noqa: E402  # noqa: E402
+    FLAG_LABELS,
+    build_portfolio_report_html,
+    disclaimers_section,
+    flag_location,
 )
-from app.m3_pdf import FLAG_LABELS, PORTFOLIO_FLAG_LABELS as PFL  # noqa: E402
+from app.m3_pdf import PORTFOLIO_FLAG_LABELS as PFL
 
 
 def _scored(**over):

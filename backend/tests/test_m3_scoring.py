@@ -20,14 +20,29 @@ import json
 
 import pytest
 
-from app.hexagrams import HEXAGRAM_LIST, hexagram_by_code
-from app.m3_config import DEFAULT_M3_CONFIG, industry_weights, average_presets
 from app import m3_scoring as sc
+from app.hexagrams import HEXAGRAM_LIST, hexagram_by_code
+from app.m3_config import DEFAULT_M3_CONFIG, average_presets, industry_weights
 from app.m3_scoring import (
-    BLOCK_ARBITER, BLOCK_MARKET, BLOCK_OBJECT, ITEM_LINE, REVERSE_ITEMS,
-    InvalidAnswerError, LineUndefinedError, PortfolioSizeError,
-    arbiter_required, calculate, effective_value, leading_lines, line_scores,
-    r2, rank_desc, score_object, spearman, tensions, trajectory,
+    BLOCK_ARBITER,
+    BLOCK_MARKET,
+    BLOCK_OBJECT,
+    ITEM_LINE,
+    REVERSE_ITEMS,
+    InvalidAnswerError,
+    LineUndefinedError,
+    PortfolioSizeError,
+    arbiter_required,
+    calculate,
+    effective_value,
+    leading_lines,
+    line_scores,
+    r2,
+    rank_desc,
+    score_object,
+    spearman,
+    tensions,
+    trajectory,
 )
 
 # ── Контрольный кейс ──────────────────────────────────────────────────────────

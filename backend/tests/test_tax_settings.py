@@ -5,20 +5,21 @@ F9: путь tax_settings.json должен резолвиться через UP
 НДС в проде.
 """
 import os
+
 from app import tax_settings
 
 
 def test_path_derived_from_upload_dir():
     # conftest выставляет UPLOAD_DIR на временную папку прогона
-    assert tax_settings.TAX_SETTINGS_PATH == os.path.join(
+    assert os.path.join(
         os.environ["UPLOAD_DIR"], "tax_settings.json"
-    )
+    ) == tax_settings.TAX_SETTINGS_PATH
     # и это не боевой том
     assert not tax_settings.TAX_SETTINGS_PATH.startswith("/var/www/64dao/uploads")
 
 
 def test_set_vat_roundtrip_isolated():
-    from app.tax_settings import set_vat_enabled, get_tax_settings, current_vat_type
+    from app.tax_settings import current_vat_type, get_tax_settings, set_vat_enabled
     try:
         set_vat_enabled(True, "vat20")
         assert get_tax_settings()["vat_enabled"] is True

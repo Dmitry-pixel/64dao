@@ -7,10 +7,10 @@ test_payments.py — smoke-тесты платёжного роутера (route
 чтобы не зависеть от pricing.json в volume.
 """
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
+from unittest.mock import AsyncMock
 
 import pytest
-from unittest.mock import AsyncMock
 
 import app.routers.payments as payments_router
 from app.models import Assessment, Order
@@ -270,11 +270,12 @@ async def test_refund_revokes_whole_purchase(admin_client, db_session, test_admi
 async def test_refund_ignores_grant_paid_assessment(admin_client, db_session, test_admin, mock_tochka):
     """Диагностику, выданную грантом, возврат денег не касается."""
     from datetime import timedelta
+
     from app.models import AccessGrant
 
     company = await _make_company(db_session, test_admin, name="Grant Co")
     grant = AccessGrant(user_id=test_admin.id, quota=1,
-                        expires_at=datetime.now(timezone.utc) + timedelta(days=30))
+                        expires_at=datetime.now(UTC) + timedelta(days=30))
     db_session.add(grant)
     await db_session.flush()
 

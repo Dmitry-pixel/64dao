@@ -9,8 +9,13 @@
 import pytest
 
 from app.m3_portfolio import (
-    constraints, delta_line_reading, metric_readings, support_note,
-    tact_note, yin_profile, yin_table,
+    constraints,
+    delta_line_reading,
+    metric_readings,
+    support_note,
+    tact_note,
+    yin_profile,
+    yin_table,
 )
 
 # Пять направлений образца: символы и подвижность.

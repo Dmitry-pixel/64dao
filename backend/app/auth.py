@@ -1,15 +1,15 @@
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from fastapi import Request, Response, HTTPException, Depends
 import jwt
+from fastapi import Depends, HTTPException, Request, Response
 from jwt import PyJWTError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db import get_db
-from app.models import User, OtpCode
+from app.models import OtpCode, User
 
 settings = get_settings()
 
@@ -24,7 +24,7 @@ settings = get_settings()
 # ── JWT ───────────────────────────────────────────────────────────────────────
 
 def create_token(user_id: str, email: str, role: str) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expire = now + timedelta(days=settings.jwt_expire_days)
     payload = {
         "sub":   user_id,
@@ -63,7 +63,7 @@ def decode_token(token: str) -> dict:
             algorithms=[settings.jwt_algorithm],
         )
     except PyJWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from None
 
 
 # backward-compat alias
@@ -77,7 +77,7 @@ def create_impersonation_token(
     admin_id: str,
 ) -> str:
     """JWT от лица target_user, с полем impersonated_by=admin_id. TTL — 4 ч."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expire = now + timedelta(hours=4)
     payload = {
         "sub":             target_user_id,
@@ -114,7 +114,7 @@ def token_revoked(payload: dict, user: User) -> bool:
     if iat is None:
         return True
     if revoked_at.tzinfo is None:
-        revoked_at = revoked_at.replace(tzinfo=timezone.utc)
+        revoked_at = revoked_at.replace(tzinfo=UTC)
     return float(iat) < revoked_at.timestamp()
 
 
@@ -172,7 +172,7 @@ async def create_otp_code(user_id: str, db: AsyncSession) -> str:
     )
 
     code = generate_otp()
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.otp_expire_minutes)
+    expires_at = datetime.now(UTC) + timedelta(minutes=settings.otp_expire_minutes)
 
     otp = OtpCode(user_id=user_id, code=code, expires_at=expires_at, used=False)
     db.add(otp)
@@ -183,7 +183,7 @@ async def create_otp_code(user_id: str, db: AsyncSession) -> str:
 
 async def verify_otp_code(user_id: str, code: str, db: AsyncSession) -> bool:
     """Проверяет OTP. При успехе помечает как использованный."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     result = await db.execute(
         select(OtpCode)
         .where(

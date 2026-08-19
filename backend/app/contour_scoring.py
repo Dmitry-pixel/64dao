@@ -9,7 +9,8 @@
 finance_scoring.py остаётся тонкой обёрткой над этим модулем.
 """
 from __future__ import annotations
-from dataclasses import dataclass, field, asdict
+
+from dataclasses import asdict, dataclass, field
 
 from app.hexagrams import HEXAGRAM_LIST
 

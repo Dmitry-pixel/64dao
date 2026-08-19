@@ -1,9 +1,9 @@
-import uuid
 import re
+import uuid
 from datetime import datetime
 from typing import Any, Literal
-from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 

@@ -6,19 +6,36 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import asyncpg
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import asyncpg
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import DBAPIError
 
-from app.limiter import limiter
-from slowapi.errors import RateLimitExceeded
-
 from app.config import get_settings
+from app.limiter import limiter
 from app.pdf import close_browser
-from app.routers import auth, assessments, reports, admin, strategies, documents, payments, pricing, contact, social_links, sample_report, support, site_mode, fin_content, method1, companies, checklist
-from app.routers import m3
+from app.routers import (
+    admin,
+    assessments,
+    auth,
+    checklist,
+    companies,
+    contact,
+    documents,
+    fin_content,
+    m3,
+    method1,
+    payments,
+    pricing,
+    reports,
+    sample_report,
+    site_mode,
+    social_links,
+    strategies,
+    support,
+)
 
 settings = get_settings()
 
@@ -35,8 +52,10 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Path(settings.uploads_dir).mkdir(parents=True, exist_ok=True)
-    (Path(settings.uploads_dir).parent / "images").mkdir(parents=True, exist_ok=True)
+    # Выполняется один раз на старте, до приёма трафика: блокировка event loop
+    # здесь ни на что не влияет.
+    Path(settings.uploads_dir).mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
+    (Path(settings.uploads_dir).parent / "images").mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
     logger.info("64dao backend started")
     yield
     await close_browser()

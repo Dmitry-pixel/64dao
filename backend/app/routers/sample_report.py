@@ -6,28 +6,32 @@ POST /api/sample-report/request    — заявка (Имя+e-mail+телефо�
 GET  /api/sample-report/leads      — список заявок (admin).
 GET  /api/sample-report/leads.csv  — экспорт CSV (admin).
 """
-import io
 import csv
+import io
 import logging
 
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import get_db
-from app.models import SampleLead, User
 from app.auth import require_admin
-from app.limiter import limiter
+from app.db import get_db
 from app.email import send_sample_report_email
+from app.limiter import limiter
+from app.models import SampleLead, User
 
 router = APIRouter(prefix="/api/sample-report", tags=["sample-report"])
 logger = logging.getLogger(__name__)
 
 from app.sample_report_store import (
-    file_for as sample_report_file_for,
     download_name_for as sample_report_name_for,
+)
+from app.sample_report_store import (
+    file_for as sample_report_file_for,
+)
+from app.sample_report_store import (
     product_for as sample_report_product_for,
 )
 

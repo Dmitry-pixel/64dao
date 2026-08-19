@@ -13,9 +13,9 @@
 """
 from __future__ import annotations
 
-from app.finance_items import BLOCKS
-from app.contour_route import build_route
 from app.contour_levels import CUTS_CAVEAT, levels_of
+from app.contour_route import build_route
+from app.finance_items import BLOCKS
 
 PLACEHOLDER = "Не заполнено"
 
@@ -276,6 +276,7 @@ async def load_content(session, contour: str = "finance") -> dict:
     (неактивные правила/блоки в отчёт не попадают) и fin_pattern_* из strategies.
     """
     from sqlalchemy import select
+
     from app.models import FinContent, Strategy
 
     content: dict[str, dict] = {

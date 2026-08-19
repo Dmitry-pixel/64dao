@@ -20,8 +20,9 @@ from __future__ import annotations
 
 import html as html_lib
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable, Literal
+from typing import Any, Literal
 
 # ── Геометрия. Значения обязаны совпадать с PortfolioMap.tsx ──────────────────
 PAD_L = 70

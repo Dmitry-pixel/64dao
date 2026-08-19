@@ -15,10 +15,19 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
-    String, Boolean, Text, Numeric, DateTime, Integer, SmallInteger,
-    ForeignKey, CheckConstraint, UniqueConstraint, func,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    SmallInteger,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base

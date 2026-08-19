@@ -11,7 +11,6 @@ import pytest
 
 from app.models import Assessment, Report
 
-
 VALID_COMBINATION = "AABABA"
 
 
@@ -174,6 +173,7 @@ def fake_pdf_generator(monkeypatch):
     содержимое.
     """
     from pathlib import Path
+
     import app.routers.reports as reports_router
 
     written: list[Path] = []

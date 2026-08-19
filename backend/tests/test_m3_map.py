@@ -21,8 +21,18 @@ import pytest
 
 from app import m3_map
 from app.m3_map import (
-    CELL, EDGE_GAP, GRID, PAD_L, PAD_T, Placed,
-    in_cell, layout, map_caption, radius, render_map_svg, vector,
+    CELL,
+    EDGE_GAP,
+    GRID,
+    PAD_L,
+    PAD_T,
+    Placed,
+    in_cell,
+    layout,
+    map_caption,
+    radius,
+    render_map_svg,
+    vector,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"

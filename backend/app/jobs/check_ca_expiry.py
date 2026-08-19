@@ -33,7 +33,7 @@ import os
 import socket
 import ssl
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.config import get_settings
@@ -68,11 +68,11 @@ def cert_not_after(path: Path) -> datetime:
     ctx.load_verify_locations(cadata=der)
     (info,) = ctx.get_ca_certs()
     return datetime.fromtimestamp(
-        ssl.cert_time_to_seconds(info["notAfter"]), tz=timezone.utc)
+        ssl.cert_time_to_seconds(info["notAfter"]), tz=UTC)
 
 
 def days_left(not_after: datetime, now: datetime | None = None) -> int:
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     return (not_after - now).days
 
 
@@ -179,7 +179,7 @@ def main() -> int:
     # исходное состояние, письмо пойдёт со следующего изменения.
     if issuer:
         write_json(STATE_FILE, {**state, "last_issuer": issuer,
-                                "checked_at": datetime.now(timezone.utc).isoformat()})
+                                "checked_at": datetime.now(UTC).isoformat()})
     return 0
 
 

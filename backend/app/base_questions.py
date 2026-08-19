@@ -72,6 +72,7 @@ async def load_questions(session) -> list[dict]:
     ронять отчёт, поэтому при любой проблеме возвращаются дефолты."""
     try:
         from sqlalchemy import select
+
         from app.models import FinContent
 
         rows = (await session.execute(

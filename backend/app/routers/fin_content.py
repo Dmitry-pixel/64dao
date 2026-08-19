@@ -68,7 +68,7 @@ async def upsert_fin_content(
         try:
             validate_edit(key, contour, data.payload, row.payload if row else None)
         except BaseQuestionEditError as exc:
-            raise HTTPException(status_code=400, detail=str(exc))
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     if row is None:
         row = FinContent(kind=kind, key=key, contour=contour, payload=data.payload,
                          sort=data.sort, is_active=data.is_active)

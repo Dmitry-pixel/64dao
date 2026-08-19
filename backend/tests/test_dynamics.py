@@ -5,10 +5,13 @@
 """
 import pytest
 
-from app.dynamics import (
-    contour_diff, summarize_contours, constraint_change, build_company_dynamics,
-)
 from app.contours import LINE_KEYS
+from app.dynamics import (
+    build_company_dynamics,
+    constraint_change,
+    contour_diff,
+    summarize_contours,
+)
 
 
 def _cres(combo, moving, maturity):

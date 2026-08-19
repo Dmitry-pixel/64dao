@@ -18,8 +18,8 @@ import uuid
 import pytest
 from sqlalchemy import func, select
 
-from app.models import User, OtpCode
 from app.auth import create_otp_code
+from app.models import OtpCode, User
 
 
 def unique_email() -> str:

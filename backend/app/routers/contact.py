@@ -46,6 +46,6 @@ async def send_contact_message(request: Request, body: ContactRequest):
         )
     except Exception as e:
         logger.error("Landing contact email error: %s", e)
-        raise HTTPException(status_code=500, detail="Не удалось отправить сообщение. Попробуйте позже.")
+        raise HTTPException(status_code=500, detail="Не удалось отправить сообщение. Попробуйте позже.") from e
 
     return {"status": "ok"}

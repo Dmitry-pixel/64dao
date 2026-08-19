@@ -10,7 +10,7 @@
 и снимать флаг отдельным действием — как enforce_credits.
 """
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -22,21 +22,41 @@ from app import m3_service as svc
 from app.auth import get_current_user, require_admin
 from app.config import get_settings
 from app.db import get_db
-from app.m3_config import REDUCED_WARNING
 from app.m3_access import (
-    attach_payment, ensure_result_access, reserve_payment,
+    attach_payment,
+    ensure_result_access,
+    reserve_payment,
 )
+from app.m3_config import REDUCED_WARNING
 from app.m3_models import (
-    M3ChecklistStep, M3Content, M3Hint, M3Item, M3Object, M3Portfolio,
-    M3TradeoffDecision, M3Weight,
+    M3ChecklistStep,
+    M3Content,
+    M3Hint,
+    M3Item,
+    M3Object,
+    M3Portfolio,
+    M3TradeoffDecision,
+    M3Weight,
 )
 from app.m3_schemas import (
-    MIN_COVERAGE, MIN_SHARE,
-    M3AnswersIn, M3ArbiterOut, M3ChecklistStepOut, M3ChecklistToggle,
-    M3ContentUpsert, M3HintUpsert, M3ItemUpsert, M3LimitsOut,
-    M3ObjectsPut, M3OwnerRanks,
-    M3PortfolioCreate, M3PortfolioOut, M3QuestionnaireOut, M3ReportOut,
-    M3TradeoffIn, M3WeightUpsert,
+    MIN_COVERAGE,
+    MIN_SHARE,
+    M3AnswersIn,
+    M3ArbiterOut,
+    M3ChecklistStepOut,
+    M3ChecklistToggle,
+    M3ContentUpsert,
+    M3HintUpsert,
+    M3ItemUpsert,
+    M3LimitsOut,
+    M3ObjectsPut,
+    M3OwnerRanks,
+    M3PortfolioCreate,
+    M3PortfolioOut,
+    M3QuestionnaireOut,
+    M3ReportOut,
+    M3TradeoffIn,
+    M3WeightUpsert,
 )
 from app.models import User
 
@@ -200,7 +220,7 @@ async def delete_portfolio(
     """
     p = await _owned(portfolio_id, user, db)
     if p.deleted_at is None:
-        p.deleted_at = datetime.now(timezone.utc)
+        p.deleted_at = datetime.now(UTC)
 
 
 @router.put("/portfolios/{portfolio_id}/objects", response_model=M3PortfolioOut)

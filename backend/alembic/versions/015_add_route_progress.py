@@ -8,9 +8,10 @@ Revision ID: 015
 Revises: 014
 Create Date: 2026-07-23
 """
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
+
+from alembic import op
 
 revision = "015"
 down_revision = "014"

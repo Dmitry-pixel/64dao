@@ -16,9 +16,9 @@
 (снимок без весов, результат без баллов) обязаны показывать неполноту
 в самом тесте, а не прятать её в фабрике.
 """
-from app.m3_config import industry_weights
 from app import m3_scoring as sc
 from app import m3_verdict as vd
+from app.m3_config import industry_weights
 
 # Универсальный пресет: при нём правило «сумма весов» воспроизводит прежнее
 # «по числу Ян» точно, поэтому ячейки образцов остаются в силе. Отраслевые

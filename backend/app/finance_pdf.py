@@ -6,11 +6,11 @@ build_report_html только при наличии finance_result (Метод 
 """
 import html as _html
 
+
 def e(text: str | None) -> str:
     return _html.escape(text or "", quote=True)
 
 # ── Финансовая функция (Метод 1): рендер раздела отчёта ───────────────────────
-from app.finance_items import BLOCKS as _FIN_BLOCKS
 
 _FIN_INK = "#1a2540"
 _FIN_ACCENT = "#c0392b"
@@ -101,7 +101,6 @@ def contour_section_html(
     moving_lines = finance_result.get("moving_lines", [])
     hc = finance_result.get("hexagram_current") or {}
     cur_code = finance_result.get("combination_current", "")
-    res_code = finance_result.get("combination_resulting") or ""
 
     def card(inner: str) -> str:
         return ('<div style="border:1px solid rgba(26,37,64,0.12);border-radius:6px;'

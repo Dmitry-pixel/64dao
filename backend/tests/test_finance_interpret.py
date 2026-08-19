@@ -3,10 +3,13 @@
 Тесты интерпретации (Этап 3): правила напряжений R1–R12 + сборка слоёв A–E.
 Чистая логика — БД не нужна.
 """
-from app.finance_scoring import compute_finance_result
 from app.finance_interpret import (
-    evaluate_rules, tonality_key, build_interpretation, PLACEHOLDER,
+    PLACEHOLDER,
+    build_interpretation,
+    evaluate_rules,
+    tonality_key,
 )
+from app.finance_scoring import compute_finance_result
 
 
 # ── Хелперы ───────────────────────────────────────────────────────────────────

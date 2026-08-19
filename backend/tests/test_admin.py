@@ -16,8 +16,7 @@ import uuid
 import pytest
 from sqlalchemy import select
 
-from app.models import User, Assessment, Report, Strategy, Order
-
+from app.models import Assessment, Order, Report, Strategy, User
 
 VALID_COMBINATION = "AABABA"
 OTHER_COMBINATION = "BBABAB"
@@ -574,8 +573,9 @@ async def test_set_user_status_cannot_change_own_status(admin_client, test_admin
 
 @pytest.mark.asyncio
 async def test_set_user_status_cannot_block_admin(admin_client, db_session):
-    from unittest.mock import AsyncMock, patch
     import uuid as _uuid
+    from unittest.mock import AsyncMock, patch
+
     from app.models import User as _User
 
     other_admin = _User(

@@ -19,8 +19,8 @@ conftest.py — общие фикстуры для regression-тестов 64dao
 для тестового прогона — см. pytest.ini/conftest ниже (os.environ patch перед
 импортом app.config, т.к. get_settings() кэширован через lru_cache).
 """
-import os
 import asyncio
+import os
 import tempfile
 import uuid
 from datetime import datetime, timezone
@@ -28,8 +28,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Изоляция тестового окружения ДО импорта app.config: get_settings()
 # обёрнут в lru_cache, после первого вызова подмена не подействует.
@@ -43,11 +43,11 @@ os.environ["REGENERATE_PDF_ON_DOWNLOAD"] = "false"
 os.environ["UPLOAD_DIR"] = _TEST_UPLOADS
 os.environ["UPLOADS_DIR"] = _TEST_UPLOADS
 
+from app.auth import create_token  # noqa: E402
 from app.config import get_settings  # noqa: E402
 from app.db import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import User  # noqa: E402
-from app.auth import create_token  # noqa: E402
 
 settings = get_settings()
 

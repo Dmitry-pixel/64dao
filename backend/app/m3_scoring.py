@@ -29,7 +29,7 @@
 """
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from app.hexagrams import hexagram_by_code
 from app.m3_config import DEFAULT_M3_CONFIG, industry_weights

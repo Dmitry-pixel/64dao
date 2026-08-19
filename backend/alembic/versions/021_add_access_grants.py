@@ -12,9 +12,10 @@ payments.calculate_credits. Рефанд возвращает диагности
 Revision ID: 021
 Revises: 020
 """
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
+
+from alembic import op
 
 revision = "021"
 down_revision = "020"

@@ -7,11 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
-from app.contours import CONTOURS, CONTOUR_ORDER, INTRO_TEXTS, get_spec
-from app.contour_settings import get_contour_settings, is_contour_enabled
-from app.finance_items import SCALE_LABELS
 from app.base_questions import load_questions
+from app.contour_settings import get_contour_settings, is_contour_enabled
+from app.contours import CONTOUR_ORDER, CONTOURS, INTRO_TEXTS, get_spec
 from app.db import get_db
+from app.finance_items import SCALE_LABELS
 from app.models import User
 
 router = APIRouter(prefix="/api/method1", tags=["method1"])

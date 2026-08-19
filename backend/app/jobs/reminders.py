@@ -7,16 +7,19 @@ Email-напоминания (PR6). Запуск из host cron:
 (правило проекта) — триггерит host crontab, как backup/certbot.
 """
 from __future__ import annotations
+
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
-from sqlalchemy import select, func, or_
+from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db import AsyncSessionLocal
-from app.models import Company, Assessment, User
-from app.config import get_settings
+
 from app import email as email_mod
 from app import reminders_settings
+from app.config import get_settings
+from app.db import AsyncSessionLocal
+from app.models import Assessment, Company, User
 
 logger = logging.getLogger("reminders")
 settings = get_settings()
@@ -27,7 +30,7 @@ async def run_repeat_reminders(session: AsyncSession,
     """«Пора повторить» через N дней после последней диагностики компании.
     Авто-перевзвод: при новой диагностике last_at > sent_at снова сработает.
     диагностике last_at > sent_at → снова сработает."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     # Порог задаётся в админке; аргумент оставлен для тестов.
     if days is None:
         days = reminders_settings.read()["repeat_days"]

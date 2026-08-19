@@ -1,12 +1,14 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db import get_db
+
+from app import email as email_module
 from app.auth import get_current_user
+from app.db import get_db
 from app.limiter import limiter
 from app.models import User
-from app import email as email_module
-import logging
 
 router = APIRouter(prefix="/api/support", tags=["support"])
 logger = logging.getLogger(__name__)
@@ -47,6 +49,6 @@ async def send_support_message(
         )
     except Exception as e:
         logger.error("Support email error: %s", e)
-        raise HTTPException(status_code=500, detail="Не удалось отправить сообщение. Попробуйте позже.")
+        raise HTTPException(status_code=500, detail="Не удалось отправить сообщение. Попробуйте позже.") from e
 
     return {"ok": True}

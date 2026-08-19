@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+
 from pydantic import BaseModel
 
 from app.json_store import read_json, write_json

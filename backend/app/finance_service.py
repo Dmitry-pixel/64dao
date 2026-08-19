@@ -9,7 +9,9 @@ from __future__ import annotations
 
 from app.finance_items import ITEM_IDS
 from app.finance_scoring import (
-    compute_finance_result, InvalidAnswersError, BlockUnderfilledError,
+    BlockUnderfilledError,
+    InvalidAnswersError,
+    compute_finance_result,
 )
 
 

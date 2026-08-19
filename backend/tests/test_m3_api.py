@@ -19,8 +19,8 @@ from httpx import AsyncClient
 
 from app.auth import create_token
 from app.config import get_settings
-from app.m3_models import M3Content, M3Hint, M3Item, M3Weight
 from app.m3_config import INDUSTRY_PRESETS
+from app.m3_models import M3Content, M3Hint, M3Item, M3Weight
 from seed_m3 import CONTENT_BLOCKS, HINTS, ITEMS
 
 M3 = "/api/m3"
@@ -921,6 +921,7 @@ class TestSnapshot:
         """Без версий пунктов правка формулировки сделает старые отчёты
         несопоставимыми с новыми, и модуль динамики начнёт врать."""
         from sqlalchemy import select
+
         from app.m3_models import M3Result
         rows = (await db_session.execute(
             select(M3Result).where(M3Result.portfolio_id == uuid.UUID(calculated["id"]))

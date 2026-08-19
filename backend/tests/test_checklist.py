@@ -6,8 +6,10 @@
 отметок, доступ и валидацию.
 """
 import uuid
+
 import pytest
-from app.models import User, Assessment, AssessmentContour
+
+from app.models import Assessment, AssessmentContour, User
 
 
 def _result():

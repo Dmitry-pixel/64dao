@@ -18,10 +18,10 @@ from types import SimpleNamespace
 import pytest
 
 from app.m3_config import industry_weights
-from tests import m3_factory as factory
 from app.m3_pdf import build_portfolio_report_html
 from app.m3_service import enrich_result
 from app.m3_verdict import cell_breakdown_text
+from tests import m3_factory as factory
 
 # Подвижность обязана согласовываться с символами: старый Инь бывает только
 # на слабой линии, старый Ян — только на сильной. Набор подобран так, чтобы

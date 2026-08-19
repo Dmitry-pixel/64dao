@@ -5,8 +5,8 @@
 import pytest
 
 from app.finance_items import ITEM_IDS
-from app.finance_service import resolve_submission_finance, FinanceRequiredError
-from app.finance_scoring import InvalidAnswersError, BlockUnderfilledError
+from app.finance_scoring import BlockUnderfilledError, InvalidAnswersError
+from app.finance_service import FinanceRequiredError, resolve_submission_finance
 
 
 def full_answers(value=3) -> dict:

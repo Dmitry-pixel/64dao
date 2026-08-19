@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+
 from app.auth import require_admin
 from app.config import get_settings
 from app.models import User

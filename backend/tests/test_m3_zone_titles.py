@@ -17,10 +17,9 @@
 Для kind zone_reduced — нет: seed_m3_zone_reduced существующие строки
 пропускает, и правка заголовка через админку тесту не видна.
 """
-from app import m3_verdict as vd
-
 import seed_m3
 import seed_m3_zone_reduced
+from app import m3_verdict as vd
 
 # Корни слов, которыми названа каждая позиция матрицы. Список ведётся руками:
 # автоматическая нарезка zone_ru даёт корень «развива» и для build

@@ -9,7 +9,7 @@
 Единица расхода Метода 3 — рассчитанный портфель, поэтому списание стоит
 на calculate: до расчёта пользователь не получил ничего, что стоит денег.
 """
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 import pytest_asyncio
@@ -22,7 +22,13 @@ from app.models import AccessGrant, Order
 # Фикстуры и хелперы контрольного кейса переиспользуются: второй набор
 # анкеты разошёлся бы с первым при правке пунктов.
 from tests.test_m3_api import (  # noqa: F401
-    M3, REPORTS, _fill, _make_portfolio, as_role, m3_on, seeded,
+    M3,
+    REPORTS,
+    _fill,
+    _make_portfolio,
+    as_role,
+    m3_on,
+    seeded,
 )
 
 
@@ -36,7 +42,7 @@ def enforce_on(monkeypatch):
 async def _paid_order(db, user, product: str) -> Order:
     o = Order(user_id=user.id, product=product, amount=20000.00,
               currency="RUB", status="paid",
-              paid_at=datetime.now(timezone.utc))
+              paid_at=datetime.now(UTC))
     db.add(o)
     await db.flush()
     return o
@@ -45,8 +51,8 @@ async def _paid_order(db, user, product: str) -> Order:
 async def _grant(db, user, product: str, quota: int = 1) -> AccessGrant:
     g = AccessGrant(
         user_id=user.id, product=product, quota=quota,
-        starts_at=datetime.now(timezone.utc) - timedelta(days=1),
-        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        starts_at=datetime.now(UTC) - timedelta(days=1),
+        expires_at=datetime.now(UTC) + timedelta(days=7),
         reason="тест",
     )
     db.add(g)
