@@ -31,7 +31,9 @@ LINE_TITLES = {
 def _blocks(titles: list[str]) -> dict[int, dict[str, str]]:
     return {
         i: {"key": k, "title": f"Линия {i}. {t}"}
-        for i, (k, t) in enumerate(zip(LINE_KEYS, titles), start=1)
+        # Линий всегда шесть: короткий список заголовков молча обрезал бы
+        # анкету контура, поэтому расхождение — ошибка, а не усечение.
+        for i, (k, t) in enumerate(zip(LINE_KEYS, titles, strict=True), start=1)
     }
 
 

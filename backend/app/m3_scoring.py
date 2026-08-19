@@ -419,7 +419,7 @@ def spearman(a: list[int], b: list[int]) -> float | None:
     n = len(a)
     if n != len(b) or n < 2:
         return None
-    d2 = sum((x - y) ** 2 for x, y in zip(a, b))
+    d2 = sum((x - y) ** 2 for x, y in zip(a, b, strict=True))
     return r2(1 - 6 * d2 / (n * (n * n - 1)))
 
 
@@ -645,7 +645,7 @@ def score_portfolio(
 
     v_ranks = rank_desc([r["v_index"] for r in results])
     z_ranks = rank_desc([r["z_index"] for r in results])
-    for r, vr, zr in zip(results, v_ranks, z_ranks):
+    for r, vr, zr in zip(results, v_ranks, z_ranks, strict=True):
         r["v_rank"], r["z_rank"] = vr, zr
 
     rho = spearman(v_ranks, owner_ranks) if (owner_ranks and not reduced) else None
