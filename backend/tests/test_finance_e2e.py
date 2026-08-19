@@ -31,7 +31,8 @@ async def seed_minimal_content(db):
         ("tension_rule", "R1", {"text": "Поддержка без стратегии."}),
         ("tension_rule", "R6", {"text": "Трансформация в турбулентной среде."}),
         ("tension_rule", "R8", {"text": "Рутина без развития."}),
-        ("action_package", "line6_yin", {"title": "6. Стратегия", "text": "Стратегическая сессия, целевая модель, KPI."}),
+        ("action_package", "line6_yin",
+         {"title": "6. Стратегия", "text": "Стратегическая сессия, целевая модель, KPI."}),
     ]
     for kind, key, payload in rows:
         db.add(FinContent(id=uuid.uuid4(), kind=kind, key=key, payload=payload, sort=0, is_active=True))

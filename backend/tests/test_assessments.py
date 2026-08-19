@@ -238,7 +238,9 @@ async def test_generate_report_creates_report_record(auth_client, db_session, te
 
 
 @pytest.mark.asyncio
-async def test_generate_report_idempotent_skips_when_report_exists(auth_client, db_session, test_user, mock_generate_pdf):
+async def test_generate_report_idempotent_skips_when_report_exists(
+    auth_client, db_session, test_user, mock_generate_pdf
+):
     """
     Если report уже существует в БД - эндпоинт возвращает его и НЕ вызывает
     generate_pdf повторно. Тест создаёт report напрямую в БД (не через
