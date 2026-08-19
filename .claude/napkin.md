@@ -58,8 +58,20 @@
 3. **[2026-08-19] ruff is pinned to 0.15.11 in CI**
    Do instead: `pip install ruff==0.15.11`. An unpinned ruff ships new rules and turns CI red with no code change.
 
-4. **[2026-08-19] ~90 lint findings are deliberately deferred, not forgotten**
-   Do instead: E501 (281), E741 (56), E701/E702 (25), E402 (20), B905 (7) are listed with reasons in the `ignore` block of `backend/ruff.toml`. Enable one rule at a time; B905 and E402 change behaviour.
+4. **[2026-08-19] Deferred after stage 2: E741 (56), E701/E702 (25), B905 (7)**
+   Do instead: stage 2 turned on E731, B007, SIM105/117/401, UP031, E402 and E501. Reasons for what is left live in the `ignore` block of `backend/ruff.toml`. Enable one rule at a time; B905 changes behaviour. E701/E702 would break the R1-R12 rule table in `app/finance_interpret.py` — that one needs a per-file ignore, not a rewrite.
+
+5. **[2026-08-19] A rule sitting in `ignore` may be off anyway — check `select` first**
+   Do instead: E501 sat in `ignore` while `select` held only E4/E7/E9, so it never ran; the "281 findings" figure came from a separate `--isolated` run. Prove a rule is live by feeding it a violation (append a 130-char line, run ruff, delete it) before trusting counts or writing an ignore entry.
+
+6. **[2026-08-19] `exclude` entries must be glob patterns**
+   Do instead: write `"**/alembic/versions/**"`. A plain path like `"alembic/versions"` is silently not applied — migrations were linted along with the code, and 30 of them got rewritten by stage-1 autofixes.
+
+7. **[2026-08-19] Column-aligned declarations are deliberate — do not reflow them**
+   Do instead: `app/models.py` and `app/m3_models.py` (schema columns), plus the R1-R12 table in `app/finance_interpret.py`, line names and types up into columns. `ruff format` and line-length fixes destroy that alignment, so these files carry per-file ignores instead.
+
+8. **[2026-08-19] Lint PRs are verified against a full local pytest run, not just CI**
+   Do instead: run the suite on the stage-2 baseline (1119 passed, 2 skipped) before and after the change. Postgres 16 + `DB_NAME=dao64_test` in a scratch clone; never `docker compose` from the clone (see Deploy & Git).
 
 ---
 
