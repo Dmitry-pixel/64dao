@@ -5,10 +5,14 @@
 """
 import pytest
 
-from app.contours import (
-    CONTOURS, CONTOUR_ORDER, INTRO_TEXTS, LINE_KEYS, REVERSE_ITEMS,
-)
 from app.contour_scoring import compute_contour_result
+from app.contours import (
+    CONTOUR_ORDER,
+    CONTOURS,
+    INTRO_TEXTS,
+    LINE_KEYS,
+    REVERSE_ITEMS,
+)
 
 KEYS = sorted(CONTOURS)
 

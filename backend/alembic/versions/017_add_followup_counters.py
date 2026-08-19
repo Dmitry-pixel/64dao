@@ -9,9 +9,10 @@
 Revision ID: 017
 Revises: 016
 """
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
+
+from alembic import op
 
 revision = "017"
 down_revision = "016"

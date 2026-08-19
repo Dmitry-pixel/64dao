@@ -1,7 +1,7 @@
 import logging
 import os
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,25 +10,30 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth import get_current_user
-from app.config import get_settings
-from app.db import get_db
-from app.models import Assessment, AssessmentContour, Company, Report, Strategy, User
-from app.pdf import generate_pdf, build_report_html
-from app.routers.payments import calculate_credits, paid_credits, pick_order
 from app.access_grants import pick_grant
-from app.credits_settings import enforce_credits_enabled
-from app.finance_service import resolve_submission_finance, FinanceRequiredError
-from app.finance_scoring import InvalidAnswersError, BlockUnderfilledError
-from app.finance_interpret import load_content, build_interpretation
-from app.schemas import (
-    AssessmentCreate, AssessmentOut, ContourBrief, ContourSubmit, ReportOut, StrategyOut,
-)
-from app.contours import CONTOURS, CONTOUR_ORDER, get_spec
-from app.contour_summary import build_summary
-from app.contour_settings import is_contour_enabled
-from app.contour_scoring import compute_contour_result
+from app.auth import get_current_user
 from app.company_lifecycle import build_company_lifecycle, lifecycle_progress
+from app.config import get_settings
+from app.contour_scoring import compute_contour_result
+from app.contour_settings import is_contour_enabled
+from app.contour_summary import build_summary
+from app.contours import CONTOUR_ORDER, CONTOURS, get_spec
+from app.credits_settings import enforce_credits_enabled
+from app.db import get_db
+from app.finance_interpret import build_interpretation, load_content
+from app.finance_scoring import BlockUnderfilledError, InvalidAnswersError
+from app.finance_service import FinanceRequiredError, resolve_submission_finance
+from app.models import Assessment, AssessmentContour, Company, Report, Strategy, User
+from app.pdf import build_report_html, generate_pdf
+from app.routers.payments import calculate_credits, pick_order
+from app.schemas import (
+    AssessmentCreate,
+    AssessmentOut,
+    ContourBrief,
+    ContourSubmit,
+    ReportOut,
+    StrategyOut,
+)
 
 settings = get_settings()
 router = APIRouter(prefix="/api/assessments", tags=["assessments"])
@@ -97,7 +102,7 @@ async def create_assessment(
             finance_required=settings.finance_block_required,
         )
     except (FinanceRequiredError, InvalidAnswersError, BlockUnderfilledError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     method2_payload = (
         {k: v.model_dump() for k, v in body.method2_data.items()}
@@ -344,7 +349,7 @@ async def delete_assessment(
     for report in assessment.reports:
         if report.pdf_path:
             try:
-                Path(report.pdf_path).unlink(missing_ok=True)
+                Path(report.pdf_path).unlink(missing_ok=True)  # noqa: ASYNC240 — локальный unlink, микросекунды
             except Exception as exc:
                 logging.getLogger(__name__).warning(
                     "Could not delete PDF file %s: %s", report.pdf_path, exc
@@ -359,7 +364,7 @@ async def delete_assessment(
     # Возврат денег кредит по-прежнему возвращает: там меняется статус
     # диагностики, а не факт её существования.
     if assessment.deleted_at is None:
-        assessment.deleted_at = datetime.now(timezone.utc)
+        assessment.deleted_at = datetime.now(UTC)
 
 
 @router.post("/{assessment_id}/generate-report", response_model=ReportOut)
@@ -368,7 +373,6 @@ async def generate_report_on_demand(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.schemas import ReportOut as ReportOutSchema
 
     result = await db.execute(
         select(Assessment)
@@ -421,7 +425,7 @@ async def generate_report_on_demand(
         user_id=user.id,
         pdf_path=output_path,
         pdf_filename=filename,
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
     )
     db.add(report)
     await db.flush()
@@ -455,7 +459,10 @@ async def stream_pdf_on_demand(
     os.close(tmp_fd)
     try:
         await generate_pdf(html, tmp_path)
-        with open(tmp_path, "rb") as f:
+        # TODO(этап 2): PDF бывает на несколько МБ, синхронное чтение блокирует
+        # event loop. Переписать на asyncio.to_thread отдельным PR с прогоном
+        # tests/test_reports.py.
+        with open(tmp_path, "rb") as f:  # noqa: ASYNC230
             pdf_bytes = f.read()
     finally:
         try:
@@ -586,7 +593,7 @@ async def submit_contour(
     try:
         result = compute_contour_result(body.answers, get_spec(contour))
     except (InvalidAnswersError, BlockUnderfilledError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     row = AssessmentContour(
         assessment_id=assessment.id,
@@ -736,7 +743,7 @@ async def build_html_for_assessment(db, assessment, user, allow_draft: bool = Fa
         lifecycle_stages=lifecycle_stages,
         company_name=company_name,
         user_name=user_name,
-        date_str=_date_ru(datetime.now(timezone.utc)),
+        date_str=_date_ru(datetime.now(UTC)),
         combination=combination or "",
         strategy=strategy,
         target_strategy=target_strategy,

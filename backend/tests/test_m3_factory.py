@@ -17,10 +17,12 @@ from app import m3_verdict as vd
 from app.m3_config import industry_weights
 from app.m3_map import layout, render_map_svg
 from app.m3_pdf import (
-    cell_breakdown_block, facts_line, hexagram_line, lines_block,
+    cell_breakdown_block,
+    facts_line,
+    hexagram_line,
+    lines_block,
 )
 from tests import m3_factory as factory
-
 
 MOVING = dict(
     symbols="BABAAA", cell_strength="low", cell_attract="high",

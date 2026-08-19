@@ -10,7 +10,11 @@
 import pytest
 
 from app.m3_verdict import (
-    VERDICTS, ZONES, mobility_state, verdict_for, zone_of,
+    VERDICTS,
+    ZONES,
+    mobility_state,
+    verdict_for,
+    zone_of,
 )
 
 
@@ -134,8 +138,8 @@ def test_mobility_note_always_present():
 
 # ── Траектория по матрице ─────────────────────────────────────────────────────
 from app.m3_config import industry_weights  # noqa: E402
-from tests import m3_factory as factory  # noqa: E402
 from app.m3_verdict import cells_of, symbols_after, transition  # noqa: E402
+from tests import m3_factory as factory  # noqa: E402
 
 # Ячейки образца считались по числу Ян. Универсальный пресет 18 (34/33/33)
 # воспроизводит это правило точно — на нём формулировки образца и держатся,

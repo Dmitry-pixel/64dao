@@ -1,11 +1,21 @@
 import uuid
 from datetime import datetime
+
 from sqlalchemy import (
-    String, Boolean, Text, Numeric, DateTime, Integer,
-    ForeignKey, CheckConstraint, UniqueConstraint, func,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
+
 from app.db import Base
 
 
@@ -420,6 +430,16 @@ class AccessGrant(Base):
 # в Base.metadata: без него create_all в тестах и autogenerate в alembic
 # таблиц m3_* не увидят.
 from app.m3_models import (  # noqa: E402,F401
-    M3Portfolio, M3Object, M3Item, M3Hint, M3Answer, M3Weight, M3Hexagram,
-    M3Content, M3Result, M3PortfolioResult, M3TradeoffDecision, M3ChecklistStep,
+    M3Answer,
+    M3ChecklistStep,
+    M3Content,
+    M3Hexagram,
+    M3Hint,
+    M3Item,
+    M3Object,
+    M3Portfolio,
+    M3PortfolioResult,
+    M3Result,
+    M3TradeoffDecision,
+    M3Weight,
 )

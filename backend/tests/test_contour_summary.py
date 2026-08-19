@@ -3,7 +3,7 @@
 Сводная карта контуров: выбор ограничения, тай-брейки, разрыв зрелости.
 Чистая логика, БД не нужна.
 """
-from app.contour_summary import build_summary, GAP_THRESHOLD
+from app.contour_summary import GAP_THRESHOLD, build_summary
 
 
 def res(index: int, moving: int = 0, combo: str = "AAAAAA") -> dict:

@@ -16,7 +16,6 @@ from sqlalchemy import select
 from app.db import AsyncSessionLocal as async_session_maker
 from app.models import FinContent, Strategy
 
-
 # ── Слой A. Тональность (§5.2) ────────────────────────────────────────────────
 TONALITY = [
     ("mature",       "Зрелая функция", "Язык оптимизации и удержания преимущества.", "Ян-линий 5–6"),

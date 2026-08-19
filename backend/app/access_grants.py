@@ -23,13 +23,13 @@ payments.calculate_credits. Следствия:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import AccessGrant, Assessment
 from app.m3_models import M3Portfolio
+from app.models import AccessGrant, Assessment
 
 # Диагностика считается израсходованной в тех же статусах, что и в
 # payments.calculate_credits — иначе платный и грантовый контуры разойдутся.
@@ -82,7 +82,7 @@ async def active_grants(db: AsyncSession, user_id,
     Порядок: ближайший к истечению первым. Сгорающий ресурс тратим раньше
     бессрочного платного кредита.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     grants = (await db.execute(
         select(AccessGrant).where(
             AccessGrant.user_id == user_id,
@@ -131,7 +131,7 @@ async def states(db: AsyncSession, grants: list[AccessGrant]) -> dict:
     отозванный просроченный грант показываем как revoked (это действие
     администратора, а не естественное истечение).
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     used = await _used_by_grant(db, list(grants))
     result = {}
     for g in grants:

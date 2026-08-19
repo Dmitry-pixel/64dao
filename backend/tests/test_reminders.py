@@ -5,13 +5,13 @@ Email-напоминания (app/jobs/reminders.py). Письма замока�
 владельцам компаний, у которых давно не было диагностики.
 """
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from unittest.mock import AsyncMock
 
 import pytest
 
-from app.models import User, Company, Assessment
 from app.jobs import reminders
+from app.models import Assessment, Company, User
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ def isolated_reminder_settings(monkeypatch, tmp_path):
 
 
 def _now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 async def _mk_user(db) -> User:

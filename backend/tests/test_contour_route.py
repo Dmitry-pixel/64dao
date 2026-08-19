@@ -3,7 +3,7 @@
 Маршрут перехода контура (роадмап 2.1): порядок шагов, инвариант «финал =
 результирующая», сводный маршрут компании. Чистая логика, БД не нужна.
 """
-from app.contour_route import build_route, build_summary_route, GAP_THRESHOLD
+from app.contour_route import GAP_THRESHOLD, build_route, build_summary_route
 from app.contour_scoring import compute_contour_result
 from app.finance_scoring import compute_finance_result
 

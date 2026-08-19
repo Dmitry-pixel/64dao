@@ -14,7 +14,7 @@ snapshot = {
 from __future__ import annotations
 
 from app.contour_summary import build_summary
-from app.contours import LINE_TITLES, CONTOURS
+from app.contours import CONTOURS, LINE_TITLES
 
 
 def contour_diff(prev: dict, curr: dict) -> dict:

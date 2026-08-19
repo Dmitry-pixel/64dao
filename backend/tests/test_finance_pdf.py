@@ -5,9 +5,10 @@
 и регресс legacy (finance_result отсутствует → раздел не выводится, ошибок нет).
 """
 from types import SimpleNamespace
-from app.pdf import build_report_html
-from app.finance_scoring import compute_finance_result
+
 from app.finance_interpret import build_interpretation
+from app.finance_scoring import compute_finance_result
+from app.pdf import build_report_html
 
 
 def control_answers() -> dict:

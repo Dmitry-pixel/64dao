@@ -12,7 +12,6 @@ import pytest
 from app.m3_models import M3Portfolio
 from app.m3_report_api import company_name_for
 from app.models import User
-
 from tests.test_m3_api import M3, m3_on, seeded  # noqa: F401
 
 

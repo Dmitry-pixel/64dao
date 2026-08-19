@@ -28,7 +28,7 @@ async def get_public_document(slug: str):
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
-        raise HTTPException(status_code=404, detail="Документ не найден или не опубликован")
+        raise HTTPException(status_code=404, detail="Документ не найден или не опубликован") from None
 
     if not data.get("published"):
         raise HTTPException(status_code=404, detail="Документ не опубликован")

@@ -8,8 +8,8 @@ import pytest
 from sqlalchemy import select
 
 import app.routers.assessments as assessments_router
-from app.models import FinContent, Strategy, Assessment, AssessmentContour
-from app.finance_interpret import load_content, build_interpretation
+from app.finance_interpret import build_interpretation, load_content
+from app.models import Assessment, AssessmentContour, FinContent, Strategy
 from app.pdf import build_report_html
 
 

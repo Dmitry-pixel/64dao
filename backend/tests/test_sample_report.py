@@ -12,14 +12,15 @@
 - отсутствие файла: контакт должен сохраниться, даже если PDF ещё не
   загружен в админку. Раньше на этом месте открывалась вкладка с 404.
 """
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
 from app.limiter import limiter
-from app.routers.sample_report import REQUEST_RATE_LIMIT
 from app.models import SampleLead
+from app.routers.sample_report import REQUEST_RATE_LIMIT
 from app.sample_report_store import file_for
 
 PAYLOAD = {

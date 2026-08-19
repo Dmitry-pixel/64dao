@@ -19,14 +19,21 @@ from __future__ import annotations
 import html as html_lib
 from typing import Any
 
-from app import m3_scoring as sc
 from app.m3_map import map_caption, render_map_svg
 from app.m3_portfolio import (
-    constraints, delta_line_reading, metric_readings, rank_comparison,
-    rank_comparison_reading, tact_note, yin_table,
+    constraints,
+    metric_readings,
+    rank_comparison,
+    rank_comparison_reading,
+    tact_note,
+    yin_table,
 )
 from app.m3_verdict import (
-    cell_breakdown_text, cell_label, execution_reason, market_label, verdict_for,
+    cell_breakdown_text,
+    cell_label,
+    execution_reason,
+    market_label,
+    verdict_for,
 )
 from app.m3_verdict import transition as trajectory
 
@@ -288,14 +295,14 @@ def objects_section(
 
     rows = []
     for o in objects:
-        oid = str(getattr(o, "id"))
+        oid = str(o.id)
         row = [
-            e(getattr(o, "position")),
-            e(getattr(o, "name")),
+            e(o.position),
+            e(o.name),
             num(getattr(o, "revenue", None), 0),
             signed_percent(_f(getattr(o, "revenue_dynamics", None))),
             "—" if getattr(o, "revenue_share", None) is None
-            else f"{num(getattr(o, 'revenue_share'), 0)}%",
+            else f"{num(o.revenue_share, 0)}%",
             e(PROFITABILITY_LABELS.get(getattr(o, "profitability", "unknown"),
                                        getattr(o, "profitability", ""))),
         ]
@@ -1145,9 +1152,9 @@ def build_portfolio_report_html(
     objects = report["objects"]
     results = [o["result"] for o in objects]
     results_by_id = {str(r["object_id"]): r for r in results}
-    objects_by_id = {str(getattr(o, "id")): o for o in getattr(portfolio, "objects", [])}
+    objects_by_id = {str(o.id): o for o in getattr(portfolio, "objects", [])}
     shares = {
-        str(getattr(o, "id")): _f(getattr(o, "revenue_share", None))
+        str(o.id): _f(getattr(o, "revenue_share", None))
         for o in getattr(portfolio, "objects", [])
     }
     steps_by_object: dict[str, list[Any]] = {}

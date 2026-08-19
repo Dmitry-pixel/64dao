@@ -3,9 +3,10 @@ Sanity-тесты для 64DAO backend.
 Запуск: cd backend && python -m pytest tests/test_sanity.py -v --tb=short
 """
 
+import os
 import re
 import sys
-import os
+
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -14,16 +15,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # только потребляет и реэкспортирует не полностью (_HEXAGRAM_LIST там нет,
 # отсюда ImportError при коллекции). Тест реестра ходит в источник.
 from app.hexagrams import (
-    _HEXAGRAM_LIST,
     _HEXAGRAM_BY_COMBO,
     _HEXAGRAM_BY_NUM,
+    _HEXAGRAM_LIST,
     _TARGET_HEXAGRAM,
     get_target_hexagram_info,
 )
 from app.pdf import (
+    HEX_SYMBOLS,
     _hexagram_svg,
     build_report_html,
-    HEX_SYMBOLS,
 )
 
 BASE_URL = "https://64dao.ru"
@@ -232,13 +233,15 @@ class TestLiveAPI:
             pytest.skip("64dao.ru недоступен")
 
     def test_health(self):
-        import urllib.request, json
+        import json
+        import urllib.request
         with urllib.request.urlopen(f"{BASE_URL}/api/health", timeout=10) as r:
             assert r.status == 200
             assert json.loads(r.read()).get("status") == "ok"
 
     def test_login_endpoint_exists(self):
-        import urllib.request, urllib.error
+        import urllib.error
+        import urllib.request
         req = urllib.request.Request(
             f"{BASE_URL}/api/auth/login",
             data=b"{}", headers={"Content-Type": "application/json"}, method="POST",
@@ -249,7 +252,8 @@ class TestLiveAPI:
             assert e.code in (422, 400), f"expected 422/400, got {e.code}"
 
     def test_assessments_needs_auth(self):
-        import urllib.request, urllib.error
+        import urllib.error
+        import urllib.request
         try:
             urllib.request.urlopen(f"{BASE_URL}/api/assessments", timeout=10)
             pytest.fail("expected 401")
@@ -257,7 +261,8 @@ class TestLiveAPI:
             assert e.code == 401, f"expected 401, got {e.code}"
 
     def test_unknown_route_404(self):
-        import urllib.request, urllib.error
+        import urllib.error
+        import urllib.request
         try:
             urllib.request.urlopen(f"{BASE_URL}/api/no_such_endpoint_xyz", timeout=10)
             pytest.fail("expected 404")
@@ -267,8 +272,8 @@ class TestLiveAPI:
 
 # ── Finance: next_steps / planned_steps ───────────────────────────────────────
 
-from app.finance_scoring import compute_finance_result
 from app.finance_interpret import build_interpretation
+from app.finance_scoring import compute_finance_result
 
 _FIN_CONTENT_STUB = {
     "tonality": {}, "quadrant": {}, "trigram": {}, "tension_rule": {},

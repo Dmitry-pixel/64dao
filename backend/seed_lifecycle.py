@@ -6,13 +6,15 @@
 """
 
 import asyncio
+
 from sqlalchemy import select
+
 from app.db import AsyncSessionLocal as async_session_maker
-from app.models import Strategy
 
 # Формулировки и подписи берутся из единого источника — app/method1_questions.
 # Локальных копий здесь быть не должно (см. tests/test_base_questions_mapping.py).
 from app.method1_questions import ANSWERS, LC_FIELDS, QUESTION_LABELS  # noqa: E402
+from app.models import Strategy
 
 
 def generate_description(combination: str) -> str:

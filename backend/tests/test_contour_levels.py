@@ -10,9 +10,8 @@
 import pytest
 
 from app.contour_levels import LEVELS, STATE_LABELS, levels_of
-from app.contours import LINE_KEYS, get_spec
 from app.contour_scoring import compute_contour_result
-
+from app.contours import LINE_KEYS, get_spec
 
 # ── Хелперы ──────────────────────────────────────────────────────────────────
 

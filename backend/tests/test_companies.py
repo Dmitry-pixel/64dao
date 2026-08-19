@@ -7,9 +7,9 @@ GET /api/companies.
 import uuid
 
 import pytest
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
-from app.models import Company, Assessment
+from app.models import Assessment, Company
 
 _FIN = {f"{b}.{q}": 3 for b in range(1, 7) for q in range(1, 5)}
 
@@ -54,7 +54,7 @@ async def test_repeat_same_name_reuses_company(auth_client, test_user, db_sessio
 
 @pytest.mark.asyncio
 async def test_explicit_company_id_inherited(auth_client, test_user, db_session):
-    r1 = await auth_client.post("/api/assessments", json=_payload(company_name="Явная"))
+    await auth_client.post("/api/assessments", json=_payload(company_name="Явная"))
     comp = await db_session.scalar(
         select(Company).where(Company.user_id == test_user.id, Company.name == "Явная"))
     r2 = await auth_client.post("/api/assessments", json=_payload(company_name=None, company_id=str(comp.id)))

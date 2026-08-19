@@ -19,7 +19,7 @@ Diagnostic»: там символ означал режим работы (Ян �
 """
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from app.contours import LINE_KEYS, LINE_TITLES
 

@@ -1,23 +1,25 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Request, HTTPException
-from sqlalchemy import select, func
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth import get_current_user, require_admin
-from app.db import get_db
-from app.models import Assessment, Order, User
-from app.m3_models import M3Portfolio
-from app.tochka_client import get_tochka_client, extract_operation
-from app.config import get_settings
-from app.tax_settings import get_tax_settings, set_vat_enabled, current_vat_type
-from app.pricing_store import current_price, is_payment_enabled
-from app.credits_settings import read_credits_settings, set_enforce_credits
 from app.access_grants import (
-    grant_credits, nearest_expiry, M3_USED_STATUSES,
+    M3_USED_STATUSES,
+    grant_credits,
+    nearest_expiry,
 )
+from app.auth import get_current_user, require_admin
+from app.config import get_settings
+from app.credits_settings import read_credits_settings, set_enforce_credits
+from app.db import get_db
+from app.m3_models import M3Portfolio
+from app.models import Assessment, Order, User
+from app.pricing_store import current_price, is_payment_enabled
+from app.tax_settings import current_vat_type, get_tax_settings, set_vat_enabled
+from app.tochka_client import extract_operation, get_tochka_client
 
 logger = logging.getLogger(__name__)
 
@@ -430,7 +432,7 @@ async def create_payment(
     except Exception as e:
         await db.rollback()
         body = getattr(getattr(e, "response", None), "text", None)
-        raise HTTPException(status_code=502, detail=f"Tochka API error: {e} | body: {body}")
+        raise HTTPException(status_code=502, detail=f"Tochka API error: {e} | body: {body}") from e
 
     data = tochka_resp.get("Data", {})
     order.tochka_operation_id = data.get("operationId")
@@ -511,7 +513,7 @@ async def create_test_payment(
     except Exception as e:
         await db.rollback()
         body = getattr(getattr(e, "response", None), "text", None)
-        raise HTTPException(status_code=502, detail=f"Tochka API error: {e} | body: {body}")
+        raise HTTPException(status_code=502, detail=f"Tochka API error: {e} | body: {body}") from e
 
     data = tochka_resp.get("Data", {})
     order.tochka_operation_id = data.get("operationId")
@@ -601,7 +603,7 @@ async def tochka_webhook(
     order.webhook_payload = claims
     if status == "APPROVED":
         order.status = "paid"
-        order.paid_at = datetime.now(timezone.utc)
+        order.paid_at = datetime.now(UTC)
     elif status in ("REJECTED", "DECLINED"):
         order.status = "failed"
 
@@ -633,7 +635,7 @@ async def get_order_status(
             remote_status = extract_operation(resp).get("status")
             if remote_status == "APPROVED" and order.status == "pending":
                 order.status = "paid"
-                order.paid_at = datetime.now(timezone.utc)
+                order.paid_at = datetime.now(UTC)
                 await db.commit()
             elif remote_status in REFUND_STATUSES and order.status != "refunded":
                 # Единственный способ узнать о возврате из кабинета банка.
@@ -688,7 +690,7 @@ async def refund_order(
         # Тело ответа Точки обязательно в тексте ошибки: без него 400
         # выглядит как «Client error 400» без причины (потеряли час).
         body = getattr(getattr(e, "response", None), "text", None)
-        raise HTTPException(status_code=502, detail=f"Tochka refund error: {e} | body: {body}")
+        raise HTTPException(status_code=502, detail=f"Tochka refund error: {e} | body: {body}") from e
 
     order.status = "refunded"
 
@@ -741,7 +743,7 @@ async def reconcile_orders(
             marked_refunded += 1
         elif remote_status == "APPROVED" and order.status == "pending":
             order.status = "paid"
-            order.paid_at = datetime.now(timezone.utc)
+            order.paid_at = datetime.now(UTC)
             marked_paid += 1
 
     await db.commit()

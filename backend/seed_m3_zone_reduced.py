@@ -23,9 +23,8 @@ import asyncio
 
 from sqlalchemy import select
 
+import app.m3_models  # noqa: F401
 from app.db import AsyncSessionLocal
-import app.models        # обязателен: иначе NoReferencedTableError на flush
-import app.m3_models     # noqa: F401
 from app.m3_models import M3Content
 
 HIGH_LOW_BODY = (

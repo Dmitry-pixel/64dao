@@ -4,9 +4,11 @@ Seed script: удаляет все стратегии и создаёт 64 ша�
 """
 import asyncio
 import uuid
+
+from sqlalchemy import delete
+
 from app.db import AsyncSessionLocal as async_session_maker
 from app.models import Strategy
-from sqlalchemy import select, delete
 
 HEXAGRAMS = [
     (1,  "Действие",              "AAAAAA", "Расцвет"),

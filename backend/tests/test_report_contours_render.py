@@ -12,13 +12,12 @@
 `load_report_contours` (section_no 05/06/07, порядок CONTOUR_ORDER), но собирает
 вход руками, чтобы не поднимать асинхронную сессию.
 """
-from app.pdf import build_report_html
-from app.finance_scoring import compute_finance_result
 from app.contour_scoring import compute_contour_result
-from app.finance_interpret import build_interpretation
-from app.contours import get_spec, CONTOUR_ORDER, CONTOURS
 from app.contour_summary import build_summary
-
+from app.contours import CONTOUR_ORDER, CONTOURS, get_spec
+from app.finance_interpret import build_interpretation
+from app.finance_scoring import compute_finance_result
+from app.pdf import build_report_html
 
 # ── Вход ──────────────────────────────────────────────────────────────────────
 

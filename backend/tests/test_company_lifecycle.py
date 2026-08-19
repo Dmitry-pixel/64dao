@@ -18,7 +18,6 @@ from app.company_lifecycle import (
 )
 from app.contour_summary import build_summary
 
-
 # ── Хелперы ──────────────────────────────────────────────────────────────────
 
 LINE_KEYS = ["processes", "systems", "team", "leadership", "environment", "strategy"]

@@ -9,8 +9,9 @@ Smoke-тесты для 64DAO — полное покрытие API и фрон�
 
 import json
 import socket
-import urllib.request
 import urllib.error
+import urllib.request
+
 import pytest
 
 BASE = "https://64dao.ru"

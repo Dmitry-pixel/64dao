@@ -6,13 +6,12 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+import app.models  # noqa: F401 — регистрирует все модели в Base.metadata
 from alembic import context
+from app.config import get_settings
 
 # Импортируем Base и все модели чтобы Alembic их видел
 from app.db import Base
-import app.models  # noqa: F401 — регистрирует все модели в Base.metadata
-
-from app.config import get_settings
 
 settings = get_settings()
 

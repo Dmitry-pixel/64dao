@@ -2,12 +2,12 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File
 from pydantic import BaseModel, field_validator
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from sqlalchemy import select, func, cast, Date
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import require_admin, get_current_user, create_impersonation_token, create_token, decode_token, set_auth_cookie
+from app.auth import require_admin, create_impersonation_token, create_token, decode_token, set_auth_cookie
 from app.config import get_settings
 from app.db import get_db
 from app.limiter import limiter
@@ -84,7 +84,7 @@ async def get_stats(
     recent_assessments = recent_assessments_res.scalars().all()
 
     # Статистика покупок за последние 30 дней
-    since = datetime.now(timezone.utc) - timedelta(days=29)
+    since = datetime.now(UTC) - timedelta(days=29)
     orders_res = await db.execute(
         select(
             cast(Order.created_at, Date).label("day"),
@@ -316,13 +316,13 @@ async def revoke_user_sessions(
     аккаунта (is_active) для этого не годится — она закрывает доступ
     полностью, а не только скомпрометированную сессию.
     """
-    from datetime import datetime as _dt, timezone as _tz
+    from datetime import datetime as _dt
 
     user = await db.scalar(select(User).where(User.id == user_id))
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    user.sessions_revoked_at = _dt.now(_tz.utc)
+    user.sessions_revoked_at = _dt.now(UTC)
     await db.flush()
     return SuccessResponse(message="Сессии пользователя завершены")
 
@@ -651,10 +651,10 @@ async def get_document(slug: str, _: User = Depends(require_admin)):
 async def save_document(slug: str, body: dict, _: User = Depends(require_admin)):
     if slug not in ALLOWED_DOC_SLUGS:
         raise HTTPException(status_code=404, detail="Документ не найден")
-    from datetime import datetime, timezone
+    from datetime import datetime
     body["slug"] = slug
     body["title"] = ALLOWED_DOC_SLUGS[slug]
-    body["updated_at"] = datetime.now(timezone.utc).isoformat()
+    body["updated_at"] = datetime.now(UTC).isoformat()
     _write_doc(slug, body)
     return {"ok": True}
 
@@ -808,7 +808,7 @@ async def admin_set_contour(
     try:
         return {"contours": set_contour_enabled(contour, body.enabled)}
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.delete("/assessments/{assessment_id}/contours/{contour}", status_code=204)
@@ -865,7 +865,7 @@ def _grant_out(grant: AccessGrant, state: dict, user: User | None = None) -> Acc
 def _normalize_expires(value: datetime) -> datetime:
     """Дата из формы приходит без таймзоны: считаем её UTC, иначе сравнение
     с datetime.now(timezone.utc) упадёт на naive/aware."""
-    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    return value if value.tzinfo else value.replace(tzinfo=UTC)
 
 
 @router.get("/access-grants", response_model=list[AccessGrantOut])
@@ -931,7 +931,7 @@ async def create_access_grant(
             status_code=400,
             detail="Пользователь заблокирован — сначала разблокируйте доступ")
     expires_at = _normalize_expires(body.expires_at)
-    if expires_at <= datetime.now(timezone.utc):
+    if expires_at <= datetime.now(UTC):
         raise HTTPException(status_code=400, detail="Дата окончания должна быть в будущем")
 
     grant = AccessGrant(
@@ -948,7 +948,7 @@ async def create_access_grant(
     if body.notify:
         try:
             await send_access_grant_email(user.email, user.full_name, grant.quota, expires_at)
-            grant.email_sent_at = datetime.now(timezone.utc)
+            grant.email_sent_at = datetime.now(UTC)
             await db.flush()
         except Exception as exc:
             import logging; logging.getLogger(__name__).error(
@@ -972,7 +972,7 @@ async def revoke_access_grant(
         raise HTTPException(status_code=404, detail="Грант не найден")
     if grant.revoked_at:
         raise HTTPException(status_code=409, detail="Грант уже отозван")
-    grant.revoked_at = datetime.now(timezone.utc)
+    grant.revoked_at = datetime.now(UTC)
     grant.revoked_by = admin.id
     await db.flush()
     user = await db.scalar(select(User).where(User.id == grant.user_id))
@@ -994,7 +994,7 @@ async def notify_access_grant(
         raise HTTPException(status_code=404, detail="Грант не найден")
     if grant.revoked_at:
         raise HTTPException(status_code=400, detail="Грант отозван — письмо не отправляется")
-    if grant.expires_at <= datetime.now(timezone.utc):
+    if grant.expires_at <= datetime.now(UTC):
         raise HTTPException(status_code=400, detail="Срок доступа истёк — письмо не отправляется")
     user = await db.scalar(select(User).where(User.id == grant.user_id))
     if not user:
@@ -1002,7 +1002,7 @@ async def notify_access_grant(
     try:
         await send_access_grant_email(user.email, user.full_name, grant.quota, grant.expires_at)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Не удалось отправить письмо: %s" % exc)
-    grant.email_sent_at = datetime.now(timezone.utc)
+        raise HTTPException(status_code=502, detail="Не удалось отправить письмо: %s" % exc) from exc
+    grant.email_sent_at = datetime.now(UTC)
     await db.flush()
     return _grant_out(grant, await grant_state(db, grant), user)

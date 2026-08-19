@@ -9,7 +9,7 @@
 контракта (грант не откатывается).
 """
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from unittest.mock import AsyncMock
 
 import pytest
@@ -51,7 +51,7 @@ def mock_grant_email(monkeypatch):
 
 
 async def _grant(db, user, quota=1, days=14, starts_in_days=0, revoked=False):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     grant = AccessGrant(
         user_id=user.id,
         quota=quota,
@@ -197,7 +197,7 @@ async def test_credits_breakdown_shape(auth_client, db_session, test_user):
 def _create_body(days=14, quota=2, notify=True):
     return {
         "quota": quota,
-        "expires_at": (datetime.now(timezone.utc) + timedelta(days=days)).isoformat(),
+        "expires_at": (datetime.now(UTC) + timedelta(days=days)).isoformat(),
         "reason": "Перспективный партнёр, тест",
         "notify": notify,
     }

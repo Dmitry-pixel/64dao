@@ -16,27 +16,31 @@ from __future__ import annotations
 import logging
 import tempfile
 import uuid
+from collections.abc import Callable
+from datetime import UTC
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 from uuid import uuid4
 
 from fastapi import Depends, HTTPException
 from fastapi.responses import FileResponse
-from starlette.background import BackgroundTask
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.background import BackgroundTask
 
 from app import m3_service as svc
 from app.auth import get_current_user
-from app.config import get_settings
 from app.db import get_db
+from app.m3_access import ensure_result_access
 from app.m3_models import M3ChecklistStep, M3Portfolio, M3TradeoffDecision, M3Weight
 from app.m3_pdf import (
-    PDF_MARGIN, build_portfolio_report_html, footer_template, header_template,
+    PDF_MARGIN,
+    build_portfolio_report_html,
+    footer_template,
+    header_template,
 )
 from app.models import User
 from app.pdf import generate_pdf
-from app.m3_access import ensure_result_access
 
 
 def _unlink_quietly(path: Path) -> None:
@@ -123,7 +127,7 @@ def register_download(
         user: User = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ):
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         portfolio = await owned(portfolio_id, user, db)
         ensure_result_access(portfolio, user)
@@ -137,7 +141,7 @@ def register_download(
             steps=context["steps"],
             decision=context["decision"],
             company_name=context["company_name"],
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
             industry_name=context["industry_name"],
             config=context["config"],
         )

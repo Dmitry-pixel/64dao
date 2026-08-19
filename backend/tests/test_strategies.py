@@ -10,7 +10,6 @@ from sqlalchemy import select
 
 from app.models import Strategy
 
-
 VALID_COMBINATION = "AABABA"
 OTHER_COMBINATION = "BBABAB"
 

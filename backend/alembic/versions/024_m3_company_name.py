@@ -18,8 +18,9 @@ NULL честно означает «не спрашивали», и цепоч�
 Revision ID: 024
 Revises: 023
 """
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "024"
 down_revision = "023"

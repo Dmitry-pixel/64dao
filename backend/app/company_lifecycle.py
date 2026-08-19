@@ -24,8 +24,7 @@ Playbook — рамка вокруг маршрута, а не его замен
 from __future__ import annotations
 
 from app.contour_route import build_route
-from app.contours import LINE_TITLES
-from app.contours import CONTOUR_ORDER
+from app.contours import CONTOUR_ORDER, LINE_TITLES
 
 # ── Стадии и категории ───────────────────────────────────────────────────────
 # Категории вместо чисел: единственная легитимная операция над циклической

@@ -6,16 +6,16 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy import select
-from starlette.background import BackgroundTask
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from starlette.background import BackgroundTask
 
 from app.auth import get_current_user
+from app.config import get_settings
 from app.db import get_db
 from app.models import Report, User
-from app.config import get_settings
 from app.pdf import generate_pdf
-from app.routers.assessments import build_html_for_assessment, _ensure_result_access
+from app.routers.assessments import _ensure_result_access, build_html_for_assessment
 
 settings = get_settings()
 

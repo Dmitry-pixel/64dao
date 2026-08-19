@@ -14,7 +14,11 @@ import pytest
 
 from app.m3_config import DEFAULT_M3_CONFIG, read_m3_config
 from app.m3_schemas import (
-    MIN_COVERAGE, MIN_SHARE, M3ObjectIn, M3ObjectsPut, _bounds,
+    MIN_COVERAGE,
+    MIN_SHARE,
+    M3ObjectIn,
+    M3ObjectsPut,
+    _bounds,
 )
 
 

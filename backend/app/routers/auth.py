@@ -1,16 +1,19 @@
 import asyncio
 import logging
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import (
-    create_token, set_auth_cookie, clear_auth_cookie,
-    create_otp_code, verify_otp_code,
+    clear_auth_cookie,
+    create_otp_code,
+    create_token,
     get_current_user,
+    set_auth_cookie,
+    verify_otp_code,
 )
 from app.config import get_settings
 from app.db import get_db
@@ -18,12 +21,17 @@ from app.email import send_otp_email, send_welcome_email
 
 settings = get_settings()
 from app.limiter import limiter
-from app.models import User, OtpCode
-from app.site_mode import get_site_mode
+from app.models import OtpCode, User
 from app.schemas import (
-    LoginRequest, RegisterRequest, VerifyOTPRequest,
-    ResendOTPRequest, UserOut, SuccessResponse, ProfileUpdateRequest,
+    LoginRequest,
+    ProfileUpdateRequest,
+    RegisterRequest,
+    ResendOTPRequest,
+    SuccessResponse,
+    UserOut,
+    VerifyOTPRequest,
 )
+from app.site_mode import get_site_mode
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -91,7 +99,7 @@ async def login(
             await send_otp_email(user.email, code, user.full_name)
         except Exception as exc:
             logger.error("Failed to send OTP to %s: %s", user.email, exc)
-            raise HTTPException(status_code=500, detail="Не удалось отправить код. Попробуйте позже.")
+            raise HTTPException(status_code=500, detail="Не удалось отправить код. Попробуйте позже.") from exc
     else:
         logger.info("OTP request for unknown email: %s", body.email)
         # ── Защита от Timing Attack ───────────────────────────────────────────
@@ -155,7 +163,7 @@ async def resend_otp(
             await send_otp_email(user.email, code, user.full_name)
         except Exception as exc:
             logger.error("Failed to resend OTP to %s: %s", user.email, exc)
-            raise HTTPException(status_code=500, detail="Не удалось отправить код")
+            raise HTTPException(status_code=500, detail="Не удалось отправить код") from exc
     else:
         # Timing protection для resend тоже
         await asyncio.sleep(random.uniform(0.15, 0.35))
@@ -186,7 +194,7 @@ async def logout_all(
     Текущая сессия тоже завершается: её токен выпущен раньше отметки.
     Кука снимается сразу, чтобы браузер не бился в 401 до перезагрузки.
     """
-    user.sessions_revoked_at = datetime.now(timezone.utc)
+    user.sessions_revoked_at = datetime.now(UTC)
 
     # Неотработанные коды входа гасим заодно: код, отправленный до отзыва,
     # остался бы действующим пропуском и обесценил бы саму кнопку.

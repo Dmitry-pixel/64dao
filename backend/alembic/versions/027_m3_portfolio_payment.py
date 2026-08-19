@@ -15,9 +15,10 @@ ondelete='SET NULL', а не CASCADE: удаление заказа не дол�
 Revision ID: 027
 Revises: 026
 """
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
+
+from alembic import op
 
 revision = "027"
 down_revision = "026"

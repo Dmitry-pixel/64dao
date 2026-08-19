@@ -15,7 +15,6 @@ import html as _html
 
 from app.finance_pdf import section_badge
 
-
 TEXT = {
     "maturity": "зрелость",
     "strengthen": "Инь → Ян (укрепление)",

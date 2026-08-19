@@ -5,7 +5,7 @@
 завалить почту еженедельным спамом. Боевым запуском это проверяется один
 раз в год, тестом — на каждом прогоне.
 """
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -18,7 +18,7 @@ from app.jobs.check_ca_expiry import (
 )
 
 CERTS = Path(__file__).resolve().parents[1] / "certs"
-NOW = datetime(2026, 8, 18, tzinfo=timezone.utc)
+NOW = datetime(2026, 8, 18, tzinfo=UTC)
 
 
 def test_days_left_counts_from_given_moment():

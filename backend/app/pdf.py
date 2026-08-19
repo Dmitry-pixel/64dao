@@ -9,13 +9,11 @@ import html as html_lib
 from pathlib import Path
 from typing import Any
 
-from app.finance_pdf import finance_section_html, contour_section_html, summary_card_html
-from app.finance_pdf import section_badge
-from app.method1_questions import BASE_QUESTIONS, LC_LABELS  # дефолты
+from playwright.async_api import Browser, Playwright, async_playwright
+
 from app.config import get_settings
-
-from playwright.async_api import async_playwright, Browser, Playwright
-
+from app.finance_pdf import contour_section_html, finance_section_html, section_badge, summary_card_html
+from app.method1_questions import BASE_QUESTIONS, LC_LABELS  # дефолты
 
 # ── Singleton state ───────────────────────────────────────────────────────────
 _pw: Playwright | None = None
@@ -176,9 +174,9 @@ async def generate_pdf(
 def _score_bar(score: int) -> str:
     if not score:
         return (
-            f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
-            f'<span style="font-size:11px;color:rgba(26,37,64,0.4);font-style:italic;font-family:Arial,sans-serif;">Не оценено</span>'
-            f'</div>'
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
+            '<span style="font-size:11px;color:rgba(26,37,64,0.4);font-style:italic;font-family:Arial,sans-serif;">Не оценено</span>'
+            '</div>'
         )
     bars = "".join(
         f'<span style="display:inline-block;width:22px;height:5px;border-radius:3px;'
@@ -252,8 +250,9 @@ HEX_SYMBOLS = [
 
 # ── Hexagram data ─────────────────────────────────────────────────────────────
 # (number, name, combination)
-from app.hexagrams import _HEXAGRAM_BY_COMBO, _HEXAGRAM_BY_NUM, _TARGET_HEXAGRAM, get_target_hexagram_info
+from app.hexagrams import _HEXAGRAM_BY_COMBO
 from app.transition_block import transition_block
+
 # Подписи блоков ЖЦ — из единого источника вопросов, без локальной копии.
 _LC_LABELS = LC_LABELS
 
@@ -717,7 +716,6 @@ def build_report_html(
 
     # Сценарий — всегда все строки, пустые с заглушкой
     sc = (strategy.scenario or {}) if strategy else {}
-    sc_rows = [(lbl, sc.get(k) or None) for k, lbl in SCENARIO_LABELS.items()]
 
     # BMC: сетка оценок (только баллы, без текста)
     bmc_score_grid = ""

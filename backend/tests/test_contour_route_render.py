@@ -3,10 +3,10 @@
 Рендер маршрута перехода (роадмап 2.1, PR2): сводный маршрут в карте и
 цепочка шагов в секции контура. Без Playwright и БД.
 """
-from app.finance_pdf import summary_card_html, contour_section_html
-from app.contour_summary import build_summary
 from app.contour_route import build_route, build_summary_route
+from app.contour_summary import build_summary
 from app.contours import get_spec
+from app.finance_pdf import contour_section_html, summary_card_html
 
 
 def _line(n, symbol, moving, block="processes"):
