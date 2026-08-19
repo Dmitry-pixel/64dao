@@ -10,7 +10,9 @@ import uuid
 from datetime import UTC, datetime, timezone
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
+from jwt import InvalidSignatureError
 
 import app.routers.payments as payments_router
 from app.models import Assessment, Order
@@ -87,10 +89,64 @@ async def test_create_payment_success(auth_client, db_session, test_user, mock_t
 
 @pytest.mark.asyncio
 async def test_webhook_invalid_signature_ignored(client, mock_tochka):
-    mock_tochka.verify_and_decode_webhook = AsyncMock(side_effect=ValueError("bad sig"))
+    mock_tochka.verify_and_decode_webhook = AsyncMock(side_effect=InvalidSignatureError("bad sig"))
     resp = await client.post("/api/payments/webhook", content=b"garbage")
     assert resp.status_code == 200
     assert resp.json()["reason"] == "invalid signature"
+
+
+@pytest.mark.asyncio
+async def test_webhook_asks_retry_when_key_unavailable(client, db_session, test_user, mock_tochka):
+    """Недоступен JWKS — банк обязан повторить, а не считать вебхук доставленным.
+
+    Раньше сюда попадал общий except: сетевой сбой отвечал 200, Точка снимала
+    вебхук с повторов, и оплаченный заказ навсегда оставался pending.
+    """
+    assessment = await _make_assessment(db_session, test_user)
+    order = await _make_order(db_session, test_user, assessment, status="pending")
+    mock_tochka.verify_and_decode_webhook = AsyncMock(
+        side_effect=httpx.ConnectError("jwks unreachable")
+    )
+    resp = await client.post("/api/payments/webhook", content=b"jwt")
+    assert resp.status_code == 503
+    await db_session.refresh(order)
+    assert order.status == "pending", "заказ не должен меняться, пока подпись не проверена"
+
+
+@pytest.mark.asyncio
+async def test_webhook_foreign_merchant_ignored(client, db_session, test_user, mock_tochka):
+    """Подпись валидна, но торговая точка чужая: ключ у Точки общий на всех."""
+    assessment = await _make_assessment(db_session, test_user)
+    order = await _make_order(db_session, test_user, assessment, status="pending")
+    order.merchant_id = "200000000001111"
+    await db_session.flush()
+    mock_tochka.verify_and_decode_webhook = AsyncMock(
+        return_value={"operationId": order.tochka_operation_id, "status": "APPROVED",
+                      "merchantId": "999999999999999"}
+    )
+    resp = await client.post("/api/payments/webhook", content=b"jwt")
+    assert resp.status_code == 200
+    assert resp.json()["reason"] == "merchant mismatch"
+    await db_session.refresh(order)
+    assert order.status == "pending"
+
+
+@pytest.mark.asyncio
+async def test_webhook_own_merchant_accepted(client, db_session, test_user, mock_tochka):
+    """Свой merchantId проверку проходит и заказ отмечается оплаченным."""
+    assessment = await _make_assessment(db_session, test_user)
+    order = await _make_order(db_session, test_user, assessment, status="pending")
+    order.merchant_id = "200000000001111"
+    await db_session.flush()
+    mock_tochka.verify_and_decode_webhook = AsyncMock(
+        return_value={"operationId": order.tochka_operation_id, "status": "APPROVED",
+                      "merchantId": "200000000001111"}
+    )
+    resp = await client.post("/api/payments/webhook", content=b"jwt")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ok"
+    await db_session.refresh(order)
+    assert order.status == "paid"
 
 
 @pytest.mark.asyncio
