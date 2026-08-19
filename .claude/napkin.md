@@ -47,6 +47,22 @@
 
 ---
 
+## Linting & CI
+
+1. **[2026-08-19] Prod runs Python 3.11 — CI must match**
+   Do instead: keep `python-version: "3.11"` in `ci.yml` and `target-version = "py311"` in `backend/ruff.toml`. `backend/Dockerfile` is `python:3.11-bullseye`; a 3.12 CI can go green while the container fails on 3.12-only syntax.
+
+2. **[2026-08-19] Re-export modules break under ruff autofix (F401 + I001 together)**
+   Do instead: keep the `per-file-ignores` entries for `app/finance_scoring.py`, `app/contour_summary.py`, `app/contour_route.py`, `app/email.py`, `app/routers/admin.py`. isort splits the import block so a line-level `# noqa: F401` stops covering the tail, then F401 deletes those names — this made `app.main` unimportable (lost `BlockUnderfilledError`).
+
+3. **[2026-08-19] ruff is pinned to 0.15.11 in CI**
+   Do instead: `pip install ruff==0.15.11`. An unpinned ruff ships new rules and turns CI red with no code change.
+
+4. **[2026-08-19] ~90 lint findings are deliberately deferred, not forgotten**
+   Do instead: E501 (281), E741 (56), E701/E702 (25), E402 (20), B905 (7) are listed with reasons in the `ignore` block of `backend/ruff.toml`. Enable one rule at a time; B905 and E402 change behaviour.
+
+---
+
 ## Deploy & Git
 
 1. **[2026-05-23] Full frontend redeploy command**
@@ -54,6 +70,12 @@
 
 2. **[2026-05-23] Backend-only redeploy (faster)**
    Do instead (since 2026-07-30): backend code is bind-mounted (`./backend:/app`) — just `docker compose restart backend`. Rebuild only when requirements change.
+
+4. **[2026-08-19] Never run `docker compose` from a repo clone on the server**
+   Do instead: use a clone (e.g. `/root/64dao-lint`) for git and lint work only. `container_name` is hard-coded (`dao64_backend`, `dao64_db`), so `docker compose` from a clone collides with the live Postgres. Run tests in CI, not on the server.
+
+5. **[2026-08-19] `/var/www/64dao/backend` is bind-mounted into the running container**
+   Do instead: `git pull` there changes live code instantly. Then restart the service (`docker compose restart backend` is enough for code-only changes; `up -d --force-recreate` when compose/env changed) and check `docker compose logs --tail=25 backend` for `ImportError`/`Traceback`. Rollback: `git reset --hard <prev-sha>` + restart.
 
 3. **[2026-05-23] git index.lock on Windows blocks git commands**
    Do instead: `Remove-Item "...\.git\index.lock" -Force` in PowerShell before retrying.
