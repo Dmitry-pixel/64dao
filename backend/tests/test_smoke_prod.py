@@ -41,8 +41,10 @@ def _transport(overrides=None, raise_on=None):
 
 
 async def _run(transport) -> list[str]:
+    """Только провалы: медленные ответы проверяются отдельными тестами."""
     async with httpx.AsyncClient(transport=transport) as client:
-        return await job.run_checks(client)
+        failures, _slow = await job.run_checks(client)
+        return failures
 
 
 @pytest.mark.asyncio
@@ -124,7 +126,7 @@ def sent(monkeypatch):
 @pytest.mark.asyncio
 async def test_first_failure_sends_one_letter(state_file, sent, monkeypatch):
     async def failing(client=None):
-        return ["health бэкенда (/api/health): код 502, ожидали 200"]
+        return ["health бэкенда (/api/health): код 502, ожидали 200"], []
 
     monkeypatch.setattr(job, "run_checks", failing)
 
@@ -140,10 +142,10 @@ async def test_first_failure_sends_one_letter(state_file, sent, monkeypatch):
 @pytest.mark.asyncio
 async def test_recovery_sends_letter(state_file, sent, monkeypatch):
     async def failing(client=None):
-        return ["health бэкенда (/api/health): код 502, ожидали 200"]
+        return ["health бэкенда (/api/health): код 502, ожидали 200"], []
 
     async def healthy(client=None):
-        return []
+        return [], []
 
     monkeypatch.setattr(job, "run_checks", failing)
     await job.main()
@@ -157,3 +159,82 @@ async def test_recovery_sends_letter(state_file, sent, monkeypatch):
     # Здоровый прогон подряд писем не добавляет.
     assert await job.main() == 0
     assert len(sent) == 2
+
+
+# ── Скорость ─────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_slow_answer_is_not_a_failure(monkeypatch):
+    """Медленный ответ — не авария: сайт работает, но плохо."""
+    monkeypatch.setattr(job, "SLOW_SECONDS", 0)  # любой ответ считаем медленным
+    async with httpx.AsyncClient(transport=_transport()) as client:
+        failures, slow = await job.run_checks(client)
+    assert failures == []
+    assert len(slow) == len(job.CHECKS)
+
+
+@pytest.mark.asyncio
+async def test_single_slow_run_sends_nothing(state_file, sent, monkeypatch):
+    """Одиночный всплеск — молчим: письмо на каждый скачок сети никто читать
+    не станет, и настоящее замедление в этом шуме потеряется."""
+    async def slow_once(client=None):
+        return [], ["главная страница (/): 4.2 с"]
+
+    monkeypatch.setattr(job, "run_checks", slow_once)
+    assert await job.main() == 0
+    assert sent == []
+
+    # Второй медленный прогон подряд — уже повод написать.
+    assert await job.main() == 0
+    assert len(sent) == 1
+    assert "медленно" in sent[0][0]
+
+    # Третий подряд писем не добавляет.
+    await job.main()
+    assert len(sent) == 1
+
+
+@pytest.mark.asyncio
+async def test_speed_recovery_sends_letter(state_file, sent, monkeypatch):
+    async def slow(client=None):
+        return [], ["главная страница (/): 4.2 с"]
+
+    async def fast(client=None):
+        return [], []
+
+    monkeypatch.setattr(job, "run_checks", slow)
+    await job.main()
+    await job.main()
+    assert len(sent) == 1
+
+    monkeypatch.setattr(job, "run_checks", fast)
+    assert await job.main() == 0
+    assert len(sent) == 2
+    assert "скорость" in sent[1][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_outage_resets_slow_state(state_file, sent, monkeypatch):
+    """Пока сайт лежит, разговор о скорости не имеет смысла."""
+    async def slow(client=None):
+        return [], ["главная страница (/): 4.2 с"]
+
+    async def down(client=None):
+        return ["health бэкенда (/api/health): код 502, ожидали 200"], []
+
+    monkeypatch.setattr(job, "run_checks", slow)
+    await job.main()
+    await job.main()
+    assert len(sent) == 1
+
+    monkeypatch.setattr(job, "run_checks", down)
+    assert await job.main() == 1
+    assert len(sent) == 2 and "не отвечает" in sent[1][0]
+
+    # После аварии счётчик медлительности начинается заново.
+    monkeypatch.setattr(job, "run_checks", slow)
+    await job.main()          # восстановление + первый медленный прогон
+    assert len(sent) == 3 and "снова отвечает" in sent[2][0]
+    await job.main()          # второй подряд — письмо про скорость
+    assert len(sent) == 4 and "медленно" in sent[3][0]
