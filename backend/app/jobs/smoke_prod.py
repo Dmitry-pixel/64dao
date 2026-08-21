@@ -20,15 +20,23 @@ pytest не входит в боевой образ — запустить их 
 за ночь простоя почта получит сотню одинаковых сообщений. Состояние лежит
 в smoke_state.json в volume uploads, рядом с остальными рантайм-файлами.
 
+Медленный ответ разбирается отдельно от аварии. Сайт, отвечающий за 4
+секунды, работает — но так, что клиент уходит. Поэтому превышение порога не
+считается падением: письмо уходит, только если медленно два прогона подряд
+(полчаса), и ещё одно — когда скорость вернулась. Единичный всплеск на
+фоновой задаче или скачок сети письма не порождает.
+
 Настройки (все необязательны):
-  SMOKE_BASE_URL   — что проверяем (по умолчанию https://64dao.ru);
-  SMOKE_TIMEOUT    — таймаут одного запроса в секундах (по умолчанию 10).
+  SMOKE_BASE_URL      — что проверяем (по умолчанию https://64dao.ru);
+  SMOKE_TIMEOUT       — таймаут одного запроса в секундах (по умолчанию 10);
+  SMOKE_SLOW_SECONDS  — с какого времени ответ считается медленным (3.0).
 """
 from __future__ import annotations
 
 import asyncio
 import os
 import sys
+import time
 from datetime import UTC, datetime
 
 import httpx
@@ -40,10 +48,14 @@ settings = get_settings()
 
 BASE_URL = os.environ.get("SMOKE_BASE_URL", "https://64dao.ru").rstrip("/")
 TIMEOUT = float(os.environ.get("SMOKE_TIMEOUT", "10"))
+SLOW_SECONDS = float(os.environ.get("SMOKE_SLOW_SECONDS", "3"))
+# Сколько прогонов подряд должно быть медленно, прежде чем писать письмо.
+SLOW_STREAK_FOR_LETTER = 2
 
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/var/www/64dao/uploads")
 STATE_FILE = os.path.join(UPLOAD_DIR, "smoke_state.json")
-DEFAULT_STATE = {"status": "unknown", "failing_since": None, "checked_at": None}
+DEFAULT_STATE = {"status": "unknown", "failing_since": None, "checked_at": None,
+                 "slow_streak": 0, "slow_notified": False}
 
 REDIRECTS = (301, 302, 307, 308)
 
@@ -82,8 +94,11 @@ CHECKS: list[tuple[str, str, tuple[int, ...], object]] = [
 ]
 
 
-async def run_checks(client: httpx.AsyncClient | None = None) -> list[str]:
-    """Возвращает список провалов. Пустой список — всё в порядке.
+async def run_checks(client: httpx.AsyncClient | None = None) -> tuple[list[str], list[str]]:
+    """Возвращает (провалы, медленные ответы). Оба пустых — всё в порядке.
+
+    Провал и медлительность разделены намеренно: первое означает, что сайт
+    не работает, второе — что работает плохо. Реакция на них разная.
 
     Готовый клиент принимается ради тестов: подменённый транспорт позволяет
     проверить разбор ответов, не выходя в сеть.
@@ -94,15 +109,20 @@ async def run_checks(client: httpx.AsyncClient | None = None) -> list[str]:
     return await _run_with(client)
 
 
-async def _run_with(client: httpx.AsyncClient) -> list[str]:
+async def _run_with(client: httpx.AsyncClient) -> tuple[list[str], list[str]]:
     failures: list[str] = []
+    slow: list[str] = []
     for title, path, allowed, extra in CHECKS:
+        started = time.monotonic()
         try:
             resp = await client.get(f"{BASE_URL}{path}")
         except Exception as e:
             # Недоступность — это и есть авария, ради которой всё затевалось.
             failures.append(f"{title} ({path}): запрос не прошёл — {e}")
             continue
+        elapsed = time.monotonic() - started
+        if elapsed > SLOW_SECONDS:
+            slow.append(f"{title} ({path}): {elapsed:.1f} с")
 
         if resp.status_code not in allowed:
             failures.append(
@@ -119,7 +139,7 @@ async def _run_with(client: httpx.AsyncClient) -> list[str]:
             if problem:
                 failures.append(f"{title} ({path}): {problem}")
 
-    return failures
+    return failures, slow
 
 
 def build_html(failures: list[str], failing_since: str | None) -> str:
@@ -132,6 +152,20 @@ def build_html(failures: list[str], failing_since: str | None) -> str:
         f"<p>Проверка повторяется каждые 15 минут. Следующее письмо придёт "
         f"только когда сайт восстановится.</p>"
     )
+
+
+def build_slow_html(slow: list[str]) -> str:
+    rows = "".join(f"<li>{x}</li>" for x in slow)
+    return (
+        f"<h2>64 ДАО: сайт отвечает медленно</h2><p>Адрес: {BASE_URL}</p>"
+        f"<p>Дольше {SLOW_SECONDS:.0f} с, и так уже {SLOW_STREAK_FOR_LETTER} проверки подряд. "
+        f"Сайт работает, но клиент на таких задержках уходит.</p><ul>{rows}</ul>"
+    )
+
+
+def build_speed_ok_html() -> str:
+    return (f"<h2>64 ДАО: скорость вернулась в норму</h2><p>Адрес: {BASE_URL}</p>"
+            f"<p>Ответы снова укладываются в {SLOW_SECONDS:.0f} с.</p>")
 
 
 def build_recovery_html(failing_since: str | None) -> str:
@@ -157,8 +191,10 @@ async def main() -> int:
     now = datetime.now(UTC).isoformat()
     state = read_json(STATE_FILE, DEFAULT_STATE)
     was_failing = state.get("status") == "fail"
+    slow_streak = int(state.get("slow_streak") or 0)
+    slow_notified = bool(state.get("slow_notified"))
 
-    failures = await run_checks()
+    failures, slow = await run_checks()
 
     if failures:
         failing_since = state.get("failing_since") or now
@@ -170,15 +206,36 @@ async def main() -> int:
                           build_html(failures, failing_since))
         else:
             print("письмо не шлём: об этой аварии уже сообщали")
+        # Счётчик медлительности при аварии обнуляем: пока сайт лежит,
+        # разговор о скорости не имеет смысла.
         write_json(STATE_FILE, {"status": "fail", "failing_since": failing_since,
-                                "checked_at": now})
+                                "checked_at": now, "slow_streak": 0,
+                                "slow_notified": False})
         return 1
 
     print(f"все {len(CHECKS)} проверок пройдены")
     if was_failing:
         await _notify("64 ДАО: сайт снова отвечает",
                       build_recovery_html(state.get("failing_since")))
-    write_json(STATE_FILE, {"status": "ok", "failing_since": None, "checked_at": now})
+
+    if slow:
+        slow_streak += 1
+        print(f"медленно ({len(slow)} из {len(CHECKS)}), подряд: {slow_streak}")
+        for x in slow:
+            print(f"  - {x}")
+        if slow_streak >= SLOW_STREAK_FOR_LETTER and not slow_notified:
+            await _notify("64 ДАО: сайт отвечает медленно", build_slow_html(slow))
+            slow_notified = True
+        elif slow_streak < SLOW_STREAK_FOR_LETTER:
+            print("письмо не шлём: одиночный всплеск, ждём следующую проверку")
+    else:
+        if slow_notified:
+            await _notify("64 ДАО: скорость вернулась в норму", build_speed_ok_html())
+        slow_streak = 0
+        slow_notified = False
+
+    write_json(STATE_FILE, {"status": "ok", "failing_since": None, "checked_at": now,
+                            "slow_streak": slow_streak, "slow_notified": slow_notified})
     return 0
 
 
