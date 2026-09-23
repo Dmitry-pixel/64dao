@@ -61,7 +61,9 @@ class M4Module(Base):
     is_effect:       Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     sort:            Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0, server_default="0")
     is_active:       Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
-    updated_at:      Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at:      Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(),
+    )
 
     questions: Mapped[list["M4Question"]] = relationship(back_populates="module")
 
@@ -92,7 +94,9 @@ class M4Question(Base):
 
     id:          Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
     code:        Mapped[str] = mapped_column(String(8), nullable=False, unique=True)   # 'M04-Q01'
-    module_code: Mapped[int] = mapped_column(SmallInteger, ForeignKey("m4_modules.code", ondelete="RESTRICT"), nullable=False, index=True)
+    module_code: Mapped[int] = mapped_column(
+        SmallInteger, ForeignKey("m4_modules.code", ondelete="RESTRICT"), nullable=False, index=True,
+    )
     text:        Mapped[str] = mapped_column(Text, nullable=False)
     type:        Mapped[str] = mapped_column(String(8), nullable=False)                # bool|scale3|choice|number|money
     unit:        Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -108,7 +112,9 @@ class M4Question(Base):
     # Поведение варианта «Не знаю». unknown_allowed=false — вариант не показывается.
     # unknown_score задан — незнание идёт в балл как число, и тогда штраф
     # достоверности обнуляется: иначе один ответ считается дважды.
-    unknown_allowed:            Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    unknown_allowed:            Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true",
+    )
     unknown_score:              Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     unknown_confidence_penalty: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1, server_default="1")
 
@@ -126,7 +132,9 @@ class M4Question(Base):
     sort:         Mapped[int]  = mapped_column(SmallInteger, nullable=False, default=0, server_default="0")
     is_active:    Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     created_at:   Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at:   Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at:   Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(),
+    )
 
     module:  Mapped["M4Module"] = relationship(back_populates="questions")
     options: Mapped[list["M4QuestionOption"]] = relationship(
@@ -163,7 +171,9 @@ class M4QuestionOption(Base):
     __tablename__ = "m4_question_options"
 
     id:          Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    question_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("m4_questions.id", ondelete="CASCADE"), nullable=False, index=True)
+    question_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("m4_questions.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
     value:       Mapped[str] = mapped_column(String(32), nullable=False)
     label:       Mapped[str] = mapped_column(Text, nullable=False)
     score:       Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
@@ -199,9 +209,13 @@ class M4Card(Base):
     id:           Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
     kind:         Mapped[str] = mapped_column(String(24), nullable=False)
     key:          Mapped[str] = mapped_column(String(24), nullable=False)
-    module_code:  Mapped[int | None] = mapped_column(SmallInteger, ForeignKey("m4_modules.code", ondelete="RESTRICT"), nullable=True, index=True)
+    module_code:  Mapped[int | None] = mapped_column(
+        SmallInteger, ForeignKey("m4_modules.code", ondelete="RESTRICT"), nullable=True, index=True,
+    )
     state:        Mapped[str | None] = mapped_column(String(4), nullable=True)
-    rule_code:    Mapped[str | None] = mapped_column(String(8), ForeignKey("m4_rules.code", ondelete="RESTRICT"), nullable=True, index=True)
+    rule_code:    Mapped[str | None] = mapped_column(
+        String(8), ForeignKey("m4_rules.code", ondelete="RESTRICT"), nullable=True, index=True,
+    )
     title:        Mapped[str] = mapped_column(String(160), nullable=False)
     body:         Mapped[str] = mapped_column(Text, nullable=False)
     mistake:      Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -215,7 +229,9 @@ class M4Card(Base):
     sort:         Mapped[int]  = mapped_column(SmallInteger, nullable=False, default=0, server_default="0")
     is_active:    Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     created_at:   Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at:   Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at:   Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(),
+    )
 
     __table_args__ = (
         UniqueConstraint("kind", "key", name="uq_m4_card_kind_key"),
@@ -269,7 +285,9 @@ class M4Rule(Base):
     sort:             Mapped[int]  = mapped_column(SmallInteger, nullable=False, default=0, server_default="0")
     is_active:        Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     created_at:       Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at:       Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at:       Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(),
+    )
 
     __table_args__ = (
         CheckConstraint("severity IN ('high','medium','low')", name="chk_m4_rule_severity"),
@@ -299,7 +317,9 @@ class M4SymptomChain(Base):
     note:            Mapped[str | None] = mapped_column(Text, nullable=True)
     sort:            Mapped[int]  = mapped_column(SmallInteger, nullable=False, default=0, server_default="0")
     is_active:       Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
-    updated_at:      Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at:      Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(),
+    )
 
     __table_args__ = (
         CheckConstraint(
