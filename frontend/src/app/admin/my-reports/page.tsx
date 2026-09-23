@@ -85,8 +85,12 @@ export default function AdminMyReportsPage() {
     </div>
   )
 
-  const completed = assessments.filter(a => a.status === 'completed').length
+  // Счётчики включают портфели Метода 3 — они в том же списке ниже.
+  const completed = assessments.filter(a => a.status === 'completed' || a.status === 'paid').length
+    + m3.filter(p => p.status === 'calculated').length
   const drafts = assessments.filter(a => a.status === 'draft').length
+    + m3.filter(p => p.status !== 'calculated').length
+  const total = assessments.length + m3.length
 
   // Повтор это продолжение основного отчёта, а не отдельная строка списка.
   // Осиротевший повтор (первичную удалили в админке) остаётся верхним
@@ -128,9 +132,9 @@ export default function AdminMyReportsPage() {
               <span className="label-red">Диагностики</span>
               <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 28, fontWeight: 400, color: 'var(--text)', margin: '6px 0 4px' }}>Мои отчёты</h1>
               <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'var(--text-mute)', margin: 0 }}>
-                {assessments.length === 0
+                {total === 0
                   ? 'Начните первую диагностику.'
-                  : `${completed} готовых · ${drafts} черновик${drafts === 1 ? '' : 'а'} · всего ${assessments.length}`}
+                  : `${completed} готовых · ${drafts} черновик${drafts === 1 ? '' : 'а'} · всего ${total}`}
               </p>
             </div>
             <Link href="/assessment" className="btn btn-primary btn-lg">+ Новая диагностика</Link>

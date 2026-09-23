@@ -165,8 +165,16 @@ export default function DashboardPage() {
     </div>
   )
 
-  const completed = assessments.filter(a => a.status === 'completed' || a.status === 'paid')
-  const drafts = assessments.filter(a => a.status === 'draft')
+  // Счётчики включают портфели Метода 3: список ниже показывает их вместе с
+  // диагностиками Методов 1–2, и цифры должны совпадать с тем, что видно.
+  const completed = [
+    ...assessments.filter(a => a.status === 'completed' || a.status === 'paid'),
+    ...m3.filter(p => p.status === 'calculated'),
+  ]
+  const drafts = [
+    ...assessments.filter(a => a.status === 'draft'),
+    ...m3.filter(p => p.status !== 'calculated'),
+  ]
 
   // Повтор это продолжение основного отчёта, а не отдельная строка списка.
   // Осиротевший повтор (первичную удалили в админке) остаётся верхним
@@ -438,7 +446,7 @@ export default function DashboardPage() {
             <span style={{ ...S.labelRed, display: 'block', marginBottom: 10 }}>Статистика</span>
             <div style={S.statRow}><span style={S.statLabel}>Завершено</span><strong style={S.statVal}>{completed.length}</strong></div>
             <div style={S.statRow}><span style={S.statLabel}>В работе</span><strong style={S.statVal}>{drafts.length}</strong></div>
-            <div style={S.statRow}><span style={S.statLabel}>Всего</span><strong style={S.statVal}>{assessments.length}</strong></div>
+            <div style={S.statRow}><span style={S.statLabel}>Всего</span><strong style={S.statVal}>{assessments.length + m3.length}</strong></div>
             <div style={{ ...S.statRow, marginBottom: 0, paddingTop: 8, borderTop: '1px solid rgba(26,37,64,0.08)' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ fontFamily: 'sans-serif', fontSize: 13, color: '#1a6640', fontWeight: 700 }}>Доступно диагностик</span>

@@ -129,3 +129,31 @@ async def test_company_shows_period_and_repeat_date(auth_client, isolated_remind
     assert c["first_at"] == c["latest_at"]
     assert c["followup_available"] is True
     assert c["assessments"][0]["method"] == "method1"
+
+
+@pytest.mark.asyncio
+async def test_method3_portfolios_join_company_by_name(auth_client, test_user, db_session,
+                                                       isolated_reminder_settings):
+    """Метод 3 к компаниям не привязан: рассчитанный портфель попадает в
+    компанию с тем же названием, иначе — в отдельную строку без id.
+    Черновик портфеля не показывается."""
+    from app.m3_models import M3Portfolio
+
+    await auth_client.post("/api/assessments", json=_payload(company_name="Общая"))
+    db_session.add_all([
+        M3Portfolio(user_id=test_user.id, company_name="общая", status="calculated"),
+        M3Portfolio(user_id=test_user.id, company_name="Только М3", status="calculated"),
+        M3Portfolio(user_id=test_user.id, company_name="Черновик М3", status="draft"),
+    ])
+    await db_session.flush()
+
+    by_name = {c["name"]: c for c in (await auth_client.get("/api/companies")).json()}
+    shared = by_name["Общая"]
+    assert shared["assessment_count"] == 2
+    assert {a["method"] for a in shared["assessments"]} == {"method1", "method3"}
+    assert shared["dynamics_available"] is False   # динамика — по Методам 1–2
+
+    only_m3 = by_name["Только М3"]
+    assert only_m3["id"] is None
+    assert only_m3["next_repeat_at"] is None        # у Метода 3 повтора нет
+    assert "Черновик М3" not in by_name

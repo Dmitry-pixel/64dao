@@ -84,7 +84,7 @@ export default function ReportPage() {
           getCompanies()
             .then(cs => {
               const c = cs.find(x => x.name === a.company_name)
-              if (c && c.assessment_count >= 2) setDynCompany(c)
+              if (c && c.id && c.dynamics_available) setDynCompany(c)
             })
             .catch(() => {})
         }

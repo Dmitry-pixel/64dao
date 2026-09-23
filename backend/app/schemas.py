@@ -355,8 +355,11 @@ class CompanyAssessmentOut(BaseModel):
 
 
 class CompanyOut(BaseModel):
-    """Считаются только завершённые и не удалённые диагностики."""
-    id:                 uuid.UUID
+    """Считаются только завершённые и не удалённые диагностики.
+
+    id пуст у строки, собранной только из портфелей Метода 3: они к компаниям
+    не привязаны, и у такой строки нет ни повтора, ни «Динамики»."""
+    id:                 uuid.UUID | None
     name:               str
     assessment_count:   int = 0
     first_at:           datetime | None = None
@@ -365,6 +368,8 @@ class CompanyOut(BaseModel):
     repeat_days:        int | None = None
     next_repeat_at:     datetime | None = None
     followup_available: bool = False
+    # «Динамика» строится по диагностикам Методов 1–2; Метод 3 в ней не участвует.
+    dynamics_available: bool = False
     assessments:        list[CompanyAssessmentOut] = []
 
 
