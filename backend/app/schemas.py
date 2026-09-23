@@ -368,7 +368,7 @@ class CompanyOut(BaseModel):
     repeat_days:        int | None = None
     next_repeat_at:     datetime | None = None
     followup_available: bool = False
-    # «Динамика» строится по диагностикам Методов 1–2; Метод 3 в ней не участвует.
+    # «Динамика» сравнивает замеры Метода 1: у Методов 2 и 3 сравнивать нечего.
     dynamics_available: bool = False
     assessments:        list[CompanyAssessmentOut] = []
 

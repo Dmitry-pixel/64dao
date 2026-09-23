@@ -9,17 +9,32 @@ from app.dynamics import build_company_dynamics
 from app.models import Assessment, AssessmentContour
 
 
-async def company_snapshots(db: AsyncSession, company_id) -> list[dict]:
-    assessments = (await db.execute(
+async def company_snapshots(db: AsyncSession, company_id, until: Assessment | None = None) -> list[dict]:
+    """Замеры компании для сравнения.
+
+    Только Метод 1: у Метода 2 нет ни гексаграммы, ни контуров, сравнивать в
+    нём нечего. Раньше бизнес-модель, пройденная между первичной диагностикой
+    и повтором, становилась «предыдущим замером», и раздел «Динамика» в отчёте
+    повтора выходил пустым.
+
+    until — замер, на котором история обрывается: отчёт повтора сравнивает
+    себя с тем, что было ДО него, и не меняется от более поздних диагностик
+    при повторной выгрузке PDF.
+    """
+    stmt = (
         select(Assessment)
         .where(Assessment.company_id == company_id,
+               Assessment.method == 'method1',
                Assessment.status.in_(('completed', 'paid')),
                # Удалённая диагностика не участвует в динамике: для
                # пользователя её нет, а в графике она выглядела бы точкой,
                # которую нельзя открыть.
                Assessment.deleted_at.is_(None))
         .order_by(Assessment.created_at)
-    )).scalars().all()
+    )
+    if until is not None:
+        stmt = stmt.where(Assessment.created_at <= until.created_at)
+    assessments = (await db.execute(stmt)).scalars().all()
 
     ids = [a.id for a in assessments]
     contours_by_ass: dict = {}
@@ -39,5 +54,6 @@ async def company_snapshots(db: AsyncSession, company_id) -> list[dict]:
     } for a in assessments]
 
 
-async def company_dynamics(db: AsyncSession, company_id, mode: str = 'previous') -> dict:
-    return build_company_dynamics(await company_snapshots(db, company_id), mode=mode)
+async def company_dynamics(db: AsyncSession, company_id, mode: str = 'previous',
+                           until: Assessment | None = None) -> dict:
+    return build_company_dynamics(await company_snapshots(db, company_id, until=until), mode=mode)

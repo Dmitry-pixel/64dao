@@ -66,7 +66,7 @@ export default function CompaniesPage() {
       ) : companies.map(c => <CompanyCard key={c.id ?? `m3-${c.name}`} c={c} />)}
       <p style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)', margin: '20px 0 0', lineHeight: 1.6 }}>
         Диагностики сгруппированы по названию компании. «Динамика» открывается со второй
-        диагностики Методов 1–2. Удалённые диагностики и черновики здесь не показываются.
+        стратегической диагностики. Удалённые диагностики и черновики здесь не показываются.
       </p>
     </>
   )
@@ -132,7 +132,7 @@ function CompanyCard({ c }: { c: Company }) {
               <Link href={`/companies/${c.id}/dynamics`} style={S.btnDark}>Динамика →</Link>
             ) : (
               <span style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)' }}>
-                Динамика откроется со 2-й диагностики
+                Динамика откроется со 2-й стратегической диагностики
               </span>
             )}
             <Link href={`/assessment?method=1&company=${c.id}&company_name=${encodeURIComponent(c.name)}`} style={S.btnGhost}>

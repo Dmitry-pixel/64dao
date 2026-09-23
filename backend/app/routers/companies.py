@@ -102,7 +102,8 @@ async def list_companies(
             repeat_days=repeat_days if last_m12 else None,
             next_repeat_at=last_m12 + timedelta(days=repeat_days) if last_m12 else None,
             followup_available=bool(primary and primary.followup_used < primary.followup_allowed),
-            dynamics_available=len(items) >= 2,
+            # «Динамика» сравнивает замеры Метода 1: у Метода 2 и 3 нечего сравнивать.
+            dynamics_available=sum(1 for a in items if a.method == "method1") >= 2,
             assessments=entries,
         ))
     out.sort(key=lambda c: c.latest_at, reverse=True)

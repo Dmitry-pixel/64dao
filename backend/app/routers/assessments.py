@@ -735,7 +735,8 @@ async def build_html_for_assessment(db, assessment, user, allow_draft: bool = Fa
     dynamics = None
     if assessment.is_followup and assessment.company_id:
         from app.dynamics_service import company_dynamics
-        dynamics = await company_dynamics(db, assessment.company_id, mode='previous')
+        # Сравнение с замером ДО этого повтора, а не с последним у компании.
+        dynamics = await company_dynamics(db, assessment.company_id, mode='previous', until=assessment)
 
     return build_report_html(
         is_method2=is_method2,

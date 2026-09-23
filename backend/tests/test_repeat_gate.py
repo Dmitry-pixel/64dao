@@ -137,3 +137,62 @@ async def test_admin_followup_is_linked_too(admin_client, db_session):
     repeat = next(r for r in rows if r.is_followup)
     assert repeat.parent_assessment_id == primary.id
     assert primary.followup_used == 1
+
+
+@pytest.mark.asyncio
+async def test_followup_report_compares_with_primary_not_method2(auth_client, db_session):
+    """Бизнес-модель, пройденная между первичной и повтором, не становится
+    «предыдущим замером»: раздел «Динамика» повтора сравнивает его с первичной."""
+    from app.dynamics_service import company_dynamics
+
+    name = "Динамика Ко"
+    primary = (await _post(auth_client, name)).json()
+    r2 = await auth_client.post("/api/assessments", json={
+        "method1_answers": None, "method1_combination": None,
+        "method2_data": {"value_proposition": {"score": 4, "text": "Тест"}},
+        "finance_answers": None, "company_name": name, "status": "completed",
+    })
+    assert r2.status_code == 200, r2.text
+    followup = (await _post(auth_client, name)).json()
+    assert followup["is_followup"] is True
+
+    from datetime import UTC, datetime, timedelta
+    now = datetime.now(UTC)
+    for aid, days in ((primary["id"], 60), (r2.json()["id"], 30), (followup["id"], 0)):
+        row = await db_session.scalar(select(Assessment).where(Assessment.id == aid))
+        row.created_at = now - timedelta(days=days)
+    await db_session.flush()
+
+    fa = await db_session.scalar(select(Assessment).where(Assessment.id == followup["id"]))
+    dyn = await company_dynamics(db_session, fa.company_id, mode="previous", until=fa)
+    assert dyn["available"] is True
+    assert dyn["compare_from"]["id"] == primary["id"]
+    assert dyn["compare_to"]["id"] == followup["id"]
+    assert "finance" in dyn["contours"]
+
+
+@pytest.mark.asyncio
+async def test_followup_report_ignores_later_diagnostics(admin_client, db_session):
+    """Отчёт повтора при повторной выгрузке сравнивает то же, что и в день
+    повтора: более поздние диагностики компании его не меняют."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.dynamics_service import company_dynamics
+
+    name = "Стабильность Ко"
+    primary = (await _post(admin_client, name)).json()
+    followup = (await _post(admin_client, name)).json()
+    third = (await _post(admin_client, name)).json()   # админ не ограничен
+
+    # В тесте все записи в одной транзакции, и now() у них одинаковый.
+    # В проде каждая диагностика — своя транзакция; разводим время явно.
+    now = datetime.now(UTC)
+    for aid, days in ((primary["id"], 60), (followup["id"], 30), (third["id"], 0)):
+        row = await db_session.scalar(select(Assessment).where(Assessment.id == aid))
+        row.created_at = now - timedelta(days=days)
+    await db_session.flush()
+
+    fa = await db_session.scalar(select(Assessment).where(Assessment.id == followup["id"]))
+    dyn = await company_dynamics(db_session, fa.company_id, mode="previous", until=fa)
+    assert dyn["compare_from"]["id"] == primary["id"]
+    assert dyn["compare_to"]["id"] == followup["id"]
