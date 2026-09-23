@@ -367,6 +367,53 @@ class Company(Base):
     assessments: Mapped[list["Assessment"]]  = relationship(back_populates="company")
 
 
+# ── Профиль диагностируемой компании ─────────────────────────────────────────
+# Значения вариантов — структурные: на revenue_model ссылаются условия показа
+# вопросов Метода 4 (applies_when profile.revenue_model). Подписи вариантов
+# живут в content/m4/company-profile.json и в форме, не здесь.
+REVENUE_MODELS = ("one_off", "repeat", "subscription")
+REVENUE_RANGES = ("lt_10m", "10_50m", "50_300m", "gt_300m")
+
+
+class CompanyProfile(Base):
+    """Профиль компании, которую диагностируют, — не пользователя.
+
+    Один к одному с companies: у консультанта несколько компаний под одним
+    аккаунтом, и профиль одного клиента не должен попасть в отчёт другого.
+
+    Обязательно только то, что меняет ход диагностики: revenue_model управляет
+    показом части вопросов Метода 4. Остальные поля описательные и не влияют
+    ни на один вопрос, правило или балл, поэтому необязательны: барьер перед
+    началом работы из них строить нельзя. industry_id — тот же справочник,
+    что у Метода 3 (m3_config.INDUSTRY_PRESETS).
+    """
+
+    __tablename__ = "company_profiles"
+
+    company_id:     Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), primary_key=True,
+    )
+    revenue_model:  Mapped[str]        = mapped_column(String(16), nullable=False)
+    industry_id:    Mapped[int | None] = mapped_column(Integer, nullable=True)
+    revenue_range:  Mapped[str | None] = mapped_column(String(12), nullable=True)
+    headcount:      Mapped[int | None] = mapped_column(Integer, nullable=True)
+    active_clients: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at:     Mapped[datetime]   = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at:     Mapped[datetime]   = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(),
+    )
+
+    __table_args__ = (
+        CheckConstraint("revenue_model IN ('one_off','repeat','subscription')",
+                        name="chk_company_profile_revenue_model"),
+        CheckConstraint("revenue_range IS NULL OR revenue_range IN ('lt_10m','10_50m','50_300m','gt_300m')",
+                        name="chk_company_profile_revenue_range"),
+        CheckConstraint("headcount IS NULL OR headcount >= 0", name="chk_company_profile_headcount"),
+        CheckConstraint("active_clients IS NULL OR active_clients >= 0",
+                        name="chk_company_profile_active_clients"),
+    )
+
+
 # ── Route progress (фича F: чек-листы шагов маршрута перехода) ─────────────────
 class RouteProgress(Base):
     """Отметки выполнения шагов маршрута. Наличие строки = шаг выполнен.

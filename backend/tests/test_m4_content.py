@@ -31,3 +31,26 @@ def test_no_links_to_deleted_bmc_draft():
     """Черновик опросника BMC из 54 утверждений удалён 23.09.2026."""
     for x in seed.read_content()["constructs"]:
         assert all(ln["method"] != "m2_bmc" for ln in x["links"]), x["code"]
+
+
+def test_profile_options_match_database():
+    """Варианты в форме профиля совпадают с ограничениями таблицы
+    company_profiles: иначе форма предложит значение, которое база отклонит."""
+    import json
+
+    from app.models import REVENUE_MODELS, REVENUE_RANGES
+
+    prof = json.loads((seed.CONTENT / "company-profile.json").read_text(encoding="utf-8"))
+    fields = {f["code"]: f for f in prof["required"] + prof["optional"]}
+    assert tuple(o["value"] for o in fields["revenue_model"]["options"]) == REVENUE_MODELS
+    assert tuple(o["value"] for o in fields["revenue_range"]["options"]) == REVENUE_RANGES
+
+
+def test_applies_when_profile_values_exist():
+    """Условия показа вопросов по профилю ссылаются на существующие значения."""
+    from app.models import REVENUE_MODELS
+
+    for q in seed.read_content()["questions"]:
+        for ref, values in (q["applies_when"] or {}).items():
+            if ref == "profile.revenue_model":
+                assert set(values) <= set(REVENUE_MODELS), q["code"]

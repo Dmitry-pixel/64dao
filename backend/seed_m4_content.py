@@ -45,6 +45,7 @@ from app.m4_models import (
     M4Rule,
     M4SymptomChain,
 )
+from app.models import REVENUE_MODELS
 
 CONTENT = Path(__file__).parent / "content" / "m4"
 
@@ -194,9 +195,15 @@ def check(c: dict) -> list[str]:
             errs.append(f"{q['code']}: choice без вариантов")
         if q["control_pair"] and q["control_pair"] not in qs:
             errs.append(f"{q['code']}: контрольная пара {q['control_pair']} не найдена")
-        for ref in (q["applies_when"] or {}):
-            # profile.* — поле профиля компании, а не вопрос анкеты
-            if not ref.startswith("profile.") and ref not in qs:
+        for ref, values in (q["applies_when"] or {}).items():
+            if ref == "profile.revenue_model":
+                # Значения профиля, а не вопроса: сверяются с ограничением таблицы
+                bad = set(values) - set(REVENUE_MODELS)
+                if bad:
+                    errs.append(f"{q['code']}: в профиле нет модели выручки {sorted(bad)}")
+            elif ref.startswith("profile."):
+                errs.append(f"{q['code']}: условие показа по неизвестному полю профиля {ref}")
+            elif ref not in qs:
                 errs.append(f"{q['code']}: условие показа ссылается на {ref}")
 
     for r in c["rules"]:

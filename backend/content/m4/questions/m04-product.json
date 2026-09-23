@@ -151,8 +151,8 @@
       "metric_code": "excess_inventory",
       "applies_when": {
         "profile.revenue_model": [
-          "transactional",
-          "prepaid"
+          "one_off",
+          "repeat"
         ]
       },
       "source_ref": "гл.9 с.322"
