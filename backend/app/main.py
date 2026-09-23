@@ -26,6 +26,7 @@ from app.routers import (
     documents,
     fin_content,
     m3,
+    m4_admin,
     method1,
     payments,
     pricing,
@@ -172,6 +173,10 @@ app.include_router(checklist.router)
 app.include_router(m3.router)
 app.include_router(m3.reports_router)
 app.include_router(m3.admin_router)
+
+# Метод 4 «Алмазное колесо»: пока только админка контента. Пользовательские
+# маршруты появятся вместе с анкетой.
+app.include_router(m4_admin.router)
 
 # ── Статика /uploads снята намеренно ──────────────────────────────────────────
 # Здесь монтировался родительский каталог uploads целиком. Вместе с ним

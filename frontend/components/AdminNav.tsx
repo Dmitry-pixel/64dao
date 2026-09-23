@@ -122,6 +122,7 @@ export function AdminSide({ current }: AdminSideProps) {
       </Link>
       <Link href="/admin/fin-content" className={current === 'fin-content' ? 'on' : ''}>Финансовая интерпретация</Link>
       <Link href="/admin/m3" className={current === 'm3' ? 'on' : ''}>Метод 3 · Матрица силы</Link>
+      <Link href="/admin/m4" className={current === 'm4' ? 'on' : ''}>Метод 4 · Алмазное колесо</Link>
       <Link href="/admin/contours" className={current === 'contours' ? 'on' : ''}>Контуры диагностики</Link>
       <Link href="/admin/lifecycle-stages" className={current === 'lifecycle-stages' ? 'on' : ''}>Стадии жизненного цикла</Link>
       <Link href="/admin/documents/about" className={current === 'doc-about' ? 'on' : ''}>О нас</Link>
