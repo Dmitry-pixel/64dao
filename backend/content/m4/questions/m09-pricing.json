@@ -1,0 +1,243 @@
+{
+  "module": 9,
+  "slug": "pricing",
+  "name": "Цена и продвижение",
+  "intro": "О том, как назначена ваша цена и хватает ли её на развитие.",
+  "questions": [
+    {
+      "code": "M09-Q01",
+      "text": "Как вы назначали цену на свой главный продукт?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "value",
+          "label": "От того, что клиент получает и сколько это для него стоит",
+          "score": 100
+        },
+        {
+          "value": "cost_plus",
+          "label": "Себестоимость плюс наценка",
+          "score": 35
+        },
+        {
+          "value": "competitors",
+          "label": "Посмотрели на конкурентов или назначили на глаз",
+          "score": 15
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u0",
+      "metric_code": "pricing_basis",
+      "source_ref": "гл.8 с.277-280",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M09-Q02",
+      "text": "Когда вы последний раз повышали цены?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "this_year",
+          "label": "В этом году",
+          "score": 100
+        },
+        {
+          "value": "last_year",
+          "label": "В прошлом году",
+          "score": 70
+        },
+        {
+          "value": "long_ago",
+          "label": "Больше двух лет назад или никогда",
+          "score": 15
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u0",
+      "source_ref": "гл.8 с.271-273",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0,
+      "construct_code": "price_elasticity_tested"
+    },
+    {
+      "code": "M09-Q03",
+      "text": "Кто в компании принимает решение об изменении цены?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "committee",
+          "label": "Решаем вместе — финансы, продажи, производство",
+          "score": 100
+        },
+        {
+          "value": "owner",
+          "label": "Собственник единолично",
+          "score": 45
+        },
+        {
+          "value": "sales",
+          "label": "Продавцы договариваются с клиентом сами",
+          "score": 10
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.8 с.285-286",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M09-Q04",
+      "text": "Когда вы считаете себестоимость, вы учитываете аренду, зарплату управленцев, рекламу, амортизацию, налоги — или только прямые затраты?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "full",
+          "label": "Всё полностью, включая косвенные",
+          "score": 100
+        },
+        {
+          "value": "partial",
+          "label": "Часть косвенных учитываем",
+          "score": 50
+        },
+        {
+          "value": "direct",
+          "label": "Только прямые затраты",
+          "score": 10
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.9 с.310-311",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0,
+      "construct_code": "profit_by_object_known"
+    },
+    {
+      "code": "M09-Q05",
+      "text": "Остаются ли у вас деньги на продвижение и развитие после того, как всё оплачено?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.8 с.280-281"
+    },
+    {
+      "code": "M09-Q06",
+      "text": "Есть ли у вас команда или люди, которые занимаются привлечением клиентов и продажами?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.8 с.298-299"
+    },
+    {
+      "code": "M09-Q07",
+      "text": "Какую долю выручки вы тратите на рекламу и продвижение?",
+      "type": "number",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "metric_code": "marketing_spend_share",
+      "source_ref": "гл.8 с.298-299"
+    },
+    {
+      "code": "M09-Q08",
+      "text": "По скольким каналам к вам приходят клиенты?",
+      "type": "number",
+      "unit": "каналов",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "metric_code": "acquisition_channels",
+      "source_ref": "гл.8 с.298-299",
+      "construct_code": "channel_concentration"
+    },
+    {
+      "code": "M09-Q09",
+      "text": "Знаете ли вы, какой канал приносит клиентов дешевле всего?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "дополнение вне книги — юнит-экономика каналов",
+      "construct_code": "channel_economics_known"
+    },
+    {
+      "code": "M09-Q10",
+      "text": "Если завтра поднять цену на 10% — что произойдёт?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "measured",
+          "label": "Мы это считали и знаем ответ",
+          "score": 100
+        },
+        {
+          "value": "some_leave",
+          "label": "Часть клиентов уйдёт, но выиграем в марже",
+          "score": 65
+        },
+        {
+          "value": "all_leave",
+          "label": "Потеряем почти всех",
+          "score": 20
+        }
+      ],
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "дополнение вне книги — ценовая эластичность, отсутствует в источнике",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0,
+      "construct_code": "price_elasticity_tested"
+    },
+    {
+      "code": "M09-Q11",
+      "text": "Ваша цена заметно отличается от цены конкурентов — в любую сторону?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "higher",
+          "label": "Заметно выше",
+          "score": 100
+        },
+        {
+          "value": "lower",
+          "label": "Заметно ниже",
+          "score": 75
+        },
+        {
+          "value": "same",
+          "label": "Примерно как у всех",
+          "score": 25
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.8 с.288-293",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0,
+      "construct_code": "price_competition_pressure"
+    },
+    {
+      "code": "M09-Q12",
+      "text": "Можете ли вы объяснить клиенту, почему ваша цена именно такая, — так, чтобы он согласился?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.8 с.270-271"
+    }
+  ]
+}

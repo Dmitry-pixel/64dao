@@ -1,0 +1,161 @@
+{
+  "module": 4,
+  "slug": "product",
+  "name": "Продукт и фокус",
+  "intro": "О том, на чём компания зарабатывает и что тянет её вниз.",
+  "questions": [
+    {
+      "code": "M04-Q01",
+      "text": "Сколько у вас продуктов или услуг, которые вы продаёте?",
+      "type": "number",
+      "unit": "позиций",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u0",
+      "metric_code": "sku_count",
+      "source_ref": "гл.3 с.93-94"
+    },
+    {
+      "code": "M04-Q02",
+      "text": "Знаете ли вы, сколько прибыли приносит каждый из них по отдельности?",
+      "type": "scale3",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u0",
+      "source_ref": "гл.3 с.93-94",
+      "construct_code": "profit_by_object_known"
+    },
+    {
+      "code": "M04-Q03",
+      "text": "Какая доля выручки приходится на ваш главный продукт?",
+      "type": "number",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "metric_code": "top_product_revenue_share",
+      "source_ref": "гл.3 с.98-100",
+      "threshold_based": true,
+      "construct_code": "revenue_concentration"
+    },
+    {
+      "code": "M04-Q04",
+      "text": "Есть ли среди ваших продуктов убыточные — те, что вы продолжаете продавать по привычке или «чтобы был ассортимент»?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "reverse": true,
+      "source_ref": "гл.3 с.94, 101"
+    },
+    {
+      "code": "M04-Q05",
+      "text": "За последний год вы закрывали или выводили из продажи какой-нибудь продукт?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.3 с.101-103"
+    },
+    {
+      "code": "M04-Q06",
+      "text": "Почему вы добавляли новые позиции в последний раз?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "deepen",
+          "label": "Чтобы усилить главный продукт",
+          "score": 100
+        },
+        {
+          "value": "client_asked",
+          "label": "Попросили клиенты или появилось у конкурента",
+          "score": 30
+        },
+        {
+          "value": "revenue",
+          "label": "Нужна была дополнительная выручка",
+          "score": 15
+        }
+      ],
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.3 с.101-102"
+    },
+    {
+      "code": "M04-Q07",
+      "text": "Есть ли у вас продукт, который вы делаете заметно лучше всех в своей нише?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.3 с.98-99, 114"
+    },
+    {
+      "code": "M04-Q09",
+      "text": "Есть ли в компании человек или группа, которые отвечают именно за качество — не за производство, а за качество?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.3 с.105-106"
+    },
+    {
+      "code": "M04-Q10",
+      "text": "Как вы узнаёте, что клиент остался недоволен?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "systematic",
+          "label": "Спрашиваем у каждого, ведём учёт",
+          "score": 100
+        },
+        {
+          "value": "complaints",
+          "label": "Он сам жалуется или перестаёт покупать",
+          "score": 30
+        },
+        {
+          "value": "never",
+          "label": "Специально не отслеживаем",
+          "score": 0
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.3 с.106-107",
+      "unknown_allowed": false
+    },
+    {
+      "code": "M04-Q11",
+      "text": "Улучшается ли ваш продукт от месяца к месяцу — или он примерно такой же, как год назад?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "control_pair": "M03-Q09",
+      "source_ref": "гл.3 с.107"
+    },
+    {
+      "code": "M04-Q12",
+      "text": "Есть ли у вас нераспроданные остатки или незавершённые работы, которые лежат дольше нормального срока?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "reverse": true,
+      "metric_code": "excess_inventory",
+      "applies_when": {
+        "profile.revenue_model": [
+          "transactional",
+          "prepaid"
+        ]
+      },
+      "source_ref": "гл.9 с.322"
+    }
+  ]
+}

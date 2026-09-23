@@ -1,0 +1,178 @@
+{
+  "module": 8,
+  "slug": "performance",
+  "name": "Производительность и мотивация",
+  "intro": "О том, работают ли люди на результат или на присутствие.",
+  "questions": [
+    {
+      "code": "M08-Q01",
+      "text": "Из чего складывается зарплата человека, от которого напрямую зависит выручка?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "mostly_variable",
+          "label": "В основном из результата, оклад небольшой",
+          "score": 100
+        },
+        {
+          "value": "half",
+          "label": "Примерно поровну",
+          "score": 70
+        },
+        {
+          "value": "mostly_fixed",
+          "label": "В основном оклад",
+          "score": 20
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u0",
+      "metric_code": "variable_pay_share",
+      "source_ref": "гл.7 с.250-251",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M08-Q02",
+      "text": "Может ли сильный сотрудник заработать заметно больше слабого на той же должности?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u0",
+      "source_ref": "гл.7 с.237-242"
+    },
+    {
+      "code": "M08-Q04",
+      "text": "В чём измеряется результат сотрудника?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "client_outcome",
+          "label": "В том, чего добился его клиент",
+          "score": 100
+        },
+        {
+          "value": "revenue",
+          "label": "В выручке или марже",
+          "score": 70
+        },
+        {
+          "value": "activity",
+          "label": "В количестве действий или в отработанном времени",
+          "score": 25
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.7 с.249-250",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M08-Q05",
+      "text": "Расставались ли вы за последний год с сотрудником из-за низких результатов?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.7 с.252-254"
+    },
+    {
+      "code": "M08-Q06",
+      "text": "Ставите ли вы цель по выручке или прибыли на одного сотрудника, и растёт ли эта цель год от года?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "note_internal": "Работает в паре с M05-Q09 как правило CR-01.",
+      "source_ref": "гл.4 с.155, гл.6 с.222"
+    },
+    {
+      "code": "M08-Q07",
+      "text": "Знает ли сотрудник с первого дня, за что его похвалят, а за что накажут?",
+      "type": "scale3",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.7 с.238, 261"
+    },
+    {
+      "code": "M08-Q08",
+      "text": "Правила одинаковы для всех, включая родственников собственника и давних сотрудников?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "note_internal": "Работает в паре с M05-Q12 как правило CR-10.",
+      "source_ref": "гл.7 с.264"
+    },
+    {
+      "code": "M08-Q09",
+      "text": "Есть ли записанные инструкции, по которым новичок может освоить работу — или каждый учится сам?",
+      "type": "scale3",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "control_pair": "M05-Q07",
+      "source_ref": "гл.7 с.255-257"
+    },
+    {
+      "code": "M08-Q10",
+      "text": "Проверяете ли вы работу людей регулярно — или только когда что-то пошло не так?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "scheduled",
+          "label": "Регулярно, по расписанию",
+          "score": 100
+        },
+        {
+          "value": "sometimes",
+          "label": "Время от времени",
+          "score": 45
+        },
+        {
+          "value": "on_problem",
+          "label": "Только когда возникла проблема",
+          "score": 10
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.7 с.257-258",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M08-Q12",
+      "text": "Как вы оцениваете загрузку людей: они перегружены, загружены нормально или недозагружены?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "normal",
+          "label": "Загружены нормально",
+          "score": 100
+        },
+        {
+          "value": "uneven",
+          "label": "Кто-то перегружен, кто-то простаивает",
+          "score": 20
+        },
+        {
+          "value": "overloaded",
+          "label": "Перегружены, работают на пределе",
+          "score": 25
+        }
+      ],
+      "weight": 2,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.5 с.175-176",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    }
+  ]
+}

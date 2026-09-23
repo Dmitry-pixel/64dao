@@ -1,0 +1,190 @@
+{
+  "module": 3,
+  "slug": "value",
+  "name": "Ценность и отличие",
+  "intro": "О том, почему клиент выбирает вас, а не конкурента с похожим предложением.",
+  "questions": [
+    {
+      "code": "M03-Q01",
+      "text": "Может ли ваш клиент купить примерно то же самое у конкурента дешевле?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u0",
+      "reverse": true,
+      "source_ref": "гл.2 с.54-55",
+      "construct_code": "price_competition_pressure"
+    },
+    {
+      "code": "M03-Q02",
+      "text": "Можете ли вы одним словом назвать то, за что вас выбирают?",
+      "type": "choice",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u0",
+      "source_ref": "гл.2 с.73-76",
+      "options": [
+        {
+          "value": "specific",
+          "label": "Да, и это конкретное свойство, которое можно проверить",
+          "score": 100
+        },
+        {
+          "value": "general",
+          "label": "Да, но общими словами — качество, надёжность, сервис",
+          "score": 35
+        },
+        {
+          "value": "no",
+          "label": "Нет, чёткого ответа не дам",
+          "score": 0
+        }
+      ],
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0,
+      "construct_code": "value_articulated"
+    },
+    {
+      "code": "M03-Q03",
+      "text": "Это слово звучит одинаково у вас, в рекламе, у продавцов и на сайте — или каждый говорит своё?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.2 с.77-78"
+    },
+    {
+      "code": "M03-Q05",
+      "text": "За последний год вы снижали цену или давали скидку, чтобы удержать клиента или закрыть сделку?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "never",
+          "label": "Нет, ни разу",
+          "score": 100
+        },
+        {
+          "value": "rare",
+          "label": "Один-два раза, как исключение",
+          "score": 65
+        },
+        {
+          "value": "often",
+          "label": "Регулярно, это часть работы с клиентом",
+          "score": 15
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "metric_code": "discount_frequency",
+      "source_ref": "гл.2 с.49-52",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0,
+      "construct_code": "value_discount_pressure"
+    },
+    {
+      "code": "M03-Q06",
+      "text": "Знаете ли вы, в чём ваш сильнейший конкурент слаб — то, чего он не делает или делает плохо?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.2 с.61-62"
+    },
+    {
+      "code": "M03-Q07",
+      "text": "Ваше отличие построено на этой слабости конкурента — или вы соревнуетесь с ним в том же самом, но лучше?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "their_weakness",
+          "label": "Мы делаем то, чего он не делает",
+          "score": 100
+        },
+        {
+          "value": "same_better",
+          "label": "Делаем то же самое, но лучше или дешевле",
+          "score": 40
+        }
+      ],
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "applies_when": {
+        "M03-Q06": [
+          "yes"
+        ]
+      },
+      "source_ref": "гл.2 с.61-64",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M03-Q08",
+      "text": "Какой путь вы выбрали: делать дороже и лучше — или дешевле за счёт устройства процессов?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "premium",
+          "label": "Дороже и заметно лучше",
+          "score": 100
+        },
+        {
+          "value": "cost_leader",
+          "label": "Дешевле за счёт того, как устроены процессы",
+          "score": 100
+        },
+        {
+          "value": "middle",
+          "label": "Посередине — и не дёшево, и не премиум",
+          "score": 20
+        }
+      ],
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.2 с.64-66",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M03-Q09",
+      "text": "За последние два года вы меняли сам продукт или услугу так, чтобы клиент это заметил?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.2 с.55"
+    },
+    {
+      "code": "M03-Q10",
+      "text": "Клиенты возвращаются к вам сами или их каждый раз нужно привлекать заново?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "control_pair": "M06-Q04",
+      "source_ref": "гл.2 с.56"
+    },
+    {
+      "code": "M03-Q11",
+      "text": "Есть ли что-то в вашем предложении, чего клиент не сможет получить больше нигде?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.2 с.54-55",
+      "construct_code": "unique_value_claimed"
+    },
+    {
+      "code": "M03-Q12",
+      "text": "Клиенты рекомендуют вас знакомым без вашей просьбы?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.3 с.114"
+    }
+  ]
+}

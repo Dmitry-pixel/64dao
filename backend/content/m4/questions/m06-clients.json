@@ -1,0 +1,164 @@
+{
+  "module": 6,
+  "slug": "clients",
+  "name": "Клиенты",
+  "intro": "О том, кто ваши клиенты и кто из них приносит деньги, а кто их отнимает.",
+  "questions": [
+    {
+      "code": "M06-Q02",
+      "text": "Какую долю выручки даёт ваш самый крупный клиент?",
+      "type": "number",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u0",
+      "metric_code": "top_client_share",
+      "threshold_based": true,
+      "source_ref": "дополнение вне книги — концентрация клиентского риска",
+      "construct_code": "revenue_concentration"
+    },
+    {
+      "code": "M06-Q03",
+      "text": "Знаете ли вы, какие 20% клиентов приносят вам основную часть денег?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u0",
+      "source_ref": "гл.5 с.171-173"
+    },
+    {
+      "code": "M06-Q04",
+      "text": "Какая примерно доля выручки приходится на повторные покупки, а не на новых клиентов?",
+      "type": "number",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "metric_code": "repeat_revenue_share",
+      "control_pair": "M03-Q10",
+      "source_ref": "гл.2 с.56",
+      "construct_code": "repeat_share"
+    },
+    {
+      "code": "M06-Q05",
+      "text": "Понимают ли те, кто работает с клиентами, кому уделять внимание в первую очередь?",
+      "type": "scale3",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.5 с.173-174"
+    },
+    {
+      "code": "M06-Q06",
+      "text": "Отказывались ли вы за последний год от клиента сознательно — потому что он отнимал больше, чем приносил?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.5 с.163, 181",
+      "construct_code": "client_selectivity"
+    },
+    {
+      "code": "M06-Q07",
+      "text": "Есть ли клиенты, которые покупают большими объёмами, но выжимают из вас цену и условия?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "reverse": true,
+      "metric_code": "shark_clients",
+      "source_ref": "гл.5 с.174, 179"
+    },
+    {
+      "code": "M06-Q08",
+      "text": "Кто занимается вашими самыми крупными клиентами?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "owner_team",
+          "label": "Собственник лично или выделенная команда",
+          "score": 100
+        },
+        {
+          "value": "best_sales",
+          "label": "Самые опытные продавцы",
+          "score": 70
+        },
+        {
+          "value": "anyone",
+          "label": "Кто первым взял заявку",
+          "score": 15
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.5 с.183-187",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M06-Q09",
+      "text": "Можете ли вы описать своего идеального клиента — отрасль, размер, кто принимает решение, зачем вы ему?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.5 с.163, 170-171",
+      "construct_code": "ideal_client_defined"
+    },
+    {
+      "code": "M06-Q10",
+      "text": "На какой сегмент вы работаете?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "premium",
+          "label": "Верхний — платят за качество",
+          "score": 100
+        },
+        {
+          "value": "mass_efficient",
+          "label": "Массовый — и мы умеем делать дёшево за счёт процессов",
+          "score": 100
+        },
+        {
+          "value": "mass_squeezed",
+          "label": "Массовый — и мы вынуждены снижать цену, чтобы держаться",
+          "score": 15
+        }
+      ],
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.5 с.161-166",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M06-Q11",
+      "text": "Сколько в среднем времени проходит от первого контакта до оплаты?",
+      "type": "number",
+      "unit": "дней",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "metric_code": "sales_cycle_days",
+      "source_ref": "гл.5 с.189-190"
+    },
+    {
+      "code": "M06-Q12",
+      "text": "Знаете ли вы, сколько стоит привлечь одного нового клиента?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.5 с.175, дополнение вне книги — юнит-экономика",
+      "construct_code": "cac_known"
+    }
+  ]
+}

@@ -1,0 +1,241 @@
+{
+  "module": 7,
+  "slug": "budget",
+  "name": "Планирование и бюджет",
+  "intro": "О том, знаете ли вы заранее, чем закончится год.",
+  "questions": [
+    {
+      "code": "M07-Q01",
+      "text": "Есть ли у компании план по деньгам на этот год — сколько заработать, сколько потратить, сколько останется?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "detailed",
+          "label": "Да, расписан по месяцам и подразделениям",
+          "score": 100
+        },
+        {
+          "value": "general",
+          "label": "Есть общие цифры на год",
+          "score": 50
+        },
+        {
+          "value": "none",
+          "label": "Плана на бумаге нет",
+          "score": 0
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u0",
+      "source_ref": "гл.6 с.206",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M07-Q02",
+      "text": "Кто составлял этот план?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "owner_team",
+          "label": "Собственник вместе с руководителями",
+          "score": 100
+        },
+        {
+          "value": "owner",
+          "label": "Собственник сам",
+          "score": 65
+        },
+        {
+          "value": "finance",
+          "label": "Бухгалтер или финансист",
+          "score": 25
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "applies_when": {
+        "M07-Q01": [
+          "detailed",
+          "general"
+        ]
+      },
+      "source_ref": "гл.6 с.215-216",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M07-Q03",
+      "text": "Знает ли рядовой сотрудник свою цифру на этот месяц — что именно он должен сделать?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.6 с.225-227"
+    },
+    {
+      "code": "M07-Q04",
+      "text": "Как часто вы сравниваете факт с планом?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "weekly",
+          "label": "Каждую неделю или чаще",
+          "score": 100
+        },
+        {
+          "value": "monthly",
+          "label": "Раз в месяц",
+          "score": 70
+        },
+        {
+          "value": "rare",
+          "label": "Раз в квартал или реже",
+          "score": 20
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.7 с.257-260",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0,
+      "construct_code": "plan_predictability"
+    },
+    {
+      "code": "M07-Q05",
+      "text": "Когда факт сильно расходится с планом — вы разбираетесь, почему это произошло?",
+      "type": "scale3",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.6 с.228-229"
+    },
+    {
+      "code": "M07-Q06",
+      "text": "Случалось ли, что вы весь год работали в полную силу, а в конце финансового года оказалось, что заработали мало или ничего?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u0",
+      "reverse": true,
+      "source_ref": "гл.6 с.206"
+    },
+    {
+      "code": "M07-Q07",
+      "text": "Перед крупной тратой вы считаете, когда она окупится?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.6 с.209-210"
+    },
+    {
+      "code": "M07-Q08",
+      "text": "Есть ли в компании регулярные встречи, на которых разбирают результаты — не обсуждают текучку, а сверяют цифры?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "all_levels",
+          "label": "Да, на всех уровнях, по расписанию",
+          "score": 100
+        },
+        {
+          "value": "top_only",
+          "label": "Только у руководителей",
+          "score": 55
+        },
+        {
+          "value": "none",
+          "label": "Таких встреч нет",
+          "score": 0
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.7 с.257-261",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M07-Q09",
+      "text": "Как вы ставите цель на следующий год?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "from_goal",
+          "label": "От того, куда хотим прийти, и считаем, что для этого нужно",
+          "score": 100
+        },
+        {
+          "value": "from_last_year",
+          "label": "Прошлый год плюс процент",
+          "score": 45
+        },
+        {
+          "value": "no_goal",
+          "label": "Специально не ставим",
+          "score": 0
+        }
+      ],
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.6 с.215-216",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M07-Q10",
+      "text": "Есть ли разделение на минимум, который нужно выполнить обязательно, и цель, к которой стремитесь?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.6 с.222-223"
+    },
+    {
+      "code": "M07-Q11",
+      "text": "Бывают ли у вас неожиданности — когда результат месяца сильно выше или сильно ниже ожидаемого?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "never",
+          "label": "Почти никогда, всё предсказуемо",
+          "score": 100
+        },
+        {
+          "value": "rare",
+          "label": "Изредка",
+          "score": 60
+        },
+        {
+          "value": "often",
+          "label": "Регулярно",
+          "score": 15
+        }
+      ],
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.6 с.211, 228",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0,
+      "construct_code": "plan_predictability"
+    },
+    {
+      "code": "M07-Q12",
+      "text": "Есть ли позиции, для которых вообще нельзя сформулировать измеримый результат?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "score_neutral": true,
+      "note_internal": "Не штрафуется. Работает в паре с политикой упразднения позиций как правило CR-08 — защищает R&D и качество от выталкивания.",
+      "source_ref": "гл.6 с.225"
+    }
+  ]
+}

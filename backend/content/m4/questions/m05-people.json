@@ -1,0 +1,220 @@
+{
+  "module": 5,
+  "slug": "people",
+  "name": "Организация и люди",
+  "intro": "О том, может ли компания расти без вашего личного участия в каждом деле.",
+  "questions": [
+    {
+      "code": "M05-Q02",
+      "text": "Тратите ли вы как руководитель личное время на дела, которые мог бы делать кто-то другой?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u0",
+      "reverse": true,
+      "control_pair": "M01-Q08",
+      "source_ref": "гл.4 с.124",
+      "construct_code": "owner_dependency"
+    },
+    {
+      "code": "M05-Q03",
+      "text": "Сколько времени вы тратите на подбор и развитие людей — собеседования, обучение, разборы?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "major",
+          "label": "Это одна из главных моих задач",
+          "score": 100
+        },
+        {
+          "value": "weekly",
+          "label": "Несколько часов в неделю",
+          "score": 60
+        },
+        {
+          "value": "none",
+          "label": "Практически нисколько",
+          "score": 0
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.4 с.120, 125",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M05-Q04",
+      "text": "Есть ли в компании все нужные функции — кто-то отвечает за людей, за деньги, за производство, за продажи?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.4 с.130-133",
+      "construct_code": "functions_covered"
+    },
+    {
+      "code": "M05-Q05",
+      "text": "Есть ли функции, которые никто не ведёт — просто потому что руки не дошли нанять?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.4 с.131",
+      "reverse": true
+    },
+    {
+      "code": "M05-Q06",
+      "text": "Когда вы нанимаете человека, он обычно сильнее или слабее тех, кто уже работает на этой позиции?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "stronger",
+          "label": "Сильнее — стараемся поднимать планку",
+          "score": 100
+        },
+        {
+          "value": "same",
+          "label": "Примерно такой же",
+          "score": 45
+        },
+        {
+          "value": "weaker",
+          "label": "Слабее — берём, кто согласился",
+          "score": 5
+        }
+      ],
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.4 с.134-136",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M05-Q07",
+      "text": "Есть ли записанный порядок, по которому новый сотрудник входит в работу — что делать в первый день, во вторую неделю, к чему прийти через месяц?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.4 с.148, 156-157"
+    },
+    {
+      "code": "M05-Q08",
+      "text": "Если завтра уйдёт ваш лучший сотрудник — есть ли тот, кто сможет его заменить изнутри компании?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.4 с.138-139",
+      "construct_code": "key_person_risk"
+    },
+    {
+      "code": "M05-Q09",
+      "text": "Руководители у вас получают доплату за количество людей в подчинении?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "score_neutral": true,
+      "note_internal": "Не штрафуется сам по себе. Работает в паре с M08-Q06 как правило противоречия CR-01.",
+      "source_ref": "гл.4 с.138"
+    },
+    {
+      "code": "M05-Q10",
+      "text": "Кто-то в компании учит других тому, что умеет сам, — регулярно, а не разово?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.4 с.150-151"
+    },
+    {
+      "code": "M05-Q11",
+      "text": "Как часто к вам приходят с вопросами, на которые сотрудник мог бы ответить сам?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "rare",
+          "label": "Редко, люди решают сами",
+          "score": 100
+        },
+        {
+          "value": "daily",
+          "label": "Несколько раз в день",
+          "score": 30
+        },
+        {
+          "value": "constant",
+          "label": "Постоянно, без меня ничего не двигается",
+          "score": 0
+        }
+      ],
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u0",
+      "source_ref": "гл.4 с.124",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M05-Q12",
+      "text": "Работают ли в компании ваши родственники или близкие друзья?",
+      "type": "bool",
+      "weight": 1,
+      "is_fact": true,
+      "tier": "u1",
+      "score_neutral": true,
+      "note_internal": "Не штрафуется. Работает в паре с M08-Q08 (одинаковые ли правила для всех) как правило CR-10.",
+      "source_ref": "гл.7 с.264"
+    },
+    {
+      "code": "M05-Q13",
+      "text": "Когда вы решали что-то менять в работе компании, на это выделялись деньги и рабочее время людей — или менять предлагалось в дополнение к текущей работе?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "resourced",
+          "label": "Выделялись деньги и время",
+          "score": 100
+        },
+        {
+          "value": "partly",
+          "label": "Время выделялось, денег нет",
+          "score": 50
+        },
+        {
+          "value": "on_top",
+          "label": "В дополнение к текущей работе",
+          "score": 0
+        }
+      ],
+      "weight": 1,
+      "is_fact": true,
+      "tier": "u1",
+      "score_excluded": true,
+      "affects": "prioritization",
+      "metric_code": "change_resourcing",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0,
+      "source_ref": "адаптировано из линии 4 контуров, пункт 4.2",
+      "construct_code": "change_resistance"
+    },
+    {
+      "code": "M05-Q14",
+      "text": "Случалось ли, что уже принятое решение об изменениях откладывалось или отменялось без объяснения причин?",
+      "type": "bool",
+      "weight": 1,
+      "is_fact": true,
+      "tier": "u1",
+      "reverse": true,
+      "score_excluded": true,
+      "affects": "prioritization",
+      "metric_code": "change_reversals",
+      "source_ref": "адаптировано из линии 4 контуров, пункт 4.4 (реверсивный)",
+      "construct_code": "change_resistance"
+    }
+  ]
+}

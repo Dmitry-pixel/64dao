@@ -1,0 +1,169 @@
+{
+  "module": 2,
+  "slug": "strategy",
+  "name": "Стратегия и границы",
+  "intro": "О том, куда идёт компания и от чего вы сознательно отказались.",
+  "questions": [
+    {
+      "code": "M02-Q01",
+      "text": "Можете ли вы одной фразой сказать, какой станет ваша компания через 10 лет?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.1 с.18-19"
+    },
+    {
+      "code": "M02-Q02",
+      "text": "Эта цель где-то записана, и ключевые сотрудники могут её повторить?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "control_pair": "M02-Q01",
+      "source_ref": "гл.1 с.40",
+      "construct_code": "strategy_documented"
+    },
+    {
+      "code": "M02-Q03",
+      "text": "На какой уровень вы ориентируетесь, когда думаете о качестве своей работы?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "world",
+          "label": "Равняться на лучших в мире или в стране",
+          "score": 100
+        },
+        {
+          "value": "region",
+          "label": "Быть заметным в своём регионе",
+          "score": 50
+        },
+        {
+          "value": "local",
+          "label": "Быть не хуже конкурентов по городу",
+          "score": 15
+        }
+      ],
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.1 с.21-23",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M02-Q04",
+      "text": "Есть ли конкретная компания, на которую вы равняетесь как на образец?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.1 с.25"
+    },
+    {
+      "code": "M02-Q05",
+      "text": "Вы изучали её как клиент — покупали у неё, пробовали, разбирали, как она устроена?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "applies_when": {
+        "M02-Q04": "yes"
+      },
+      "source_ref": "гл.1 с.25-26"
+    },
+    {
+      "code": "M02-Q06",
+      "text": "Насколько чётко вы понимаете, чем ваша компания заниматься НЕ будет?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u0",
+      "source_ref": "гл.1 с.14-17"
+    },
+    {
+      "code": "M02-Q07",
+      "text": "Сколько раз за последние три года вы меняли основное направление бизнеса?",
+      "type": "number",
+      "unit": "раз",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "reverse": true,
+      "metric_code": "pivot_count_3y",
+      "source_ref": "гл.1 с.29"
+    },
+    {
+      "code": "M02-Q08",
+      "text": "За последний год вы начинали новое направление, потому что «увидели хорошую возможность»?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "reverse": true,
+      "source_ref": "гл.1 с.30-31"
+    },
+    {
+      "code": "M02-Q09",
+      "text": "Когда вы решаете, браться ли за новый проект, от чего вы отталкиваетесь?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "from_goal",
+          "label": "От цели: приближает ли это к тому, чем хочу стать",
+          "score": 100
+        },
+        {
+          "value": "from_resources",
+          "label": "От того, потяну ли я это сейчас",
+          "score": 40
+        },
+        {
+          "value": "no_rule",
+          "label": "От ситуации, единого правила нет",
+          "score": 10
+        }
+      ],
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "source_ref": "гл.1 с.29-30",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0,
+      "construct_code": "strategic_decision_basis"
+    },
+    {
+      "code": "M02-Q10",
+      "text": "Сколько разных направлений бизнеса у вас сейчас работает одновременно?",
+      "type": "number",
+      "unit": "направлений",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u0",
+      "metric_code": "business_lines",
+      "source_ref": "гл.9 с.325-326"
+    },
+    {
+      "code": "M02-Q11",
+      "text": "Если направлений больше одного — связаны ли они между собой общими клиентами, людьми или технологией?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": false,
+      "tier": "u1",
+      "applies_when": {
+        "M02-Q10": ">1"
+      },
+      "source_ref": "гл.9 с.325-326"
+    },
+    {
+      "code": "M02-Q12",
+      "text": "За последний год вы отказывались от клиента, заказа или направления сознательно, потому что это уводило в сторону?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.1 с.16-17, гл.3 с.101"
+    }
+  ]
+}

@@ -57,6 +57,7 @@ class M4Module(Base):
     name:            Mapped[str] = mapped_column(String(128), nullable=False)
     client_question: Mapped[str] = mapped_column(Text, nullable=False)
     why_it_matters:  Mapped[str] = mapped_column(Text, nullable=False)
+    intro:           Mapped[str | None] = mapped_column(Text, nullable=True)       # абзац перед вопросами модуля
     is_effect:       Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     sort:            Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0, server_default="0")
     is_active:       Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
@@ -114,9 +115,12 @@ class M4Question(Base):
     metric_code:     Mapped[str | None] = mapped_column(String(48), nullable=True)
     threshold_based: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     control_pair:    Mapped[str | None] = mapped_column(String(8), nullable=True)
-    applies_when:    Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    applies_when:    Mapped[dict | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
     construct_code:  Mapped[str | None] = mapped_column(String(48), nullable=True, index=True)
     source_ref:      Mapped[str | None] = mapped_column(Text, nullable=True)
+    min_value:       Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_value:       Mapped[int | None] = mapped_column(Integer, nullable=True)
+    note_internal:   Mapped[str | None] = mapped_column(Text, nullable=True)            # только для админки
 
     item_version: Mapped[int]  = mapped_column(Integer, nullable=False, default=1, server_default="1")
     sort:         Mapped[int]  = mapped_column(SmallInteger, nullable=False, default=0, server_default="0")
@@ -140,6 +144,8 @@ class M4Question(Base):
                         name="chk_m4_question_unknown_consistency"),
         # Вопрос влияет на что-то вне балла — он обязан быть исключён из балла.
         CheckConstraint("affects IS NULL OR score_excluded", name="chk_m4_question_affects"),
+        CheckConstraint("min_value IS NULL OR max_value IS NULL OR min_value <= max_value",
+                        name="chk_m4_question_min_max"),
     )
 
 
@@ -169,4 +175,135 @@ class M4QuestionOption(Base):
         UniqueConstraint("question_id", "value", name="uq_m4_option_value"),
         CheckConstraint("value <> 'unknown'", name="chk_m4_option_not_unknown"),
         CheckConstraint("score IS NULL OR (score >= 0 AND score <= 100)", name="chk_m4_option_score"),
+    )
+
+
+# ── Карточки отчёта ───────────────────────────────────────────────────────────
+class M4Card(Base):
+    """Текстовая карточка отчёта. Пять видов:
+
+    module_state      — состояние модуля по баллу, ключ m01_low … m10_high;
+    module_constraint — что значит, что модуль стал системным ограничением;
+    recommendation    — рекомендация: по состоянию модуля (m01_low…) или по
+                        правилу противоречия (cr_CR-01…);
+    dynamics          — изменение относительно прошлой диагностики;
+    confidence        — режим отчёта по индексу достоверности.
+
+    Правится в админке всё, кроме kind и key: по этой паре код выбирает
+    карточку. effect, speed_weeks и cost — входы формулы приоритизации,
+    поэтому у рекомендации они обязательны на уровне базы.
+    """
+
+    __tablename__ = "m4_cards"
+
+    id:           Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    kind:         Mapped[str] = mapped_column(String(24), nullable=False)
+    key:          Mapped[str] = mapped_column(String(24), nullable=False)
+    module_code:  Mapped[int | None] = mapped_column(SmallInteger, ForeignKey("m4_modules.code", ondelete="RESTRICT"), nullable=True, index=True)
+    state:        Mapped[str | None] = mapped_column(String(4), nullable=True)
+    rule_code:    Mapped[str | None] = mapped_column(String(8), ForeignKey("m4_rules.code", ondelete="RESTRICT"), nullable=True, index=True)
+    title:        Mapped[str] = mapped_column(String(160), nullable=False)
+    body:         Mapped[str] = mapped_column(Text, nullable=False)
+    mistake:      Mapped[str | None] = mapped_column(Text, nullable=True)
+    steps:        Mapped[list | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
+    first_step:   Mapped[str | None] = mapped_column(Text, nullable=True)
+    how_to_check: Mapped[str | None] = mapped_column(Text, nullable=True)
+    effect:       Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    speed_weeks:  Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    cost:         Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    item_version: Mapped[int]  = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    sort:         Mapped[int]  = mapped_column(SmallInteger, nullable=False, default=0, server_default="0")
+    is_active:    Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    created_at:   Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at:   Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("kind", "key", name="uq_m4_card_kind_key"),
+        CheckConstraint(
+            "kind IN ('module_state','module_constraint','recommendation','dynamics','confidence')",
+            name="chk_m4_card_kind"),
+        CheckConstraint("state IS NULL OR state IN ('low','mid','high')", name="chk_m4_card_state"),
+        CheckConstraint("effect IS NULL OR (effect >= 1 AND effect <= 3)", name="chk_m4_card_effect"),
+        CheckConstraint("cost IS NULL OR (cost >= 1 AND cost <= 3)", name="chk_m4_card_cost"),
+        CheckConstraint("speed_weeks IS NULL OR (speed_weeks >= 1 AND speed_weeks <= 104)",
+                        name="chk_m4_card_speed"),
+        # Без трёх оценок рекомендацию нельзя поставить в очередь действий.
+        CheckConstraint(
+            "kind <> 'recommendation' OR "
+            "(effect IS NOT NULL AND speed_weeks IS NOT NULL AND cost IS NOT NULL)",
+            name="chk_m4_card_reco_scores"),
+        # Рекомендация привязана ровно к одному: к модулю или к правилу.
+        CheckConstraint(
+            "kind <> 'recommendation' OR ((module_code IS NULL) <> (rule_code IS NULL))",
+            name="chk_m4_card_reco_target"),
+        CheckConstraint("steps IS NULL OR jsonb_typeof(steps) = 'array'", name="chk_m4_card_steps"),
+    )
+
+
+# ── Правила противоречий ──────────────────────────────────────────────────────
+class M4Rule(Base):
+    """Правило противоречия: два управленческих решения, разумных по
+    отдельности и мешающих друг другу вместе.
+
+    Правятся в админке: title, severity, diagnosis, what_happens, fix_one_of,
+    cost_of_inaction, is_active. conditions — структурное поле: это условие
+    срабатывания, в админке оно только для чтения. Правка условия — правка
+    логики, она идёт через код и поднимает rule_version.
+
+    source_ref, как у вопросов, виден только администратору.
+    """
+
+    __tablename__ = "m4_rules"
+
+    code:             Mapped[str] = mapped_column(String(8), primary_key=True)      # 'CR-01'
+    title:            Mapped[str] = mapped_column(String(160), nullable=False)
+    severity:         Mapped[str] = mapped_column(String(8), nullable=False)
+    conditions:       Mapped[dict] = mapped_column(JSONB, nullable=False)
+    diagnosis:        Mapped[str] = mapped_column(Text, nullable=False)
+    what_happens:     Mapped[str] = mapped_column(Text, nullable=False)
+    fix_one_of:       Mapped[list] = mapped_column(JSONB, nullable=False)
+    cost_of_inaction: Mapped[str] = mapped_column(Text, nullable=False)
+    source_ref:       Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_mvp:           Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    rule_version:     Mapped[int]  = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    sort:             Mapped[int]  = mapped_column(SmallInteger, nullable=False, default=0, server_default="0")
+    is_active:        Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    created_at:       Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at:       Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        CheckConstraint("severity IN ('high','medium','low')", name="chk_m4_rule_severity"),
+        CheckConstraint("jsonb_typeof(conditions) = 'object'", name="chk_m4_rule_conditions"),
+        CheckConstraint("jsonb_typeof(fix_one_of) = 'array'", name="chk_m4_rule_fix"),
+    )
+
+
+# ── Цепочки симптомов ─────────────────────────────────────────────────────────
+class M4SymptomChain(Base):
+    """Обратная трассировка: симптом, который видит собственник, → цепочка
+    причин → модули-корни → вопросы для проверки → первое действие.
+
+    Правятся: label, chain, first_action, note, is_active. Структурные:
+    detected_by, root_modules, check_questions — на них опирается расчёт.
+    """
+
+    __tablename__ = "m4_symptom_chains"
+
+    code:            Mapped[str] = mapped_column(String(40), primary_key=True)
+    label:           Mapped[str] = mapped_column(String(160), nullable=False)
+    detected_by:     Mapped[list] = mapped_column(JSONB, nullable=False)
+    chain:           Mapped[list] = mapped_column(JSONB, nullable=False)
+    root_modules:    Mapped[list] = mapped_column(JSONB, nullable=False)
+    check_questions: Mapped[list] = mapped_column(JSONB, nullable=False)
+    first_action:    Mapped[str] = mapped_column(Text, nullable=False)
+    note:            Mapped[str | None] = mapped_column(Text, nullable=True)
+    sort:            Mapped[int]  = mapped_column(SmallInteger, nullable=False, default=0, server_default="0")
+    is_active:       Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    updated_at:      Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        CheckConstraint(
+            "jsonb_typeof(detected_by) = 'array' AND jsonb_typeof(chain) = 'array' "
+            "AND jsonb_typeof(root_modules) = 'array' AND jsonb_typeof(check_questions) = 'array'",
+            name="chk_m4_chain_arrays"),
     )

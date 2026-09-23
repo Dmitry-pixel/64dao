@@ -1,0 +1,317 @@
+{
+  "module": 10,
+  "slug": "finance",
+  "name": "Финансы",
+  "is_effect": true,
+  "intro": "Последний блок — о цифрах. Это не отдельная проблема, а зеркало всего предыдущего: здесь видно, к чему привели решения в остальных девяти блоках.",
+  "questions": [
+    {
+      "code": "M10-Q01",
+      "text": "Можете ли вы прямо сейчас назвать прибыль за прошлый месяц?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "exact",
+          "label": "Да, с точностью до тысяч",
+          "score": 100
+        },
+        {
+          "value": "approx",
+          "label": "Примерно",
+          "score": 50
+        },
+        {
+          "value": "no",
+          "label": "Нет, знаю только по итогам квартала или года",
+          "score": 10
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "control_pair": "M01-Q04",
+      "source_ref": "гл.9 с.307-308",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M10-Q02",
+      "text": "Бывало ли, что выручка росла, а прибыль при этом падала?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u0",
+      "reverse": true,
+      "symptom_code": "revenue_up_profit_down",
+      "source_ref": "гл.9 с.321-322"
+    },
+    {
+      "code": "M10-Q03",
+      "text": "Бывало ли, что по отчётам прибыль есть, а денег на счету нет?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u0",
+      "reverse": true,
+      "symptom_code": "profit_no_cash",
+      "source_ref": "гл.9 с.317-318"
+    },
+    {
+      "code": "M10-Q04",
+      "text": "Через сколько дней в среднем приходят деньги после того, как вы выполнили работу или отгрузили товар?",
+      "type": "number",
+      "unit": "дней",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "metric_code": "dso_days",
+      "threshold_based": true,
+      "source_ref": "гл.9 с.315-316, 322-324"
+    },
+    {
+      "code": "M10-Q05",
+      "text": "Есть ли клиенты, которые должны вам больше полугода?",
+      "type": "bool",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "reverse": true,
+      "metric_code": "bad_debt_present",
+      "source_ref": "гл.9 с.315-316"
+    },
+    {
+      "code": "M10-Q06",
+      "text": "На сколько месяцев работы хватит денег на счетах, если завтра выручка остановится?",
+      "type": "number",
+      "unit": "месяцев",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "metric_code": "cash_runway_months",
+      "source_ref": "гл.9 с.315, 317-318"
+    },
+    {
+      "code": "M10-Q07",
+      "text": "Есть ли у компании кредиты или займы, и на что они брались?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "none",
+          "label": "Кредитов нет",
+          "score": 100
+        },
+        {
+          "value": "growth",
+          "label": "Есть, брали на развитие и окупаются",
+          "score": 70
+        },
+        {
+          "value": "gap",
+          "label": "Есть, брали чтобы закрыть разрыв, или под высокий процент",
+          "score": 10
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "metric_code": "debt_purpose",
+      "source_ref": "гл.9 с.318-319, 326-327",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M10-Q08",
+      "text": "Какая у вас чистая рентабельность — сколько процентов от выручки остаётся после всех расходов и налогов?",
+      "type": "number",
+      "unit": "%",
+      "min": -100,
+      "max": 100,
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "metric_code": "net_margin",
+      "source_ref": "гл.6 с.210",
+      "control_pair": "M10-Q01"
+    },
+    {
+      "code": "M10-Q09",
+      "text": "Берёте ли вы предоплату за то, что будете делать в будущем — абонементы, пакеты, годовые договоры?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "score_neutral": true,
+      "note_internal": "Не штрафуется. Работает в паре с M10-Q10 как правило CR-07.",
+      "source_ref": "гл.9 с.308-310"
+    },
+    {
+      "code": "M10-Q10",
+      "text": "Если берёте предоплату — вы считаете её доходом сразу при поступлении денег или постепенно, по мере выполнения?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "accrual",
+          "label": "Постепенно, по мере выполнения",
+          "score": 100
+        },
+        {
+          "value": "cash",
+          "label": "Сразу при поступлении",
+          "score": 0
+        },
+        {
+          "value": "unknown_method",
+          "label": "Не задумывался",
+          "score": 10
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "applies_when": {
+        "M10-Q09": "yes"
+      },
+      "source_ref": "гл.9 с.308-310",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M10-Q11",
+      "text": "Какая доля денег компании вложена в здания, оборудование и технику?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "low",
+          "label": "Небольшая, основное — в обороте",
+          "score": 100
+        },
+        {
+          "value": "medium",
+          "label": "Примерно половина",
+          "score": 55
+        },
+        {
+          "value": "high",
+          "label": "Большая часть",
+          "score": 20
+        }
+      ],
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "metric_code": "fixed_assets_share",
+      "source_ref": "гл.9 с.316, 324-325",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M10-Q12",
+      "text": "Разбираете ли вы отчётность вместе с руководителями — или она существует только для налоговой?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "monthly_team",
+          "label": "Ежемесячно, вместе с руководителями",
+          "score": 100
+        },
+        {
+          "value": "owner_only",
+          "label": "Смотрю сам",
+          "score": 55
+        },
+        {
+          "value": "tax_only",
+          "label": "Только для налоговой",
+          "score": 5
+        }
+      ],
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "source_ref": "гл.9 с.330-331",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0
+    },
+    {
+      "code": "M10-Q13",
+      "text": "Через сколько дней вы платите поставщикам и подрядчикам после того, как получили от них товар или услугу?",
+      "type": "number",
+      "unit": "дней",
+      "weight": 3,
+      "is_fact": true,
+      "tier": "u1",
+      "metric_code": "payables_days",
+      "source_ref": "дополнение вне книги — оборотный капитал, встречная сторона отсрочки"
+    },
+    {
+      "code": "M10-Q14",
+      "text": "На сколько месяцев продаж у вас лежит запасов, материалов и незавершённых работ?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "lt_month",
+          "label": "Меньше месяца",
+          "score": 100
+        },
+        {
+          "value": "one_three",
+          "label": "От одного до трёх месяцев",
+          "score": 50
+        },
+        {
+          "value": "over_three",
+          "label": "Больше трёх месяцев",
+          "score": 0
+        }
+      ],
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "metric_code": "inventory_months",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0,
+      "source_ref": "дополнение вне книги — оборотный капитал"
+    },
+    {
+      "code": "M10-Q15",
+      "text": "Когда выручка растёт, денег на счетах становится больше или меньше?",
+      "type": "choice",
+      "options": [
+        {
+          "value": "more",
+          "label": "Больше",
+          "score": 100
+        },
+        {
+          "value": "same",
+          "label": "Примерно столько же",
+          "score": 50
+        },
+        {
+          "value": "less",
+          "label": "Меньше",
+          "score": 0
+        }
+      ],
+      "weight": 3,
+      "is_fact": false,
+      "tier": "u1",
+      "metric_code": "cash_on_growth",
+      "unknown_score": 0,
+      "unknown_confidence_penalty": 0,
+      "source_ref": "дополнение вне книги — рост, финансируемый оборотным капиталом"
+    },
+    {
+      "code": "M10-Q16",
+      "text": "Платите ли вы поставщикам или подрядчикам вперёд — до того, как получите деньги от своего клиента?",
+      "type": "bool",
+      "weight": 2,
+      "is_fact": true,
+      "tier": "u1",
+      "reverse": true,
+      "metric_code": "supplier_prepay",
+      "source_ref": "дополнение вне книги — оборотный капитал",
+      "construct_code": "partner_dependency"
+    }
+  ]
+}
