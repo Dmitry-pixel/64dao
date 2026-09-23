@@ -4,6 +4,20 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getMe, getCompanies, type Company } from '@/lib/api'
 
+const METHOD_LABEL: Record<string, string> = {
+  method1: 'Стратегическая диагностика',
+  method2: 'Бизнес-модель',
+}
+
+const fmt = (iso: string) => new Date(iso).toLocaleDateString('ru-RU')
+
+function plural(n: number): string {
+  const m10 = n % 10, m100 = n % 100
+  const word = m10 === 1 && m100 !== 11 ? 'диагностика'
+    : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'диагностики' : 'диагностик'
+  return `${n} ${word}`
+}
+
 export default function CompaniesPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -39,30 +53,59 @@ export default function CompaniesPage() {
           <p style={{ fontFamily: 'sans-serif', fontSize: 13, color: 'var(--text-mute)' }}>Пока нет компаний. Пройдите первую диагностику.</p>
         ) : companies.map(c => {
           const canDynamics = c.assessment_count >= 2
+          const repeatDue = c.next_repeat_at ? new Date(c.next_repeat_at) : null
+          const repeatReady = repeatDue !== null && repeatDue.getTime() <= Date.now()
           return (
-            <div key={c.id} style={{ background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(26,37,64,0.12)', borderRadius: 8, padding: '16px 20px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <div>
-                <div style={{ fontFamily: 'Georgia,serif', fontSize: 18, color: 'var(--text)' }}>{c.name}</div>
-                <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)', marginTop: 2 }}>
-                  {c.assessment_count} диагностик{c.latest_at ? ` · последняя ${new Date(c.latest_at).toLocaleDateString('ru-RU')}` : ''}
+            <div key={c.id} style={{ background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(26,37,64,0.12)', borderRadius: 8, padding: '16px 20px', marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontFamily: 'Georgia,serif', fontSize: 18, color: 'var(--text)' }}>{c.name}</div>
+                  <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)', marginTop: 2 }}>
+                    {plural(c.assessment_count)}
+                    {c.first_at && c.latest_at && c.first_at !== c.latest_at
+                      ? ` · с ${fmt(c.first_at)} по ${fmt(c.latest_at)}`
+                      : c.latest_at ? ` · ${fmt(c.latest_at)}` : ''}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
+                  {canDynamics ? (
+                    <Link href={`/companies/${c.id}/dynamics`}
+                      style={{ background: 'var(--text)', color: '#fff', borderRadius: 6, padding: '8px 16px', fontFamily: 'sans-serif', fontSize: 13, textDecoration: 'none' }}>
+                      Динамика →
+                    </Link>
+                  ) : (
+                    <span style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)' }} title="Нужно ≥2 диагностик">
+                      Динамика откроется со 2-й диагностики
+                    </span>
+                  )}
+                  <Link href={`/assessment?method=1&company=${c.id}&company_name=${encodeURIComponent(c.name)}`}
+                    style={{ border: '1px solid rgba(26,37,64,0.2)', color: 'var(--text)', borderRadius: 6, padding: '8px 16px', fontFamily: 'sans-serif', fontSize: 13, textDecoration: 'none' }}>
+                    Повторить
+                  </Link>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
-                {canDynamics ? (
-                  <Link href={`/companies/${c.id}/dynamics`}
-                    style={{ background: 'var(--text)', color: '#fff', borderRadius: 6, padding: '8px 16px', fontFamily: 'sans-serif', fontSize: 13, textDecoration: 'none' }}>
-                    Динамика →
-                  </Link>
-                ) : (
-                  <span style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)' }} title="Нужно ≥2 диагностик">
-                    Динамика откроется со 2-й диагностики
-                  </span>
-                )}
-                <Link href={`/assessment?method=1&company=${c.id}&company_name=${encodeURIComponent(c.name)}`}
-                  style={{ border: '1px solid rgba(26,37,64,0.2)', color: 'var(--text)', borderRadius: 6, padding: '8px 16px', fontFamily: 'sans-serif', fontSize: 13, textDecoration: 'none' }}>
-                  Повторить
-                </Link>
-              </div>
+
+              {repeatDue && (
+                <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: repeatReady ? 'var(--red)' : 'var(--text-mute)', marginTop: 10 }}>
+                  {repeatReady ? 'Пора повторить диагностику' : `Повторную диагностику рекомендуем пройти после ${fmt(c.next_repeat_at!)}`}
+                  {c.followup_available ? ' · повтор входит в стоимость' : ''}
+                </div>
+              )}
+
+              <ul style={{ listStyle: 'none', margin: '12px 0 0', padding: '10px 0 0', borderTop: '1px solid rgba(26,37,64,0.08)' }}>
+                {c.assessments.map(a => (
+                  <li key={a.id} style={{ fontFamily: 'sans-serif', fontSize: 13, padding: '3px 0' }}>
+                    <Link href={`/report/${a.id}`} style={{ color: 'var(--text)', textDecoration: 'none' }}>
+                      {fmt(a.created_at)} · {METHOD_LABEL[a.method] ?? a.method}
+                    </Link>
+                    {a.is_followup && (
+                      <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text-mute)', border: '1px solid rgba(26,37,64,0.15)', borderRadius: 4, padding: '1px 6px' }}>
+                        повтор
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
           )
         })}

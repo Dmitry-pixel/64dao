@@ -41,7 +41,10 @@ async def run_repeat_reminders(session: AsyncSession,
             func.max(Assessment.created_at).label("last_at"),
         )
         .where(Assessment.status.in_(("completed", "paid")),
-               Assessment.company_id.isnot(None))
+               Assessment.company_id.isnot(None),
+               # Удалённая диагностика для пользователя не существует —
+               # напоминать о ней нельзя.
+               Assessment.deleted_at.is_(None))
         .group_by(Assessment.company_id)
         .subquery()
     )

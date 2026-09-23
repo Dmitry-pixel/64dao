@@ -85,3 +85,47 @@ async def test_list_companies_endpoint(auth_client):
     names = {c["name"]: c for c in r.json()}
     assert "Списочная" in names
     assert names["Списочная"]["assessment_count"] >= 1
+
+
+@pytest.fixture
+def isolated_reminder_settings(monkeypatch, tmp_path):
+    """Срок повтора берётся из volume: тест не должен зависеть от прода."""
+    from app import reminders_settings
+    monkeypatch.setattr(reminders_settings, "SETTINGS_FILE", tmp_path / "reminders_settings.json")
+
+
+@pytest.mark.asyncio
+async def test_deleted_assessments_are_not_listed(auth_client, isolated_reminder_settings):
+    """Удалённая диагностика исчезает из «Моих компаний», а компания, у
+    которой удалено всё, не показывается вовсе."""
+    r1 = await auth_client.post("/api/assessments", json=_payload(company_name="Удаляемая"))
+    r2 = await auth_client.post("/api/assessments", json=_payload(company_name="Остаётся"))
+    await auth_client.post("/api/assessments", json=_payload(company_name="Остаётся"))
+    assert (await auth_client.delete(f"/api/assessments/{r1.json()['id']}")).status_code in (200, 204)
+    assert (await auth_client.delete(f"/api/assessments/{r2.json()['id']}")).status_code in (200, 204)
+
+    names = {c["name"]: c for c in (await auth_client.get("/api/companies")).json()}
+    assert "Удаляемая" not in names
+    assert names["Остаётся"]["assessment_count"] == 1
+    assert len(names["Остаётся"]["assessments"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_drafts_are_not_counted(auth_client, isolated_reminder_settings):
+    await auth_client.post("/api/assessments", json=_payload(company_name="Черновик", status="draft"))
+    names = {c["name"] for c in (await auth_client.get("/api/companies")).json()}
+    assert "Черновик" not in names
+
+
+@pytest.mark.asyncio
+async def test_company_shows_period_and_repeat_date(auth_client, isolated_reminder_settings):
+    from datetime import datetime, timedelta
+
+    await auth_client.post("/api/assessments", json=_payload(company_name="Сроки"))
+    c = {x["name"]: x for x in (await auth_client.get("/api/companies")).json()}["Сроки"]
+    assert c["repeat_days"] == 90
+    latest = datetime.fromisoformat(c["latest_at"])
+    assert datetime.fromisoformat(c["next_repeat_at"]) == latest + timedelta(days=90)
+    assert c["first_at"] == c["latest_at"]
+    assert c["followup_available"] is True
+    assert c["assessments"][0]["method"] == "method1"

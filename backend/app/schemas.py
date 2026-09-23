@@ -347,11 +347,25 @@ class FinContentUpsert(BaseModel):
     is_active: bool = True
 
 
+class CompanyAssessmentOut(BaseModel):
+    id:          uuid.UUID
+    method:      str
+    created_at:  datetime
+    is_followup: bool = False
+
+
 class CompanyOut(BaseModel):
-    id:               uuid.UUID
-    name:             str
-    assessment_count: int = 0
-    latest_at:        datetime | None = None
+    """Считаются только завершённые и не удалённые диагностики."""
+    id:                 uuid.UUID
+    name:               str
+    assessment_count:   int = 0
+    first_at:           datetime | None = None
+    latest_at:          datetime | None = None
+    # Рекомендуемая дата повтора: последняя диагностика + срок из «Рассылки».
+    repeat_days:        int | None = None
+    next_repeat_at:     datetime | None = None
+    followup_available: bool = False
+    assessments:        list[CompanyAssessmentOut] = []
 
 
 class LifecycleStageOut(BaseModel):

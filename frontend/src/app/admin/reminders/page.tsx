@@ -236,6 +236,22 @@ export default function AdminRemindersPage() {
                   <span style={{ fontFamily: 'sans-serif', fontSize: 14, color: 'var(--text)' }}>
                     дн. после последней диагностики
                   </span>
+                  {[{ days: 90, label: '3 месяца' }, { days: 180, label: '6 месяцев' }].map(p => (
+                    <button
+                      key={p.days}
+                      type="button"
+                      disabled={!cfg.enabled || !cfg.repeat_enabled}
+                      onClick={() => { setDaysInput(String(p.days)); setSaved(false); setNotice('') }}
+                      style={{
+                        padding: '7px 12px', fontFamily: 'sans-serif', fontSize: 13, cursor: 'pointer',
+                        borderRadius: 6, border: '1px solid rgba(26,37,64,0.2)',
+                        background: daysInput === String(p.days) ? 'var(--text)' : 'rgba(255,255,255,0.8)',
+                        color: daysInput === String(p.days) ? '#fff' : 'var(--text)',
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
                 </div>
                 <p style={{ ...hintStyle, marginTop: 8 }}>
                   Допустимо от {DAYS_MIN} до {DAYS_MAX}. Значение вне границ будет

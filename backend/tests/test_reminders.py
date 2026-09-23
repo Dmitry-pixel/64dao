@@ -120,3 +120,15 @@ async def test_rearms_after_new_diagnostic(db_session, mock_emails):
     assert await reminders.run_repeat_reminders(db_session) == 0
     await _assessment(db_session, u.id, c.id, days_ago=100)
     assert await reminders.run_repeat_reminders(db_session) == 1
+
+
+@pytest.mark.asyncio
+async def test_skips_deleted_diagnostic(db_session, mock_emails):
+    """Удалённая диагностика для пользователя не существует: письма нет."""
+    u = await _mk_user(db_session)
+    c = await _company(db_session, u.id, "Удалённая")
+    a = await _assessment(db_session, u.id, c.id, days_ago=100)
+    a.deleted_at = _now()
+    await db_session.flush()
+    assert await reminders.run_repeat_reminders(db_session) == 0
+    mock_emails["repeat"].assert_not_awaited()

@@ -274,11 +274,24 @@ export function assessmentPdfUrl(assessmentId: string) {
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
+export interface CompanyAssessment {
+  id: string
+  method: string
+  created_at: string
+  is_followup: boolean
+}
+
+/** Считаются только завершённые и не удалённые диагностики. */
 export interface Company {
   id: string
   name: string
   assessment_count: number
+  first_at: string | null
   latest_at: string | null
+  repeat_days: number | null
+  next_repeat_at: string | null
+  followup_available: boolean
+  assessments: CompanyAssessment[]
 }
 
 export function getCompanies() {
