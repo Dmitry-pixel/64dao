@@ -283,125 +283,133 @@ def apply(row, data: dict, fields, versioned=(), version_attr=None) -> bool:
     return bool(changed)
 
 
-async def seed(c: dict, reset: bool) -> dict:
+async def seed(c: dict, reset: bool, session=None) -> dict:
+    """Залить контент. session — для тестов: запись в их транзакцию без commit."""
+    if session is not None:
+        return await _seed_into(session, c, reset)
+    async with AsyncSessionLocal() as s:
+        stats = await _seed_into(s, c, reset)
+        await s.commit()
+    return stats
+
+
+async def _seed_into(s, c: dict, reset: bool) -> dict:
     stats = {}
 
     def bump(table, what):
         stats.setdefault(table, {"добавлено": 0, "перезаписано": 0, "без изменений": 0})
         stats[table][what] += 1
 
-    async with AsyncSessionLocal() as s:
-        # Модули
-        existing = {m.code: m for m in (await s.execute(select(M4Module))).scalars()}
-        for d in c["modules"]:
-            row = existing.get(d["code"])
-            if row is None:
-                s.add(M4Module(**d))
-                bump("m4_modules", "добавлено")
-            elif reset and apply(row, d, [k for k in d if k != "code"]):
-                bump("m4_modules", "перезаписано")
-            else:
-                bump("m4_modules", "без изменений")
-        await s.flush()
+    # Модули
+    existing = {m.code: m for m in (await s.execute(select(M4Module))).scalars()}
+    for d in c["modules"]:
+        row = existing.get(d["code"])
+        if row is None:
+            s.add(M4Module(**d))
+            bump("m4_modules", "добавлено")
+        elif reset and apply(row, d, [k for k in d if k != "code"]):
+            bump("m4_modules", "перезаписано")
+        else:
+            bump("m4_modules", "без изменений")
+    await s.flush()
 
-        # Вопросы и варианты
-        existing = {q.code: q for q in (await s.execute(select(M4Question))).scalars()}
-        for d in c["questions"]:
-            d = dict(d)
-            opts = d.pop("options")
-            row = existing.get(d["code"])
-            if row is None:
-                row = M4Question(**d)
-                s.add(row)
-                await s.flush()
-                for o in opts:
-                    s.add(M4QuestionOption(question_id=row.id, **o))
-                bump("m4_questions", "добавлено")
-                continue
-            changed = reset and apply(row, d, [k for k in d if k != "code"],
-                                      QUESTION_VERSIONED, "item_version")
-            cur = {o.value: o for o in (await s.execute(
-                select(M4QuestionOption).where(M4QuestionOption.question_id == row.id)
-            )).scalars()}
-            for o in opts:
-                orow = cur.get(o["value"])
-                if orow is None:
-                    s.add(M4QuestionOption(question_id=row.id, **o))
-                    changed = True
-                elif reset and apply(orow, o, ("label", "score", "sort")):
-                    changed = True
-                    row.item_version += 1
-            bump("m4_questions", "перезаписано" if changed else "без изменений")
-        await s.flush()
-
-        # Правила — раньше карточек: на них ссылается внешний ключ
-        existing = {r.code: r for r in (await s.execute(select(M4Rule))).scalars()}
-        for d in c["rules"]:
-            row = existing.get(d["code"])
-            if row is None:
-                s.add(M4Rule(**d))
-                bump("m4_rules", "добавлено")
-            elif reset and apply(row, d, [k for k in d if k != "code"],
-                                 ("conditions",), "rule_version"):
-                bump("m4_rules", "перезаписано")
-            else:
-                bump("m4_rules", "без изменений")
-        await s.flush()
-
-        # Цепочки симптомов
-        existing = {x.code: x for x in (await s.execute(select(M4SymptomChain))).scalars()}
-        for d in c["chains"]:
-            row = existing.get(d["code"])
-            if row is None:
-                s.add(M4SymptomChain(**d))
-                bump("m4_symptom_chains", "добавлено")
-            elif reset and apply(row, d, [k for k in d if k != "code"]):
-                bump("m4_symptom_chains", "перезаписано")
-            else:
-                bump("m4_symptom_chains", "без изменений")
-
-        # Реестр конструктов и связи
-        existing = {x.code: x for x in (await s.execute(select(M4Construct))).scalars()}
-        for d in c["constructs"]:
-            d = dict(d)
-            links = d.pop("links")
-            d.pop("m4")
-            row = existing.get(d["code"])
-            if row is None:
-                s.add(M4Construct(**d))
-                bump("m4_constructs", "добавлено")
-            elif reset and apply(row, d, [k for k in d if k != "code"]):
-                bump("m4_constructs", "перезаписано")
-            else:
-                bump("m4_constructs", "без изменений")
+    # Вопросы и варианты
+    existing = {q.code: q for q in (await s.execute(select(M4Question))).scalars()}
+    for d in c["questions"]:
+        d = dict(d)
+        opts = d.pop("options")
+        row = existing.get(d["code"])
+        if row is None:
+            row = M4Question(**d)
+            s.add(row)
             await s.flush()
-            cur = {(ln.method, ln.item_code): ln for ln in (await s.execute(
-                select(M4ConstructLink).where(M4ConstructLink.construct_code == d["code"])
-            )).scalars()}
-            for ln in links:
-                lrow = cur.get((ln["method"], ln["item_code"]))
-                if lrow is None:
-                    s.add(M4ConstructLink(construct_code=d["code"], **ln))
-                    bump("m4_construct_links", "добавлено")
-                elif reset and apply(lrow, ln, ("reverse", "dynamic", "free_text")):
-                    bump("m4_construct_links", "перезаписано")
-                else:
-                    bump("m4_construct_links", "без изменений")
+            for o in opts:
+                s.add(M4QuestionOption(question_id=row.id, **o))
+            bump("m4_questions", "добавлено")
+            continue
+        changed = reset and apply(row, d, [k for k in d if k != "code"],
+                                  QUESTION_VERSIONED, "item_version")
+        cur = {o.value: o for o in (await s.execute(
+            select(M4QuestionOption).where(M4QuestionOption.question_id == row.id)
+        )).scalars()}
+        for o in opts:
+            orow = cur.get(o["value"])
+            if orow is None:
+                s.add(M4QuestionOption(question_id=row.id, **o))
+                changed = True
+            elif reset and apply(orow, o, ("label", "score", "sort")):
+                changed = True
+                row.item_version += 1
+        bump("m4_questions", "перезаписано" if changed else "без изменений")
+    await s.flush()
 
-        # Карточки
-        existing = {(k.kind, k.key): k for k in (await s.execute(select(M4Card))).scalars()}
-        for d in c["cards"]:
-            row = existing.get((d["kind"], d["key"]))
-            if row is None:
-                s.add(M4Card(**d))
-                bump("m4_cards", "добавлено")
-            elif reset and apply(row, d, [k for k in d if k not in ("kind", "key")],
-                                 CARD_VERSIONED, "item_version"):
-                bump("m4_cards", "перезаписано")
+    # Правила — раньше карточек: на них ссылается внешний ключ
+    existing = {r.code: r for r in (await s.execute(select(M4Rule))).scalars()}
+    for d in c["rules"]:
+        row = existing.get(d["code"])
+        if row is None:
+            s.add(M4Rule(**d))
+            bump("m4_rules", "добавлено")
+        elif reset and apply(row, d, [k for k in d if k != "code"],
+                             ("conditions",), "rule_version"):
+            bump("m4_rules", "перезаписано")
+        else:
+            bump("m4_rules", "без изменений")
+    await s.flush()
+
+    # Цепочки симптомов
+    existing = {x.code: x for x in (await s.execute(select(M4SymptomChain))).scalars()}
+    for d in c["chains"]:
+        row = existing.get(d["code"])
+        if row is None:
+            s.add(M4SymptomChain(**d))
+            bump("m4_symptom_chains", "добавлено")
+        elif reset and apply(row, d, [k for k in d if k != "code"]):
+            bump("m4_symptom_chains", "перезаписано")
+        else:
+            bump("m4_symptom_chains", "без изменений")
+
+    # Реестр конструктов и связи
+    existing = {x.code: x for x in (await s.execute(select(M4Construct))).scalars()}
+    for d in c["constructs"]:
+        d = dict(d)
+        links = d.pop("links")
+        d.pop("m4")
+        row = existing.get(d["code"])
+        if row is None:
+            s.add(M4Construct(**d))
+            bump("m4_constructs", "добавлено")
+        elif reset and apply(row, d, [k for k in d if k != "code"]):
+            bump("m4_constructs", "перезаписано")
+        else:
+            bump("m4_constructs", "без изменений")
+        await s.flush()
+        cur = {(ln.method, ln.item_code): ln for ln in (await s.execute(
+            select(M4ConstructLink).where(M4ConstructLink.construct_code == d["code"])
+        )).scalars()}
+        for ln in links:
+            lrow = cur.get((ln["method"], ln["item_code"]))
+            if lrow is None:
+                s.add(M4ConstructLink(construct_code=d["code"], **ln))
+                bump("m4_construct_links", "добавлено")
+            elif reset and apply(lrow, ln, ("reverse", "dynamic", "free_text")):
+                bump("m4_construct_links", "перезаписано")
             else:
-                bump("m4_cards", "без изменений")
+                bump("m4_construct_links", "без изменений")
 
-        await s.commit()
+    # Карточки
+    existing = {(k.kind, k.key): k for k in (await s.execute(select(M4Card))).scalars()}
+    for d in c["cards"]:
+        row = existing.get((d["kind"], d["key"]))
+        if row is None:
+            s.add(M4Card(**d))
+            bump("m4_cards", "добавлено")
+        elif reset and apply(row, d, [k for k in d if k not in ("kind", "key")],
+                             CARD_VERSIONED, "item_version"):
+            bump("m4_cards", "перезаписано")
+        else:
+            bump("m4_cards", "без изменений")
+
     return stats
 
 

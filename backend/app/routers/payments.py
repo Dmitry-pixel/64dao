@@ -93,9 +93,13 @@ async def _revoke_m3_order_access(db: AsyncSession, order: Order) -> dict:
             portfolio.status = "filled"
             portfolio.calculated_at = None
             closed += 1
+    # Пакет «Метод 3 + Метод 4» возвращается целиком: полные прогоны
+    # Метода 4 этого заказа закрываются вместе с портфелями.
+    from app.m4_access import revoke_order_runs
+    m4_closed = await revoke_order_runs(db, order)
     # Ключи те же, что у контура Методов 1 и 2: вызывающий код (вебхук,
     # рефанд, сверка) один на оба продукта.
-    return {"assessments": closed, "followup_rights": 0, "portfolios": closed}
+    return {"assessments": closed, "followup_rights": 0, "portfolios": closed, "m4_runs": m4_closed}
 
 
 async def revoke_order_access(db: AsyncSession, order: Order) -> dict:
