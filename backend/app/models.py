@@ -443,3 +443,12 @@ from app.m3_models import (  # noqa: E402,F401
     M3TradeoffDecision,
     M3Weight,
 )
+
+# ── Метод 4 «Алмазное колесо» ─────────────────────────────────────────────────
+# Импорт по той же причине, что у Метода 3: регистрация таблиц m4_* в
+# Base.metadata. Без него create_all в тестах и autogenerate в alembic их не видят.
+from app.m4_models import (  # noqa: E402,F401
+    M4Module,
+    M4Question,
+    M4QuestionOption,
+)
