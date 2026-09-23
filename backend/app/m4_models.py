@@ -327,3 +327,84 @@ class M4SymptomChain(Base):
             "AND jsonb_typeof(root_modules) = 'array' AND jsonb_typeof(check_questions) = 'array'",
             name="chk_m4_chain_arrays"),
     )
+
+
+# ── Реестр конструктов ────────────────────────────────────────────────────────
+class M4Construct(Base):
+    """Конструкт — то, что метод пытается узнать, независимо от формулировки
+    и метода: «цену поднимали и проверили реакцию клиентов», «компания
+    работает без ручного участия первого лица».
+
+    Зачем: не спрашивать одно и то же дважды (reusable) и сверять ответы
+    Метода 3 и Метода 4 на один вопрос (cross_check). Расхождение ответов —
+    повод уточнить, а не обвинение в неискренности.
+
+    unit — уровень, на котором конструкт измеряется: компания, направление
+    портфеля или функция. Ответ по направлению нельзя подставить в вопрос о
+    компании, кроме случая одного направления.
+
+    Правятся: name, note, cross_check_why, reusable, cross_check, is_active.
+    Не правится: code — на него ссылаются вопросы и связи.
+    """
+
+    __tablename__ = "m4_constructs"
+
+    code:            Mapped[str] = mapped_column(String(48), primary_key=True)
+    name:            Mapped[str] = mapped_column(String(200), nullable=False)
+    unit:            Mapped[str] = mapped_column(String(12), nullable=False)
+    reusable:        Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    cross_check:     Mapped[str | None] = mapped_column(String(24), nullable=True)
+    cross_check_why: Mapped[str | None] = mapped_column(Text, nullable=True)
+    note:            Mapped[str | None] = mapped_column(Text, nullable=True)
+    sort:            Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0, server_default="0")
+    is_active:       Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    updated_at:      Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(),
+    )
+
+    links: Mapped[list["M4ConstructLink"]] = relationship(
+        back_populates="construct", cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        CheckConstraint("unit IN ('company','direction','function')", name="chk_m4_construct_unit"),
+        CheckConstraint(
+            "cross_check IS NULL OR cross_check IN ('always','single_direction_only','no')",
+            name="chk_m4_construct_cross_check"),
+    )
+
+
+class M4ConstructLink(Base):
+    """Связь конструкта с пунктом другого метода.
+
+    Отдельная таблица, а не поле construct_code в чужих таблицах: пункты
+    Метода 3 хранятся построчно по версиям и отраслям, а пункты контуров
+    живут в коде. Связь по коду пункта переживает и новую версию, и
+    отраслевой слой, и не требует менять таблицы Метода 3.
+
+    reverse   — пункт реверсивный, значение инвертируется до сравнения;
+    dynamic   — пункт меряет динамику, а не уровень (сверять нельзя);
+    free_text — свободный текст, только для справки.
+    """
+
+    __tablename__ = "m4_construct_links"
+
+    id:             Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    construct_code: Mapped[str] = mapped_column(
+        String(48), ForeignKey("m4_constructs.code", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    method:         Mapped[str] = mapped_column(String(24), nullable=False)
+    item_code:      Mapped[str] = mapped_column(String(48), nullable=False)
+    reverse:        Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    dynamic:        Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    free_text:      Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+
+    construct: Mapped["M4Construct"] = relationship(back_populates="links")
+
+    __table_args__ = (
+        UniqueConstraint("construct_code", "method", "item_code", name="uq_m4_construct_link"),
+        CheckConstraint(
+            "method IN ('m1_base','m3','contour_finance','contour_product','contour_process',"
+            "'contour_market','ui_bmc')",
+            name="chk_m4_construct_link_method"),
+    )

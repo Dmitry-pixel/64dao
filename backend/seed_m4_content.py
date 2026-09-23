@@ -3,7 +3,8 @@
 Метод 4 «Алмазное колесо» — заливка контента из content/m4/*.json.
 
 Что заливается: 10 модулей, 120 вопросов с вариантами ответа, 22 правила
-противоречий, 7 цепочек симптомов, 90 карточек отчёта.
+противоречий, 7 цепочек симптомов, 90 карточек отчёта, 21 конструкт со
+связями на пункты Методов 1, 3 и контуров.
 
 Главное правило: после первой заливки хозяин контента — админка, а не файлы.
 Поэтому обычный запуск только ДОБАВЛЯЕТ недостающее (новый вопрос, новую
@@ -21,7 +22,9 @@
 
 Перед записью файлы проверяются: коды вопросов в правилах, цепочках,
 контрольных парах и условиях показа должны существовать, у каждой
-рекомендации — три оценки приоритета. Ошибка в файлах — ничего не пишется.
+рекомендации — три оценки приоритета, пункты других методов в связях
+конструктов — существовать в коде этих методов, а признак реверса в связи —
+совпадать с реверсом самого пункта. Ошибка в файлах — ничего не пишется.
 """
 import asyncio
 import json
@@ -30,9 +33,12 @@ from pathlib import Path
 
 from sqlalchemy import select
 
+from app.contours import CONTOURS
 from app.db import AsyncSessionLocal
 from app.m4_models import (
     M4Card,
+    M4Construct,
+    M4ConstructLink,
     M4Module,
     M4Question,
     M4QuestionOption,
@@ -126,8 +132,37 @@ def read_content() -> dict:
         "speed_weeks": c.get("speed_weeks"), "cost": c.get("cost"), "sort": c.get("sort", 0),
     } for c in load("cards.json")["cards"]]
 
+    cf = load("constructs.json")
+    constructs = [{
+        "code": x["code"], "name": x["name"], "unit": x["unit"],
+        "reusable": bool(x.get("reusable")), "cross_check": x.get("cross_check"),
+        "cross_check_why": x.get("cross_check_why"), "note": x.get("note"),
+        "sort": i + 1, "m4": x["m4"],
+        "links": [{
+            "method": o["method"], "item_code": o["item"],
+            "reverse": bool(o.get("reverse")), "dynamic": bool(o.get("dynamic")),
+            "free_text": bool(o.get("free_text")),
+        } for o in x["others"]],
+    } for i, x in enumerate(cf["constructs"])]
+
     return {"modules": modules, "questions": questions, "rules": rules,
-            "chains": chains, "cards": cards}
+            "chains": chains, "cards": cards, "constructs": constructs}
+
+
+def foreign_items() -> dict[str, tuple[set, set]]:
+    """Пункты других методов: метод → (все коды, реверсивные коды).
+    Берутся из кода самих методов, а не из файла, — иначе опечатка в
+    constructs.json тихо создаст связь с несуществующим пунктом."""
+    from app.method1_questions import BASE_QUESTIONS
+    from seed_m3 import ITEMS as M3_ITEMS
+
+    out = {
+        "m3": ({i["code"] for i in M3_ITEMS}, {i["code"] for i in M3_ITEMS if i["is_reverse"]}),
+        "m1_base": ({q["lc_key"] for q in BASE_QUESTIONS}, set()),
+    }
+    for key, spec in CONTOURS.items():
+        out[f"contour_{key}"] = (set(spec.item_ids), set(spec.reverse_items))
+    return out
 
 
 def rule_refs(node, out: list) -> None:
@@ -203,6 +238,29 @@ def check(c: dict) -> list[str]:
             errs.append(f"карточка {k['key']}: нет правила {k['rule_code']}")
         if k["kind"] == "recommendation" and None in (k["effect"], k["speed_weeks"], k["cost"]):
             errs.append(f"рекомендация {k['key']}: не хватает effect / speed_weeks / cost")
+
+    known = {x["code"] for x in c["constructs"]}
+    listed = {q: x["code"] for x in c["constructs"] for q in x["m4"]}
+    foreign = foreign_items()
+    for q in c["questions"]:
+        cc = q["construct_code"]
+        if cc and cc not in known:
+            errs.append(f"{q['code']}: конструкт {cc} не найден в реестре")
+        if listed.get(q["code"]) != cc:
+            errs.append(f"{q['code']}: в вопросе конструкт {cc}, в реестре {listed.get(q['code'])}")
+    for x in c["constructs"]:
+        for q in x["m4"]:
+            if q not in qs:
+                errs.append(f"конструкт {x['code']}: нет вопроса {q}")
+        for ln in x["links"]:
+            if ln["method"] == "ui_bmc":
+                continue  # свободный текст полей BMC, пунктов нет
+            items, reverse = foreign.get(ln["method"], (set(), set()))
+            if ln["item_code"] not in items:
+                errs.append(f"конструкт {x['code']}: нет пункта {ln['method']} {ln['item_code']}")
+            elif ln["method"] != "m3" and ln["reverse"] != (ln["item_code"] in reverse):
+                errs.append(f"конструкт {x['code']}: признак реверса у {ln['method']} "
+                            f"{ln['item_code']} не совпадает с методом")
     return errs
 
 
@@ -295,6 +353,34 @@ async def seed(c: dict, reset: bool) -> dict:
             else:
                 bump("m4_symptom_chains", "без изменений")
 
+        # Реестр конструктов и связи
+        existing = {x.code: x for x in (await s.execute(select(M4Construct))).scalars()}
+        for d in c["constructs"]:
+            d = dict(d)
+            links = d.pop("links")
+            d.pop("m4")
+            row = existing.get(d["code"])
+            if row is None:
+                s.add(M4Construct(**d))
+                bump("m4_constructs", "добавлено")
+            elif reset and apply(row, d, [k for k in d if k != "code"]):
+                bump("m4_constructs", "перезаписано")
+            else:
+                bump("m4_constructs", "без изменений")
+            await s.flush()
+            cur = {(ln.method, ln.item_code): ln for ln in (await s.execute(
+                select(M4ConstructLink).where(M4ConstructLink.construct_code == d["code"])
+            )).scalars()}
+            for ln in links:
+                lrow = cur.get((ln["method"], ln["item_code"]))
+                if lrow is None:
+                    s.add(M4ConstructLink(construct_code=d["code"], **ln))
+                    bump("m4_construct_links", "добавлено")
+                elif reset and apply(lrow, ln, ("reverse", "dynamic", "free_text")):
+                    bump("m4_construct_links", "перезаписано")
+                else:
+                    bump("m4_construct_links", "без изменений")
+
         # Карточки
         existing = {(k.kind, k.key): k for k in (await s.execute(select(M4Card))).scalars()}
         for d in c["cards"]:
@@ -318,7 +404,7 @@ def main() -> None:
     errs = check(content)
     print(f"Файлы: модулей {len(content['modules'])}, вопросов {len(content['questions'])}, "
           f"правил {len(content['rules'])}, цепочек {len(content['chains'])}, "
-          f"карточек {len(content['cards'])}")
+          f"карточек {len(content['cards'])}, конструктов {len(content['constructs'])}")
     if errs:
         print("ОШИБКИ В ФАЙЛАХ, ничего не записано:")
         for e in errs:

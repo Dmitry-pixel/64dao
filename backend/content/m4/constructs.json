@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "purpose": "Один конструкт — это то, что метод пытается узнать, независимо от того, каким вопросом и в каком методе. Реестр нужен, чтобы: (1) не спрашивать одно и то же дважды, (2) показывать расхождение ответов между методами как находку, а не как сбой, (3) не дать банку вопросов расползтись при добавлении новых методик.",
   "data_model": {
     "table_construct": [
@@ -10,7 +10,16 @@
       "note"
     ],
     "question_field": "construct_code — добавляется вопросам ВСЕХ методов, не только Метода 4",
-    "answer_reuse": "Ответ переиспользуется, если: конструкт reusable, единицы анализа совпадают, ответ получен не дольше 6 месяцев назад и для пары шкал задано отображение. Подставленный ответ помечается источником и датой и правится клиентом в один клик."
+    "answer_reuse": "Ответ переиспользуется, если: конструкт reusable, единицы анализа совпадают, ответ получен не дольше 6 месяцев назад и для пары шкал задано отображение. Подставленный ответ помечается источником и датой и правится клиентом в один клик.",
+    "table_links": [
+      "construct_code",
+      "method: m1_base|m3|contour_finance|contour_product|contour_process|contour_market|ui_bmc",
+      "item_code",
+      "reverse",
+      "dynamic",
+      "free_text"
+    ],
+    "note_links": "Связи с вопросами других методов хранятся отдельной таблицей m4_construct_links, а не полем в чужих таблицах: пункты Метода 3 версионируются по строкам, а пункты контуров живут в коде. Ссылки на черновик опросника BMC из 54 утверждений удалены 23.09.2026 вместе с черновиком; ui_bmc — свободный текст полей BMC, только для справки, без переиспользования и сверки."
   },
   "scale_mapping": {
     "comment": "Методы 1–3 и контуры используют шкалу 1–4 без середины, Метод 4 — Да/Нет, Да/Частично/Нет и выбор из трёх. Отображение задаётся явно и только в сторону Метода 4.",
@@ -48,13 +57,7 @@
       "m4": [
         "M03-Q05"
       ],
-      "others": [
-        {
-          "method": "m2_bmc",
-          "item": "value_proposition 2b",
-          "reverse": true
-        }
-      ],
+      "others": [],
       "reusable": true
     },
     {
@@ -84,10 +87,6 @@
       ],
       "others": [
         {
-          "method": "m2_bmc",
-          "item": "value_proposition 1a+1b"
-        },
-        {
           "method": "ui_bmc",
           "item": "Ценностное предложение",
           "free_text": true
@@ -104,10 +103,6 @@
       ],
       "others": [
         {
-          "method": "m2_bmc",
-          "item": "segments 1a"
-        },
-        {
           "method": "ui_bmc",
           "item": "Сегменты",
           "free_text": true
@@ -122,13 +117,7 @@
       "m4": [
         "M06-Q06"
       ],
-      "others": [
-        {
-          "method": "m2_bmc",
-          "item": "segments 2b",
-          "reverse": true
-        }
-      ],
+      "others": [],
       "reusable": true
     },
     {
@@ -154,10 +143,6 @@
         "M06-Q04"
       ],
       "others": [
-        {
-          "method": "m2_bmc",
-          "item": "relationships 2a/3a"
-        },
         {
           "method": "m3",
           "item": "А2",
@@ -197,13 +182,12 @@
       ],
       "others": [
         {
-          "method": "m2_bmc",
-          "item": "channels 2b",
-          "reverse": true
+          "method": "m3",
+          "item": "Н5"
         },
         {
           "method": "m3",
-          "item": "Н5/Н6"
+          "item": "Н6"
         }
       ],
       "reusable": true,
@@ -217,12 +201,7 @@
       "m4": [
         "M09-Q09"
       ],
-      "others": [
-        {
-          "method": "m2_bmc",
-          "item": "channels 1b"
-        }
-      ],
+      "others": [],
       "reusable": true
     },
     {
@@ -253,10 +232,6 @@
       ],
       "others": [
         {
-          "method": "m2_bmc",
-          "item": "activities 2a"
-        },
-        {
           "method": "contour_product",
           "item": "1.3",
           "reverse": true
@@ -282,13 +257,7 @@
       "m4": [
         "M05-Q08"
       ],
-      "others": [
-        {
-          "method": "m2_bmc",
-          "item": "resources 2b",
-          "reverse": true
-        }
-      ],
+      "others": [],
       "reusable": true
     },
     {
@@ -327,12 +296,7 @@
         "M07-Q11",
         "M07-Q04"
       ],
-      "others": [
-        {
-          "method": "m2_bmc",
-          "item": "revenues 2a"
-        }
-      ],
+      "others": [],
       "reusable": true
     },
     {
@@ -344,10 +308,6 @@
         "M09-Q04"
       ],
       "others": [
-        {
-          "method": "m2_bmc",
-          "item": "costs 1b"
-        },
         {
           "method": "m3",
           "item": "Н1"
@@ -366,13 +326,7 @@
         "M06-Q02",
         "M04-Q03"
       ],
-      "others": [
-        {
-          "method": "m2_bmc",
-          "item": "revenues 2b",
-          "reverse": true
-        }
-      ],
+      "others": [],
       "reusable": false,
       "note": "М4 меряет числом, М2 — согласием. Отображение числа в согласие однозначно, обратное — нет"
     },
@@ -386,7 +340,7 @@
       "others": [
         {
           "method": "m1_base",
-          "item": "q3"
+          "item": "lc_decisions"
         }
       ],
       "reusable": true
@@ -401,15 +355,27 @@
       "others": [
         {
           "method": "contour_product",
-          "item": "6.1/6.4"
+          "item": "6.1"
+        },
+        {
+          "method": "contour_product",
+          "item": "6.4"
         },
         {
           "method": "contour_market",
-          "item": "6.1/6.4"
+          "item": "6.1"
+        },
+        {
+          "method": "contour_market",
+          "item": "6.4"
         },
         {
           "method": "contour_process",
-          "item": "6.1/6.4"
+          "item": "6.1"
+        },
+        {
+          "method": "contour_process",
+          "item": "6.4"
         }
       ],
       "reusable": false,
@@ -425,11 +391,38 @@
       ],
       "others": [
         {
-          "method": "contour_any",
+          "method": "contour_finance",
           "item": "4.2"
         },
         {
-          "method": "contour_any",
+          "method": "contour_product",
+          "item": "4.2"
+        },
+        {
+          "method": "contour_process",
+          "item": "4.2"
+        },
+        {
+          "method": "contour_market",
+          "item": "4.2"
+        },
+        {
+          "method": "contour_finance",
+          "item": "4.4",
+          "reverse": true
+        },
+        {
+          "method": "contour_product",
+          "item": "4.4",
+          "reverse": true
+        },
+        {
+          "method": "contour_process",
+          "item": "4.4",
+          "reverse": true
+        },
+        {
+          "method": "contour_market",
           "item": "4.4",
           "reverse": true
         }
@@ -445,11 +438,6 @@
         "M10-Q16"
       ],
       "others": [
-        {
-          "method": "m2_bmc",
-          "item": "partners 2b",
-          "reverse": true
-        },
         {
           "method": "ui_bmc",
           "item": "Партнёры",

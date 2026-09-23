@@ -449,6 +449,8 @@ from app.m3_models import (  # noqa: E402,F401
 # Base.metadata. Без него create_all в тестах и autogenerate в alembic их не видят.
 from app.m4_models import (  # noqa: E402,F401
     M4Card,
+    M4Construct,
+    M4ConstructLink,
     M4Module,
     M4Question,
     M4QuestionOption,
