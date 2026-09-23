@@ -37,7 +37,7 @@ type Product = 'm12' | 'm3'
 
 const LABEL: Record<Product, string> = {
   m12: 'Метод 1 + Метод 2',
-  m3: 'Метод 3 · Матрица силы',
+  m3: 'Метод 3 + Метод 4',
 }
 
 const CARD: CSSProperties = {

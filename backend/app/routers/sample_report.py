@@ -43,6 +43,7 @@ CHANNEL_LABEL = {"email": "E-mail", "telegram": "Telegram", "max": "Max"}
 SOURCE_BY_PRODUCT = {
     "m12": "sample_m12",
     "m3": "sample_m3",
+    "m4": "sample_m4",
     "methodology": "methodology",
 }
 # Потолок на IP, а не на человека: ключ — x-real-ip, и офис за одним NAT
@@ -56,6 +57,7 @@ REQUEST_RATE_LIMIT = "20/minute"
 SOURCE_LABEL = {
     "sample_m12": "Пример отчёта · Методы 1-2",
     "sample_m3": "Пример отчёта · Метод 3",
+    "sample_m4": "Пример отчёта · Метод 4",
     "methodology": "Методика 64DAO",
 }
 

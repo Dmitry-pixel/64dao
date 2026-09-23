@@ -27,7 +27,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 const PRODUCT_LABEL: Record<string, string> = {
   m12: 'Методы 1 + 2',
-  m3: 'Метод 3',
+  m3: 'Методы 3 + 4',
 }
 
 const FILTERS: { key: string; label: string }[] = [

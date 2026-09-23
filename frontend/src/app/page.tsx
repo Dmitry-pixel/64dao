@@ -214,12 +214,12 @@ async function getPricing(): Promise<PricingData> {
 // похода в сеть не будет.
 
 const DEFAULT_PRICING_M3: PricingData = {
-  title: 'Матрица силы · Метод 3',
+  title: 'Матрица силы · Метод 3 + Алмазное колесо · Метод 4',
   price: 20000,
   currency: '₽',
   description: 'разовая оплата · НДС не облагается',
   features: [
-    { label: 'Диагностика', value: 'Метод 3 · матрица силы' },
+    { label: 'Диагностика', value: 'Метод 3 + Метод 4' },
     { label: 'Направлений в портфеле', value: 'От 3 до 8' },
     { label: 'PDF-отчёт', value: 'Включён' },
     { label: 'Онлайн-просмотр', value: 'Без ограничений' },
@@ -249,6 +249,64 @@ async function getPricingM3(): Promise<PricingData> {
   return DEFAULT_PRICING_M3
 }
 
+// ─── Алмазное колесо (Метод 4) ────────────────────────────────────────────────
+// Оригинальная схема 64DAO: десять модулей, десятый (финансы) выделен как
+// следствие остальных девяти. Баллов на схеме нет — она поясняет метод.
+function DiamondWheelSvg() {
+  return (
+    <svg viewBox="0 0 600 472" width="100%" role="img" aria-label="Алмазное колесо: десять управленческих модулей" style={{ display: 'block' }}>
+      <g fill="none" stroke="rgba(26,37,64,0.22)" strokeWidth={1}>
+        <path d="M 253.6 93.3 A 150 150 0 0 1 346.4 93.3 L 326.0 156.1 A 84 84 0 0 0 274.0 156.1 Z" fill="var(--background)" fillOpacity={1} />
+        <path d="M 346.4 93.3 A 150 150 0 0 1 421.4 147.8 L 368.0 186.6 A 84 84 0 0 0 326.0 156.1 Z" fill="var(--background)" fillOpacity={1} />
+        <path d="M 421.4 147.8 A 150 150 0 0 1 450.0 236.0 L 384.0 236.0 A 84 84 0 0 0 368.0 186.6 Z" fill="var(--background)" fillOpacity={1} />
+        <path d="M 450.0 236.0 A 150 150 0 0 1 421.4 324.2 L 368.0 285.4 A 84 84 0 0 0 384.0 236.0 Z" fill="var(--background)" fillOpacity={1} />
+        <path d="M 421.4 324.2 A 150 150 0 0 1 346.4 378.7 L 326.0 315.9 A 84 84 0 0 0 368.0 285.4 Z" fill="var(--background)" fillOpacity={1} />
+        <path d="M 346.4 378.7 A 150 150 0 0 1 253.6 378.7 L 274.0 315.9 A 84 84 0 0 0 326.0 315.9 Z" fill="var(--background)" fillOpacity={1} />
+        <path d="M 253.6 378.7 A 150 150 0 0 1 178.6 324.2 L 232.0 285.4 A 84 84 0 0 0 274.0 315.9 Z" fill="var(--background)" fillOpacity={1} />
+        <path d="M 178.6 324.2 A 150 150 0 0 1 150.0 236.0 L 216.0 236.0 A 84 84 0 0 0 232.0 285.4 Z" fill="var(--background)" fillOpacity={1} />
+        <path d="M 150.0 236.0 A 150 150 0 0 1 178.6 147.8 L 232.0 186.6 A 84 84 0 0 0 216.0 236.0 Z" fill="var(--background)" fillOpacity={1} />
+        <path d="M 178.6 147.8 A 150 150 0 0 1 253.6 93.3 L 274.0 156.1 A 84 84 0 0 0 232.0 186.6 Z" fill="var(--accent)" fillOpacity={0.14} />
+      </g>
+      <circle cx={300} cy={236} r={76} fill="var(--background)" stroke="rgba(26,37,64,0.22)" strokeWidth={1} />
+      <g fontFamily="sans-serif" fontSize={13} fontWeight={600} fill="rgba(26,37,64,0.55)" textAnchor="middle">
+        <text x={300.0} y={123.0}>1</text>
+        <text x={368.8} y={145.3}>2</text>
+        <text x={411.3} y={203.8}>3</text>
+        <text x={411.3} y={276.2}>4</text>
+        <text x={368.8} y={334.7}>5</text>
+        <text x={300.0} y={357.0}>6</text>
+        <text x={231.2} y={334.7}>7</text>
+        <text x={188.7} y={276.2}>8</text>
+        <text x={188.7} y={203.8}>9</text>
+        <text x={231.2} y={145.3}>10</text>
+      </g>
+      <g fontFamily="sans-serif" fontSize={12} fill="var(--foreground)">
+        <text x={300.0} y={69.0} textAnchor="middle">Капитал и</text>
+        <text x={300.0} y={83.0} textAnchor="middle">собственность</text>
+        <text x={396.4} y={100.3} textAnchor="start">Стратегия</text>
+        <text x={396.4} y={114.3} textAnchor="start">и границы</text>
+        <text x={456.0} y={182.3} textAnchor="start">Ценность</text>
+        <text x={456.0} y={196.3} textAnchor="start">и отличие</text>
+        <text x={456.0} y={283.7} textAnchor="start">Продукт</text>
+        <text x={456.0} y={297.7} textAnchor="start">и фокус</text>
+        <text x={396.4} y={365.7} textAnchor="start">Организация</text>
+        <text x={396.4} y={379.7} textAnchor="start">и люди</text>
+        <text x={300.0} y={404.0} textAnchor="middle">Клиенты</text>
+        <text x={203.6} y={365.7} textAnchor="end">Планирование</text>
+        <text x={203.6} y={379.7} textAnchor="end">и бюджет</text>
+        <text x={144.0} y={283.7} textAnchor="end">Производительность</text>
+        <text x={144.0} y={297.7} textAnchor="end">и мотивация</text>
+        <text x={144.0} y={182.3} textAnchor="end">Цена</text>
+        <text x={144.0} y={196.3} textAnchor="end">и продвижение</text>
+        <text x={203.6} y={107.3} textAnchor="end">Финансы</text>
+      </g>
+      <text x={300} y={230} textAnchor="middle" fontFamily="sans-serif" fontSize={14} fontWeight={600} fill="var(--foreground)">Алмазное</text>
+      <text x={300} y={248} textAnchor="middle" fontFamily="sans-serif" fontSize={14} fontWeight={600} fill="var(--foreground)">колесо</text>
+      <text x={300} y={268} textAnchor="middle" fontFamily="sans-serif" fontSize={11} fill="rgba(26,37,64,0.55)">10 модулей</text>
+      <text x={300} y={456} textAnchor="middle" fontFamily="sans-serif" fontSize={12} fill="rgba(26,37,64,0.6)">Модуль 10 — следствие решений в остальных девяти</text>
+    </svg>
+  )
+}
 // ─── Матрица 3×3 в логике GE/McKinsey ────────────────────────────────────────
 // Ось конкурентоспособности развёрнута к канону: сильная слева.
 // Это то же правило, что в расчёте (COL_INDEX = {high: 0, mid: 1, low: 2}).
@@ -759,6 +817,63 @@ export default async function HomePage() {
 
             <div style={{ background: 'var(--background)', borderRadius: 8, padding: '32px 28px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
               <PowerMatrixSvg />
+            </div>
+          </div>
+        </section>
+
+        {/* ── DIAMOND WHEEL (Метод 4) ── */}
+        <section id="diamond-wheel" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+          <div className="g-2col g-pad96" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, padding: '96px 40px', alignItems: 'center' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ display: 'inline-block', width: 32, height: 2, background: 'var(--accent)' }} />
+                <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#888888' }}>Алмазное колесо · Метод 4</span>
+              </div>
+              <h2 style={{ margin: '24px 0 0', fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(28px,4vw,38px)', fontWeight: 700, lineHeight: 1.2, color: 'var(--foreground)' }}>
+                Что мешает решению сработать
+              </h2>
+              <div style={{ width: 80, height: 3, background: 'var(--accent)', margin: '28px 0' }} />
+
+              <p style={{ margin: 0, maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
+                Метод 3 показывает, куда вкладывать ресурс. Метод 4 показывает, что мешает это сделать.
+              </p>
+              <p style={{ margin: '18px 0 0', maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
+                Десять управленческих модулей — от собственности и стратегии до цены и финансов. Финансовый результат стоит в этом кругу последним: он следствие решений в остальных девяти и напрямую не чинится.
+              </p>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 20, maxWidth: 560 }}>
+                {['колесо из 10 модулей', 'системное ограничение', 'противоречия в решениях', 'очередь действий'].map((step, i, arr) => (
+                  <span key={step} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ display: 'inline-block', borderRadius: 4, border: '1px solid rgba(26,37,64,0.16)', background: 'var(--background)', padding: '8px 12px', fontSize: 14, color: 'var(--foreground)' }}>
+                      {step}
+                    </span>
+                    {i < arr.length - 1 && <span aria-hidden="true" style={{ fontSize: 14, color: 'var(--accent)' }}>→</span>}
+                  </span>
+                ))}
+              </div>
+
+              <p style={{ margin: '24px 0 0', maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
+                Диагностика ищет не самый низкий балл, а узел, который держит остальные: место, где улучшение даёт наибольший эффект, и места, где оно бесполезно, пока этот узел не развязан.
+              </p>
+              <p style={{ margin: '18px 0 0', maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
+                Отдельным блоком — противоречия: пары управленческих решений, разумных по отдельности и тянущих компанию в разные стороны вместе. Обычный ассессмент скажет «слабое место в мотивации». Метод 4 покажет, какие именно два ваших решения друг другу мешают и что из них менять первым.
+              </p>
+              <p style={{ margin: '18px 0 0', maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
+                Метод 4 входит в стоимость Метода 3: две диагностики по одной цене.
+              </p>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 36 }}>
+                <a href="/m3" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, borderRadius: 6, background: 'var(--brand-navy)', padding: '15px 26px', fontSize: 15, fontWeight: 500, color: 'var(--background)', textDecoration: 'none' }}>
+                  Пройти диагностику <span aria-hidden="true">→</span>
+                </a>
+                <SampleReportButton method="4" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, borderRadius: 6, border: '1px solid rgba(26,37,64,0.22)', background: 'var(--background)', padding: '15px 26px', fontSize: 15, fontWeight: 500, color: 'var(--foreground)', textDecoration: 'none' }}>
+                  Скачать пример отчёта
+                </SampleReportButton>
+              </div>
+            </div>
+
+            <div style={{ background: 'var(--background)', borderRadius: 8, padding: '28px 24px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
+              <DiamondWheelSvg />
             </div>
           </div>
         </section>

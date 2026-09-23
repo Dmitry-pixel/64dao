@@ -12,9 +12,10 @@ const API = process.env.NEXT_PUBLIC_API_URL || ''
  * мессенджеры — по желанию.
  *
  * method определяет, какой PDF откроется и в какой сегмент попадёт лид:
- * '1' — пример Методов 1-2, '3' — пример Метода 3, 'methodology' — методика.
+ * '1' — пример Методов 1-2, '3' — пример Метода 3, '4' — пример Метода 4,
+ * 'methodology' — методика.
  */
-export type SampleDoc = '1' | '3' | 'methodology'
+export type SampleDoc = '1' | '3' | '4' | 'methodology'
 
 const DOC_TEXT: Record<SampleDoc, { label: string; title: string; hint: string }> = {
   '1': {
@@ -24,6 +25,11 @@ const DOC_TEXT: Record<SampleDoc, { label: string; title: string; hint: string }
   },
   '3': {
     label: 'Пример отчёта · Метод 3',
+    title: 'Куда отправить пример отчёта?',
+    hint: 'Пример откроется в новой вкладке и придёт на почту.',
+  },
+  '4': {
+    label: 'Пример отчёта · Метод 4',
     title: 'Куда отправить пример отчёта?',
     hint: 'Пример откроется в новой вкладке и придёт на почту.',
   },
