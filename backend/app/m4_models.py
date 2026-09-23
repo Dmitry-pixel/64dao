@@ -28,6 +28,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    Numeric,
     SmallInteger,
     String,
     Text,
@@ -407,4 +408,175 @@ class M4ConstructLink(Base):
             "method IN ('m1_base','m3','contour_finance','contour_product','contour_process',"
             "'contour_market','ui_bmc')",
             name="chk_m4_construct_link_method"),
+    )
+
+
+# ── Прогоны ───────────────────────────────────────────────────────────────────
+class M4Run(Base):
+    """Один проход анкеты Метода 4 по одной компании.
+
+    mode:
+      express — бесплатный экспресс: 20 вопросов уровня u0, колесо и три
+                разрыва. Ничего не списывает, поэтому order_id и grant_id
+                пусты; ограничение числа экспрессов — в коде, не в схеме.
+      full    — полная диагностика из пакета «Метод 3 + Метод 4». Оплата —
+                тот же заказ продукта m3, что и у портфеля Метода 3:
+                расход считается по привязке order_id / grant_id, как у
+                m3_portfolios и assessments, а не счётчиком.
+
+    m3_portfolio_id — портфель Метода 3 из того же пакета. Нужен для сверки
+    ответов по общим конструктам; может быть пуст, если Метод 3 не пройден.
+
+    Повтор — как у assessments: у исходного прогона followup_allowed /
+    followup_used, у повторного is_followup и parent_run_id. Счётчик свой у
+    Метода 4, общего на пакет нет: повтор Метода 3 и повтор Метода 4
+    независимы.
+
+    profile_snapshot и item_versions фиксируются при расчёте: отчёт обязан
+    воспроизводиться, даже если профиль компании или формулировки вопросов
+    потом поменяют в админке.
+    """
+
+    __tablename__ = "m4_runs"
+
+    id:              Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    user_id:         Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    company_id:      Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="RESTRICT"), nullable=False, index=True,
+    )
+    m3_portfolio_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("m3_portfolios.id", ondelete="SET NULL"), nullable=True, index=True,
+    )
+    mode:            Mapped[str] = mapped_column(String(8), nullable=False)
+    status:          Mapped[str] = mapped_column(String(12), nullable=False, default="draft", server_default="draft")
+
+    order_id:        Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("orders.id", ondelete="SET NULL"), nullable=True, index=True,
+    )
+    grant_id:        Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("access_grants.id", ondelete="SET NULL"), nullable=True, index=True,
+    )
+
+    is_followup:      Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    parent_run_id:    Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("m4_runs.id", ondelete="SET NULL"), nullable=True, index=True,
+    )
+    followup_allowed: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    followup_used:    Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    reduced:          Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+
+    profile_snapshot: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
+    item_versions:    Mapped[dict | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
+
+    created_at:    Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at:    Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(),
+    )
+    calculated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Удаление скрывает прогон, но факт расчёта остаётся — иначе удаление
+    # возвращало бы оплаченную диагностику. Та же схема, что у m3_portfolios.
+    deleted_at:    Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    answers:  Mapped[list["M4Answer"]] = relationship(back_populates="run", cascade="all, delete-orphan")
+    snapshot: Mapped["M4Snapshot | None"] = relationship(back_populates="run", cascade="all, delete-orphan",
+                                                         uselist=False)
+
+    __table_args__ = (
+        CheckConstraint("mode IN ('express','full')", name="chk_m4_run_mode"),
+        CheckConstraint("status IN ('draft','filled','calculated')", name="chk_m4_run_status"),
+        CheckConstraint("followup_used >= 0 AND followup_used <= followup_allowed",
+                        name="chk_m4_run_followup_used"),
+        # Экспресс бесплатный: привязки к оплате у него быть не может.
+        CheckConstraint("mode = 'full' OR (order_id IS NULL AND grant_id IS NULL)",
+                        name="chk_m4_run_express_unpaid"),
+        # Повтор без исходного прогона — ошибка данных.
+        CheckConstraint("NOT is_followup OR parent_run_id IS NOT NULL", name="chk_m4_run_followup_parent"),
+    )
+
+
+class M4Answer(Base):
+    """Ответ на вопрос в прогоне.
+
+    value — значение варианта ('yes', 'partial', код варианта choice) или
+    'unknown'; numeric_value — число для вопросов number/money. «Не знаю» на
+    числовой вопрос — value='unknown' и пустое numeric_value.
+
+    source:
+      direct       — ответ дан в этом прогоне;
+      carried_over — перенесён из прошлого прогона в сокращённом повторе.
+                     Хранится строкой, а не пропуском, иначе балл модуля
+                     не пересчитать;
+      reused       — подставлен из другого метода по общему конструкту
+                     (включается позже, этап 5).
+
+    item_version — версия формулировки вопроса на момент ответа.
+    question_code ссылается на m4_questions.code: вопросы не удаляются,
+    а выключаются, поэтому ответ не может потерять свой вопрос.
+    """
+
+    __tablename__ = "m4_answers"
+
+    id:            Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    run_id:        Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("m4_runs.id", ondelete="CASCADE"), nullable=False, index=True,
+    )
+    question_code: Mapped[str] = mapped_column(
+        String(8), ForeignKey("m4_questions.code", ondelete="RESTRICT"), nullable=False,
+    )
+    value:         Mapped[str | None] = mapped_column(String(32), nullable=True)
+    numeric_value: Mapped[float | None] = mapped_column(Numeric(16, 2), nullable=True)
+    source:        Mapped[str] = mapped_column(String(16), nullable=False, default="direct", server_default="direct")
+    item_version:  Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    updated_at:    Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(),
+    )
+
+    run: Mapped["M4Run"] = relationship(back_populates="answers")
+
+    __table_args__ = (
+        UniqueConstraint("run_id", "question_code", name="uq_m4_answer"),
+        CheckConstraint("value IS NOT NULL OR numeric_value IS NOT NULL", name="chk_m4_answer_present"),
+        CheckConstraint("source IN ('direct','carried_over','reused')", name="chk_m4_answer_source"),
+    )
+
+
+class M4Snapshot(Base):
+    """Рассчитанный результат прогона — единственный источник для веба и PDF.
+
+    Подавление разделов в сокращённом прогоне ставится здесь, при сборке
+    снимка, а не в рендерах: иначе веб и PDF разойдутся. Снимок пишется один
+    раз при расчёте и задним числом не пересчитывается.
+
+    calc_version — версия движка расчёта: при изменении формулы старые
+    снимки остаются посчитанными по старой и это видно.
+    """
+
+    __tablename__ = "m4_snapshots"
+
+    run_id:                Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("m4_runs.id", ondelete="CASCADE"), primary_key=True,
+    )
+    calc_version:          Mapped[str] = mapped_column(String(16), nullable=False)
+    module_scores:         Mapped[dict] = mapped_column(JSONB, nullable=False)
+    constraint_module:     Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    fired_rules:           Mapped[list] = mapped_column(JSONB, nullable=False)
+    unverified_rules:      Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    confidence_index:      Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    confidence_components: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    resistance_factor:     Mapped[float] = mapped_column(Numeric(3, 2), nullable=False)
+    priority_queue:        Mapped[list] = mapped_column(JSONB, nullable=False)
+    cross_check:           Mapped[dict | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
+    reduced:               Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    created_at:            Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    run: Mapped["M4Run"] = relationship(back_populates="snapshot")
+
+    __table_args__ = (
+        CheckConstraint("constraint_module IS NULL OR (constraint_module >= 1 AND constraint_module <= 9)",
+                        name="chk_m4_snapshot_constraint_module"),
+        CheckConstraint("confidence_index >= 0 AND confidence_index <= 100", name="chk_m4_snapshot_confidence"),
+        CheckConstraint("resistance_factor >= 1.0 AND resistance_factor <= 2.0",
+                        name="chk_m4_snapshot_resistance"),
     )
