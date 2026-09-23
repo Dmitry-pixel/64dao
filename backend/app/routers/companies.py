@@ -90,9 +90,12 @@ async def list_companies(
         entries.sort(key=lambda e: e.created_at, reverse=True)
         # Срок и право повтора — только у Методов 1–2: у Метода 3 повтора нет.
         last_m12 = items[-1].created_at if items else None
-        # Право на бесплатный повтор живёт на первичной диагностике Метода 1 —
-        # та же логика, что при создании повтора в routers/assessments.py.
-        primary = next((a for a in items if a.method == "method1" and not a.is_followup), None)
+        # Право на бесплатный повтор живёт на первичной диагностике Метода 1.
+        # Первичных у компании может быть несколько: после использованного
+        # повтора новая платная диагностика — новая первичная со своим правом.
+        # Та же логика, что при создании повтора в routers/assessments.py.
+        free_repeat = any(a.method == "method1" and not a.is_followup
+                          and a.followup_used < a.followup_allowed for a in items)
         out.append(CompanyOut(
             id=g["id"],
             name=g["name"],
@@ -101,7 +104,7 @@ async def list_companies(
             latest_at=entries[0].created_at,
             repeat_days=repeat_days if last_m12 else None,
             next_repeat_at=last_m12 + timedelta(days=repeat_days) if last_m12 else None,
-            followup_available=bool(primary and primary.followup_used < primary.followup_allowed),
+            followup_available=free_repeat,
             # «Динамика» сравнивает замеры Метода 1: у Метода 2 и 3 нечего сравнивать.
             dynamics_available=sum(1 for a in items if a.method == "method1") >= 2,
             assessments=entries,

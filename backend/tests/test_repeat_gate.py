@@ -39,13 +39,37 @@ async def test_first_diagnostic_allowed(auth_client):
 
 
 @pytest.mark.asyncio
-async def test_one_followup_allowed_second_refused(auth_client):
+async def test_after_used_followup_next_is_new_primary(auth_client, db_session):
+    """После использованного повтора третья диагностика той же компании — не
+    отказ, а новая первичная со своим правом на повтор. Четвёртая становится
+    её повтором."""
     name = "Повтор Ко"
+    first = (await _post(auth_client, name)).json()
+    second = (await _post(auth_client, name)).json()
+    third = await _post(auth_client, name)
+    assert third.status_code == 200, third.text
+    third = third.json()
+    fourth = (await _post(auth_client, name)).json()
+
+    assert second["is_followup"] is True and second["parent_assessment_id"] == first["id"]
+    assert third["is_followup"] is False
+    assert third["followup_allowed"] == 1
+    assert fourth["is_followup"] is True and fourth["parent_assessment_id"] == third["id"]
+
+
+@pytest.mark.asyncio
+async def test_new_primary_after_followup_is_charged(auth_client, monkeypatch):
+    """Новая первичная после повтора — платная: без оплаченной диагностики
+    отказ «нет доступных диагностик», а не «повтор уже пройден»."""
+    import app.routers.assessments as assessments_router
+
+    name = "Платная Ко"
     assert (await _post(auth_client, name)).status_code == 200
     assert (await _post(auth_client, name)).status_code == 200
-    r3 = await _post(auth_client, name)
-    assert r3.status_code == 403, r3.text
-    assert "один раз" in r3.json()["detail"]
+    monkeypatch.setattr(assessments_router, "enforce_credits_enabled", lambda: True)
+    r = await _post(auth_client, name)
+    assert r.status_code == 403, r.text
+    assert "Нет доступных диагностик" in r.json()["detail"]
 
 
 @pytest.mark.asyncio

@@ -157,3 +157,19 @@ async def test_method3_portfolios_join_company_by_name(auth_client, test_user, d
     assert only_m3["id"] is None
     assert only_m3["next_repeat_at"] is None        # у Метода 3 повтора нет
     assert "Черновик М3" not in by_name
+
+
+@pytest.mark.asyncio
+async def test_free_repeat_flag_follows_latest_primary(auth_client, isolated_reminder_settings):
+    """Первичная → повтор: бесплатного повтора больше нет. Новая платная
+    диагностика той же компании снова даёт право на повтор."""
+    name = "Цикл Ко"
+    await auth_client.post("/api/assessments", json=_payload(company_name=name))
+    await auth_client.post("/api/assessments", json=_payload(company_name=name))
+    c = {x["name"]: x for x in (await auth_client.get("/api/companies")).json()}[name]
+    assert c["followup_available"] is False
+    await auth_client.post("/api/assessments", json=_payload(company_name=name))
+    c = {x["name"]: x for x in (await auth_client.get("/api/companies")).json()}[name]
+    assert c["followup_available"] is True
+    assert c["assessment_count"] == 3
+    assert c["dynamics_available"] is True
