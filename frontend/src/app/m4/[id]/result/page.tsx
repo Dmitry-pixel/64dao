@@ -132,7 +132,22 @@ export default function M4ReportPage() {
       <span style={M4.label}>
         Метод 04 · {full ? 'Полная диагностика' : 'Экспресс'} · {rep.run.company_name}{date && ` · ${date}`}
       </span>
-      <h1 style={M4.h1}>Алмазное колесо</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <h1 style={M4.h1}>Алмазное колесо</h1>
+        {/* Относительный адрес, как у PDF Метода 3: на сервере /api идёт через
+            тот же домен, и куки авторизации уходят вместе с запросом. */}
+        <a
+          href={`/api/m4/runs/${id}/pdf`}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            fontFamily: 'sans-serif', fontSize: 13, color: '#fff', background: '#1a2540',
+            borderRadius: 6, padding: '9px 18px', textDecoration: 'none',
+          }}
+        >
+          Скачать PDF
+        </a>
+      </div>
 
       {rep.confidence.cautious && (
         <div style={R.banner}>
