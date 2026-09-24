@@ -155,3 +155,142 @@ export const m4Admin = {
   chains: () => request<M4Chain[]>(`${A}/chains`),
   putChain: (code: string, body: Partial<M4Chain>) => put<M4Chain>(`/chains/${code}`, body),
 }
+
+// ── Клиентская часть: прогоны анкеты ─────────────────────────────────────────
+
+const C = '/api/m4'
+
+export type M4Mode = 'express' | 'full'
+export type M4RunStatus = 'draft' | 'filled' | 'calculated'
+
+export interface M4ClientOption { value: string; label: string }
+
+export interface M4ClientQuestion {
+  code: string
+  text: string
+  type: 'bool' | 'scale3' | 'choice' | 'number' | 'money'
+  unit: string | null
+  is_fact: boolean
+  unknown_allowed: boolean
+  min: number | null
+  max: number | null
+  /** {"M01-Q09": ["yes"]} | {"M02-Q04": "yes"} | {"M02-Q10": ">1"} | {"profile.revenue_model": [...]} */
+  applies_when: Record<string, string | string[]> | null
+  options: M4ClientOption[]
+}
+
+export interface M4ClientModule {
+  code: number
+  name: string
+  client_question: string
+  intro: string | null
+  questions: M4ClientQuestion[]
+}
+
+export interface M4Questionnaire {
+  mode: M4Mode
+  modules: M4ClientModule[]
+  profile_options: Record<string, M4ClientOption[]>
+}
+
+export interface M4Profile {
+  revenue_model: 'one_off' | 'repeat' | 'subscription'
+  industry_id?: number | null
+  revenue_range?: string | null
+  headcount?: number | null
+  active_clients?: number | null
+}
+
+export interface M4AnswerValue { code: string; value: string | null; number: number | null; source?: string }
+
+export interface M4Progress { answered: number; required: number; missing: string[] }
+
+export interface M4RunOut {
+  id: string
+  mode: M4Mode
+  status: M4RunStatus
+  company_id: string
+  company_name: string | null
+  is_followup: boolean
+  reduced: boolean
+  created_at: string
+  calculated_at: string | null
+  progress: M4Progress
+  answers?: M4AnswerValue[]
+}
+
+export interface M4ModuleResult {
+  score: number | null
+  state: 'low' | 'mid' | 'high' | null
+  answered: number
+  unknown: number
+  no_accounting: boolean
+}
+
+export interface M4Result {
+  run_id: string
+  mode: M4Mode
+  calc_version: string
+  modules: Record<string, M4ModuleResult>
+  top_gaps: number[]
+  constraint: { module: number; score: number; strength: number; blocked: number[] } | null
+  cause_effect: { causes_avg: number; effect: number; case: string } | null
+  fired_rules: { code: string; severity: string }[]
+  unverified_rules: string[]
+  confidence: { index: number; level: 'high' | 'medium' | 'low' } & Record<string, unknown>
+  resistance: number
+  priority_queue: unknown[]
+  metrics: Record<string, number> | null
+  reduced: boolean
+  calculated_at: string | null
+}
+
+export const m4 = {
+  questionnaire: (mode: M4Mode) => request<M4Questionnaire>(`${C}/questionnaire?mode=${mode}`),
+  credits: () => request<{ full_available: number | null }>(`${C}/credits`),
+  profile: (companyId: string) => request<M4Profile | null>(`${C}/companies/${companyId}/profile`),
+  putProfile: (companyId: string, body: M4Profile) =>
+    request<M4Profile>(`${C}/companies/${companyId}/profile`, { method: 'PUT', body: JSON.stringify(body) }),
+  runs: () => request<M4RunOut[]>(`${C}/runs`),
+  run: (id: string) => request<M4RunOut>(`${C}/runs/${id}`),
+  createRun: (body: { mode: M4Mode; company_name?: string | null; company_id?: string | null; profile?: M4Profile }) =>
+    request<M4RunOut>(`${C}/runs`, { method: 'POST', body: JSON.stringify(body) }),
+  saveAnswers: (id: string, answers: { code: string; value?: string | null; number?: number | null }[]) =>
+    request<M4RunOut>(`${C}/runs/${id}/answers`, { method: 'PUT', body: JSON.stringify({ answers }) }),
+  calculate: (id: string) => request<M4Result>(`${C}/runs/${id}/calculate`, { method: 'POST' }),
+  result: (id: string) => request<M4Result>(`${C}/runs/${id}/result`),
+  deleteRun: (id: string) => request<void>(`${C}/runs/${id}`, { method: 'DELETE' }),
+}
+
+/** Условие показа вопроса — та же логика, что m4_engine.applies на сервере.
+ *  Совпадение важно: иначе анкета спросит то, чего расчёт не учтёт. */
+export function m4Applies(
+  q: M4ClientQuestion,
+  answers: Record<string, M4AnswerValue>,
+  profile: M4Profile | null,
+): boolean {
+  for (const [ref, cond] of Object.entries(q.applies_when ?? {})) {
+    let val: string | null | undefined
+    let num: number | null | undefined
+    if (ref.startsWith('profile.')) {
+      val = (profile as unknown as Record<string, string | null> | null)?.[ref.slice(8)]
+    } else {
+      val = answers[ref]?.value
+      num = answers[ref]?.number
+    }
+    if (Array.isArray(cond)) {
+      if (!cond.includes(val ?? '')) return false
+      continue
+    }
+    const m = /^(>=|<=|>|<)(-?\d+(?:\.\d+)?)$/.exec(cond)
+    if (m) {
+      const bound = Number(m[2])
+      if (num == null) return false
+      const ok = m[1] === '>=' ? num >= bound : m[1] === '<=' ? num <= bound : m[1] === '>' ? num > bound : num < bound
+      if (!ok) return false
+      continue
+    }
+    if (val !== cond) return false
+  }
+  return true
+}

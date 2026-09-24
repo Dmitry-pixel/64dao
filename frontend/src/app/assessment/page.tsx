@@ -32,8 +32,8 @@ function AssessmentInner() {
     : companyIdParam && methodParam ? 'method1'
     : methodParam === '1' ? 'company' : methodParam === '2' ? 'company' : 'choose'
   )
-  const [pendingMethod, setPendingMethod] = useState<'method1' | 'method2' | 'method3'>(
-    methodParam === '2' ? 'method2' : methodParam === '3' ? 'method3' : 'method1'
+  const [pendingMethod, setPendingMethod] = useState<'method1' | 'method2' | 'method3' | 'method4'>(
+    methodParam === '2' ? 'method2' : methodParam === '3' ? 'method3' : methodParam === '4' ? 'method4' : 'method1'
   )
   // Тариф и флаг раздела Метода 3. Раздел при выключенном флаге отдаёт 404
   // на всё, поэтому карточку показываем только по флагу, а не по ошибке
@@ -216,6 +216,11 @@ function AssessmentInner() {
       router.push(`/m3?company=${encodeURIComponent(name)}`)
       return
     }
+    // Метод 4 — тоже своя страница: там выбор экспресс / полная и модель оплаты.
+    if (pendingMethod === 'method4') {
+      router.push(`/m4?company=${encodeURIComponent(name)}`)
+      return
+    }
     setMode(pendingMethod)
   }
 
@@ -308,6 +313,20 @@ function AssessmentInner() {
               </div>
             </div>
           )}
+          {m3Enabled && (
+            <div style={S.methodCard} onClick={() => { setPendingMethod('method4'); setMode('company') }}>
+              <div style={S.methodCardTop}>
+                <span style={S.labelRed}>Метод 04 · Алмазное колесо</span>
+                <span style={S.hexFaint}>◇</span>
+              </div>
+              <h3 style={S.methodH3}>10 управленческих модулей</h3>
+              <p style={S.methodDesc}>Где у компании разрыв, какой модуль сдерживает остальные и с чего начинать. Экспресс на 20 вопросов — бесплатно, полная диагностика входит в пакет с Методом 3.</p>
+              <div style={S.methodFoot}>
+                <span style={S.methodTime}>≈ 7 минут экспресс · ≈ 40 минут полная</span>
+                <span style={S.methodGo}>Начать →</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -321,7 +340,8 @@ function AssessmentInner() {
         <span style={S.labelRed}>
           {pendingMethod === 'method1' ? 'Метод 01 · Стратегия'
             : pendingMethod === 'method2' ? 'Метод 02 · Бизнес-модель'
-            : 'Метод 03 · Матрица силы'}
+            : pendingMethod === 'method3' ? 'Метод 03 · Матрица силы'
+            : 'Метод 04 · Алмазное колесо'}
         </span>
         <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 32, fontWeight: 400, color: '#1a2540', margin: '10px 0 8px' }}>
           Название компании
