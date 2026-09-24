@@ -19,18 +19,22 @@
 from __future__ import annotations
 
 import json
+import logging
+import tempfile
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.background import BackgroundTask
 
 from app import m4_access as access
-from app import m4_report
+from app import m4_pdf, m4_report
 from app import m4_service as svc
 from app.auth import get_current_user
 from app.config import get_settings
@@ -336,6 +340,40 @@ async def get_report(run_id: uuid.UUID, user: User = Depends(get_current_user), 
     if snap is None:
         raise HTTPException(status_code=404, detail="Результата нет")
     return await m4_report.build(db, run, snap)
+
+
+def _unlink_quietly(path: Path) -> None:
+    try:
+        path.unlink(missing_ok=True)
+    except OSError as exc:
+        logging.getLogger(__name__).warning("Не удалось удалить временный PDF Метода 4 %s: %s", path, exc)
+
+
+@router.get("/runs/{run_id}/pdf")
+async def get_pdf(run_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """PDF отчёта. Собирается на каждый запрос из той же структуры, что веб
+    (m4_report.build), и не хранится: снимок не меняется, поэтому повторная
+    сборка даёт тот же документ, а тексты карточек — текущие, как в вебе."""
+    from app.m3_pdf import PDF_MARGIN, footer_template, header_template
+    from app.pdf import generate_pdf
+
+    run = await _owned(db, run_id, user)
+    access.ensure_result_access(run, user)
+    snap = await db.get(M4Snapshot, run.id)
+    if snap is None:
+        raise HTTPException(status_code=404, detail="Результата нет")
+    rep = await m4_report.build(db, run, snap)
+    company = rep["run"].get("company_name") or "Компания"
+
+    path = Path(tempfile.gettempdir()) / f"dao64-m4-{run_id}-{uuid.uuid4().hex}.pdf"
+    await generate_pdf(m4_pdf.build_report_html(rep), str(path),
+                       header_html=header_template(company), footer_html=footer_template(), margin=PDF_MARGIN)
+    filename = f"64dao-almaznoe-koleso-{run_id}.pdf"
+    return FileResponse(
+        path=str(path), media_type="application/pdf", filename=filename,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        background=BackgroundTask(_unlink_quietly, path),
+    )
 
 
 @router.delete("/runs/{run_id}", status_code=204)

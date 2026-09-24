@@ -120,8 +120,9 @@ export default function M4AdminPage() {
             ссылаются расчёт и сохранённые ответы. Удалять нельзя, выключать можно.
           </p>
           <p style={S.lead}>
-            Правка формулировки вопроса или карточки поднимает её версию. Уже выданные отчёты
-            хранят свою версию и не меняются задним числом.
+            Правка формулировки вопроса или карточки поднимает её версию. Баллы и выводы уже
+            рассчитанных отчётов не меняются, а тексты карточек и правил в них — текущие: правка
+            сразу видна и в выданных отчётах, в вебе и в PDF.
           </p>
 
           <div style={S.tabs}>
@@ -444,7 +445,25 @@ function CardsTab({ cards, moduleName, onCard }: {
 }) {
   const kinds = Object.keys(KIND_LABEL) as M4CardKind[]
   const [kind, setKind] = useState<M4CardKind>('module_state')
-  const list = cards.filter(c => c.kind === kind)
+  const [query, setQuery] = useState('')
+  // Рекомендаций 42, и в порядке заливки модульные и по правилам
+  // перемешаны. Сначала модульные по номеру модуля (низкий, затем средний),
+  // потом по правилам по коду; поиск — по коду, заголовку и тексту.
+  const STATE_ORDER: Record<string, number> = { low: 0, mid: 1, high: 2 }
+  const q = query.trim().toLowerCase()
+  const list = cards
+    .filter(c => c.kind === kind)
+    .filter(c => !q || [c.key, c.title, c.body, c.rule_code ?? '', c.first_step ?? '']
+      .some(v => v.toLowerCase().includes(q)))
+    .sort((a, b) => {
+      if (kind !== 'recommendation') return 0
+      const ar = a.rule_code ? 1 : 0
+      const br = b.rule_code ? 1 : 0
+      if (ar !== br) return ar - br
+      if (ar) return (a.rule_code ?? '').localeCompare(b.rule_code ?? '', 'ru', { numeric: true })
+      return (a.module_code ?? 0) - (b.module_code ?? 0)
+        || (STATE_ORDER[a.state ?? ''] ?? 9) - (STATE_ORDER[b.state ?? ''] ?? 9)
+    })
   return (
     <>
       <div style={S.tabs}>
@@ -455,6 +474,13 @@ function CardsTab({ cards, moduleName, onCard }: {
           </button>
         ))}
       </div>
+      <input
+        style={{ ...S.input, maxWidth: 420, marginBottom: 14 }}
+        placeholder="Поиск: код (cr_CR-07, m05_low), заголовок или текст"
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+      />
+      {q && <p style={S.mute}>Найдено: {list.length}</p>}
       {kind === 'recommendation' && (
         <p style={S.lead}>
           Эффект, срок и затраты — входы очереди действий: приоритет = эффект × 12 / недели ÷
@@ -703,7 +729,7 @@ const S: Record<string, CSSProperties> = {
   tabOn: { background: '#c0392b', borderColor: '#c0392b', color: '#fff' },
   chip: { padding: '6px 12px', borderRadius: 6, cursor: 'pointer', border: '1px solid rgba(26,37,64,0.15)',
     background: 'rgba(255,255,255,0.6)', fontFamily: 'sans-serif', fontSize: 12, color: '#1a2540' },
-  chipOn: { background: '#1a2540', borderColor: '#1a2540', color: '#fff' },
+  chipOn: { background: '#1a2540', border: '1px solid #1a2540', color: '#fff' },
   card: { border: '1px solid rgba(26,37,64,0.12)', borderRadius: 8, padding: '14px 16px', margin: '10px 0', background: '#faf9f6' },
   code: { fontFamily: 'monospace', fontSize: 13, color: '#c0392b' },
   mute: { fontFamily: 'sans-serif', fontSize: 12, color: 'var(--text-mute)', lineHeight: 1.6 },
