@@ -279,6 +279,8 @@ export interface CompanyAssessment {
   method: string
   created_at: string
   is_followup: boolean
+  /** Только у Метода 4: 'express' | 'full'. */
+  mode?: string | null
 }
 
 /** Считаются только завершённые и не удалённые диагностики. */

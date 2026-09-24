@@ -352,6 +352,8 @@ class CompanyAssessmentOut(BaseModel):
     method:      str
     created_at:  datetime
     is_followup: bool = False
+    # Только у Метода 4: 'express' | 'full'.
+    mode:        str | None = None
 
 
 class CompanyOut(BaseModel):

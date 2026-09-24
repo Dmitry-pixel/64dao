@@ -7,6 +7,8 @@ import Link from 'next/link'
 import { getMe, listAssessments, deleteAssessment, listContours, isMethod2, getSiteMode, type ContourInfo } from '@/lib/api'
 import { deletePortfolio, listPortfolios, type M3Portfolio } from '@/lib/m3'
 import M3ReportCard, { m3RowDate } from '@/components/M3ReportCard'
+import M4ReportCard, { m4RowDate } from '@/components/M4ReportCard'
+import { m4, type M4RunOut } from '@/lib/m4'
 import { AdminNav, AdminSide, hexFor, hexNameFor } from '@/components/AdminNav'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
@@ -19,10 +21,11 @@ export default function AdminMyReportsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   // Подтверждение обслуживает два вида записей: диагностику Методов 1 и 2
   // и портфель Метода 3 — удаляются они разными эндпоинтами.
-  const [confirm, setConfirm] = useState<{ id: string; kind: 'assessment' | 'm3' } | null>(null)
+  const [confirm, setConfirm] = useState<{ id: string; kind: 'assessment' | 'm3' | 'm4' } | null>(null)
   const [contours, setContours] = useState<ContourInfo[]>([])
   const [query, setQuery] = useState('')
   const [m3, setM3] = useState<M3Portfolio[]>([])
+  const [m4Runs, setM4Runs] = useState<M4RunOut[]>([])
 
   useEffect(() => {
     listContours().then(r => setContours(r.contours)).catch(() => setContours([]))
@@ -31,6 +34,10 @@ export default function AdminMyReportsPage() {
       .then(d => (d?.m3_enabled ? listPortfolios() : []))
       .then(setM3)
       .catch(() => setM3([]))
+    getSiteMode()
+      .then(d => (d?.m3_enabled ? m4.runs() : []))
+      .then(setM4Runs)
+      .catch(() => setM4Runs([]))
   }, [])
 
   useEffect(() => {
@@ -60,10 +67,13 @@ export default function AdminMyReportsPage() {
     return () => clearTimeout(t)
   }, [query])
 
-  const handleDelete = async (target: { id: string; kind: 'assessment' | 'm3' }) => {
+  const handleDelete = async (target: { id: string; kind: 'assessment' | 'm3' | 'm4' }) => {
     setDeletingId(target.id)
     try {
-      if (target.kind === 'm3') {
+      if (target.kind === 'm4') {
+        await m4.deleteRun(target.id)
+        setM4Runs(prev => prev.filter(r => r.id !== target.id))
+      } else if (target.kind === 'm3') {
         await deletePortfolio(target.id)
         setM3(prev => prev.filter(p => p.id !== target.id))
       } else {
@@ -88,9 +98,11 @@ export default function AdminMyReportsPage() {
   // Счётчики включают портфели Метода 3 — они в том же списке ниже.
   const completed = assessments.filter(a => a.status === 'completed' || a.status === 'paid').length
     + m3.filter(p => p.status === 'calculated').length
+    + m4Runs.filter(r => r.status === 'calculated').length
   const drafts = assessments.filter(a => a.status === 'draft').length
     + m3.filter(p => p.status !== 'calculated').length
-  const total = assessments.length + m3.length
+    + m4Runs.filter(r => r.status !== 'calculated').length
+  const total = assessments.length + m3.length + m4Runs.length
 
   // Повтор это продолжение основного отчёта, а не отдельная строка списка.
   // Осиротевший повтор (первичную удалили в админке) остаётся верхним
@@ -112,12 +124,15 @@ export default function AdminMyReportsPage() {
   const m3Visible = q
     ? m3.filter(p => `${p.company_name ?? ''} ${p.title ?? ''}`.toLowerCase().includes(q))
     : m3
+  const m4Visible = q ? m4Runs.filter(r => (r.company_name ?? '').toLowerCase().includes(q)) : m4Runs
   type Row =
     | { kind: 'a'; at: string; a: any }
     | { kind: 'm3'; at: string; p: M3Portfolio }
+    | { kind: 'm4'; at: string; r: M4RunOut }
   const rows: Row[] = [
     ...visible.map((a: any) => ({ kind: 'a' as const, at: a.created_at, a })),
     ...m3Visible.map(p => ({ kind: 'm3' as const, at: m3RowDate(p), p })),
+    ...m4Visible.map(r => ({ kind: 'm4' as const, at: m4RowDate(r), r })),
   ].sort((x, y) => new Date(y.at).getTime() - new Date(x.at).getTime())
 
   return (
@@ -173,6 +188,17 @@ export default function AdminMyReportsPage() {
           ) : (
             <div className="dash-list">
               {rows.map((row, i) => {
+                if (row.kind === 'm4') {
+                  return (
+                    <M4ReportCard
+                      key={`m4-${row.r.id}`}
+                      r={row.r}
+                      n={i + 1}
+                      deleting={deletingId === row.r.id}
+                      onDelete={run => setConfirm({ id: run.id, kind: 'm4' })}
+                    />
+                  )
+                }
                 if (row.kind === 'm3') {
                   return (
                     <M3ReportCard

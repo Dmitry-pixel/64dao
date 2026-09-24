@@ -83,6 +83,13 @@ def _card(path: Path, role: str) -> dict | None:
     }
 
 
+def _bundle_exists() -> bool:
+    """Отдельной синхронной функцией: вызов Path.is_file() прямо в async-
+    обработчике ruff запрещает (ASYNC240), и CI падал на этой строке.
+    Проверка — один stat локального файла, пул потоков ей не нужен."""
+    return Path(TOCHKA_BUNDLE).is_file()
+
+
 @router.get("/api/admin/certs")
 async def read_certs(
     probe: bool = Query(True, description="опрашивать банк вживую"),
@@ -102,7 +109,7 @@ async def read_certs(
     data: dict = {
         "host": TOCHKA_HOST,
         "bundle": TOCHKA_BUNDLE,
-        "bundle_exists": Path(TOCHKA_BUNDLE).is_file(),
+        "bundle_exists": _bundle_exists(),
         "cert_dir": str(CERT_DIR),
         "warn_days": WARN_DAYS,
         "leaf_warn_days": LEAF_WARN_DAYS,

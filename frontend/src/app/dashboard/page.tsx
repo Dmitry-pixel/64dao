@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { getMe, listAssessments, deleteAssessment, logout, listContours, isMethod2, getSiteMode, type AuthUser, type Assessment, type ContourInfo } from '@/lib/api'
 import { deletePortfolio, listPortfolios, type M3Portfolio } from '@/lib/m3'
 import M3ReportCard, { m3RowDate } from '@/components/M3ReportCard'
+import M4ReportCard, { m4RowDate } from '@/components/M4ReportCard'
+import { m4, type M4RunOut } from '@/lib/m4'
 import BuyDiagnostics from '@/components/BuyDiagnostics'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
 
@@ -88,9 +90,10 @@ export default function DashboardPage() {
   // Подтверждение удаления обслуживает два вида записей: диагностику
   // Методов 1 и 2 и портфель Метода 3. Хранить только id недостаточно —
   // удаляются они разными эндпоинтами.
-  const [confirm, setConfirm] = useState<{ id: string; kind: 'assessment' | 'm3' } | null>(null)
+  const [confirm, setConfirm] = useState<{ id: string; kind: 'assessment' | 'm3' | 'm4' } | null>(null)
   const [contours, setContours] = useState<ContourInfo[]>([])
   const [m3, setM3] = useState<M3Portfolio[]>([])
+  const [m4Runs, setM4Runs] = useState<M4RunOut[]>([])
   const [m3Enabled, setM3Enabled] = useState(false)
   const [query, setQuery] = useState("")
 
@@ -124,6 +127,11 @@ export default function DashboardPage() {
       })
       .then(setM3)
       .catch(() => setM3([]))
+    // Метод 4 живёт под тем же флагом, что Метод 3 (один пакет).
+    getSiteMode()
+      .then(d => (d?.m3_enabled ? m4.runs() : []))
+      .then(setM4Runs)
+      .catch(() => setM4Runs([]))
     fetch('/api/payments/credits', { credentials: 'include' })
       .then(r => r.ok ? r.json() : { credits: 0 })
       .then(d => {
@@ -136,10 +144,13 @@ export default function DashboardPage() {
       .catch(() => setCredits(0))
   }, [router])
 
-  async function handleDelete(target: { id: string; kind: 'assessment' | 'm3' }) {
+  async function handleDelete(target: { id: string; kind: 'assessment' | 'm3' | 'm4' }) {
     setDeletingId(target.id)
     try {
-      if (target.kind === 'm3') {
+      if (target.kind === 'm4') {
+        await m4.deleteRun(target.id)
+        setM4Runs(prev => prev.filter(r => r.id !== target.id))
+      } else if (target.kind === 'm3') {
         await deletePortfolio(target.id)
         setM3(prev => prev.filter(p => p.id !== target.id))
       } else {
@@ -170,10 +181,12 @@ export default function DashboardPage() {
   const completed = [
     ...assessments.filter(a => a.status === 'completed' || a.status === 'paid'),
     ...m3.filter(p => p.status === 'calculated'),
+    ...m4Runs.filter(r => r.status === 'calculated'),
   ]
   const drafts = [
     ...assessments.filter(a => a.status === 'draft'),
     ...m3.filter(p => p.status !== 'calculated'),
+    ...m4Runs.filter(r => r.status !== 'calculated'),
   ]
 
   // Повтор это продолжение основного отчёта, а не отдельная строка списка.
@@ -197,15 +210,18 @@ export default function DashboardPage() {
   const m3Visible = q
     ? m3.filter(p => `${p.company_name ?? ''} ${p.title ?? ''}`.toLowerCase().includes(q))
     : m3
+  const m4Visible = q ? m4Runs.filter(r => (r.company_name ?? '').toLowerCase().includes(q)) : m4Runs
   // Тип строки Методов 1 и 2 — Assessment, а не any: внутри карточки есть
   // обращения вида passed_contours.find(...), и на any они теряют вывод
   // типа параметра (TS7006).
   type Row =
     | { kind: 'a'; at: string; a: Assessment }
     | { kind: 'm3'; at: string; p: M3Portfolio }
+    | { kind: 'm4'; at: string; r: M4RunOut }
   const rows: Row[] = [
     ...visible.map((a: Assessment) => ({ kind: 'a' as const, at: a.created_at, a })),
     ...m3Visible.map(p => ({ kind: 'm3' as const, at: m3RowDate(p), p })),
+    ...m4Visible.map(r => ({ kind: 'm4' as const, at: m4RowDate(r), r })),
   ].sort((x, y) => new Date(y.at).getTime() - new Date(x.at).getTime())
 
   return (
@@ -284,7 +300,7 @@ export default function DashboardPage() {
             <div style={S.emptyCard}>
               <div style={S.emptyHex}>䷿</div>
               <h3 style={S.emptyH3}>Пока нет диагностик</h3>
-              <p style={S.emptyText}>Метод 1 — 6 вопросов о состоянии компании. Метод 2 — оценка 9 блоков бизнес-модели. Метод 3 — распределение ресурса между направлениями. Результат: PDF-отчёт.</p>
+              <p style={S.emptyText}>Метод 1 — 6 вопросов о состоянии компании. Метод 2 — оценка 9 блоков бизнес-модели. Метод 3 — распределение ресурса между направлениями. Метод 4 — десять управленческих модулей и системное ограничение. Результат: PDF-отчёт.</p>
               {/* Список методов живёт на одном экране — /assessment.
                   Копия карточек здесь расходилась бы с ним при каждом
                   добавлении метода (это уже случилось с Методом 3). */}
@@ -295,6 +311,17 @@ export default function DashboardPage() {
           ) : (
             <div style={S.list}>
               {rows.map((row, i) => {
+                if (row.kind === 'm4') {
+                  return (
+                    <M4ReportCard
+                      key={`m4-${row.r.id}`}
+                      r={row.r}
+                      n={i + 1}
+                      deleting={deletingId === row.r.id}
+                      onDelete={run => setConfirm({ id: run.id, kind: 'm4' })}
+                    />
+                  )
+                }
                 if (row.kind === 'm3') {
                   return (
                     <M3ReportCard
@@ -446,7 +473,7 @@ export default function DashboardPage() {
             <span style={{ ...S.labelRed, display: 'block', marginBottom: 10 }}>Статистика</span>
             <div style={S.statRow}><span style={S.statLabel}>Завершено</span><strong style={S.statVal}>{completed.length}</strong></div>
             <div style={S.statRow}><span style={S.statLabel}>В работе</span><strong style={S.statVal}>{drafts.length}</strong></div>
-            <div style={S.statRow}><span style={S.statLabel}>Всего</span><strong style={S.statVal}>{assessments.length + m3.length}</strong></div>
+            <div style={S.statRow}><span style={S.statLabel}>Всего</span><strong style={S.statVal}>{assessments.length + m3.length + m4Runs.length}</strong></div>
             <div style={{ ...S.statRow, marginBottom: 0, paddingTop: 8, borderTop: '1px solid rgba(26,37,64,0.08)' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ fontFamily: 'sans-serif', fontSize: 13, color: '#1a6640', fontWeight: 700 }}>Доступно диагностик</span>

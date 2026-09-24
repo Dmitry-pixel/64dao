@@ -13,6 +13,7 @@ from app import reminders_settings
 from app.auth import get_current_user
 from app.db import get_db
 from app.m3_models import M3Portfolio
+from app.m4_models import M4Run
 from app.models import Assessment, Company, User
 from app.schemas import CompanyAssessmentOut, CompanyOut
 
@@ -42,6 +43,10 @@ async def list_companies(
     Поэтому рассчитанный портфель показывается в компании с тем же названием
     (без учёта регистра), а если такой нет — отдельной строкой без id: у неё
     нет ни повтора, ни «Динамики», только ссылки на отчёты.
+
+    Метод 4 привязан к компании напрямую (m4_runs.company_id): рассчитанные
+    и не удалённые прогоны попадают в свою компанию. Срок и право повтора
+    Методов 1–2 они не меняют — повтор Метода 4 появится отдельно.
     """
     rows = (await db.execute(
         select(Assessment)
@@ -56,6 +61,13 @@ async def list_companies(
                M3Portfolio.status == "calculated")
     )).scalars().all()
 
+    runs = (await db.execute(
+        select(M4Run)
+        .where(M4Run.user_id == user.id,
+               M4Run.deleted_at.is_(None),
+               M4Run.status == "calculated")
+    )).scalars().all()
+
     names = dict((await db.execute(
         select(Company.id, Company.name).where(Company.user_id == user.id)
     )).all())
@@ -66,7 +78,7 @@ async def list_companies(
 
     def group(key, name):
         return groups.setdefault(key, {"id": key if not isinstance(key, tuple) else None,
-                                       "name": name, "a": [], "m3": []})
+                                       "name": name, "a": [], "m3": [], "m4": []})
 
     for a in rows:
         group(a.company_id, names.get(a.company_id, ""))["a"].append(a)
@@ -74,6 +86,8 @@ async def list_companies(
         pname = (p.company_name or p.title or "Без названия").strip()
         cid = by_name.get(pname.casefold())
         group(cid if cid else ("m3", pname.casefold()), names.get(cid, pname))["m3"].append(p)
+    for r in runs:
+        group(r.company_id, names.get(r.company_id, ""))["m4"].append(r)
 
     out = []
     for g in groups.values():
@@ -86,6 +100,10 @@ async def list_companies(
             CompanyAssessmentOut(id=p.id, method="method3",
                                  created_at=p.calculated_at or p.created_at)
             for p in g["m3"]
+        ] + [
+            CompanyAssessmentOut(id=r.id, method="method4", mode=r.mode,
+                                 created_at=r.calculated_at or r.created_at)
+            for r in g["m4"]
         ]
         entries.sort(key=lambda e: e.created_at, reverse=True)
         # Срок и право повтора — только у Методов 1–2: у Метода 3 повтора нет.

@@ -90,11 +90,23 @@ export function AdminSide({ current }: AdminSideProps) {
       }))
       .catch(() => {})
 
-    import('@/lib/api').then(({ listAssessments }) =>
-      listAssessments()
-        .then(data => setMyReportsCount(data.length))
-        .catch(() => {})
-    )
+    // Счётчик совпадает со списком «Мои отчёты»: там Методы 1–4 вместе.
+    // Методы 3 и 4 запрашиваются только при включённом разделе — выключенный
+    // отдаёт 404 на всё.
+    Promise.all([import('@/lib/api'), import('@/lib/m3'), import('@/lib/m4')])
+      .then(async ([api, m3lib, m4lib]) => {
+        const [a, mode] = await Promise.all([api.listAssessments(), api.getSiteMode().catch(() => null)])
+        let extra = 0
+        if (mode?.m3_enabled) {
+          const [p, r] = await Promise.all([
+            m3lib.listPortfolios().catch(() => []),
+            m4lib.m4.runs().catch(() => []),
+          ])
+          extra = p.length + r.length
+        }
+        setMyReportsCount(a.length + extra)
+      })
+      .catch(() => {})
   }, [])
 
   const closeSidebar = () => {

@@ -15,6 +15,12 @@ const METHOD_LABEL: Record<string, string> = {
   method2: 'Бизнес-модель',
   method3: 'Матрица силы · Метод 3',
 }
+const M4_LABEL: Record<string, string> = {
+  express: 'Алмазное колесо · Метод 4, экспресс',
+  full: 'Алмазное колесо · Метод 4',
+}
+const methodLabel = (method: string, mode?: string | null) =>
+  method === 'method4' ? M4_LABEL[mode ?? 'full'] : METHOD_LABEL[method] ?? method
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('ru-RU')
 
@@ -26,7 +32,9 @@ function plural(n: number, one: string, few: string, many: string): string {
 }
 
 const reportHref = (method: string, id: string) =>
-  method === 'method3' ? `/report/m3/${id}` : `/report/${id}`
+  method === 'method3' ? `/report/m3/${id}`
+  : method === 'method4' ? `/m4/${id}/result`
+  : `/report/${id}`
 
 export default function CompaniesPage() {
   const router = useRouter()
@@ -126,7 +134,10 @@ function CompanyCard({ c }: { c: Company }) {
             {plural(c.assessment_count, 'диагностика', 'диагностики', 'диагностик')}{period ? ` · ${period}` : ''}
           </div>
         </div>
-        {c.id && (
+        {/* «Динамика» и «Повторить» относятся к стратегической диагностике
+            (Методы 1–2). У компании только с Методом 4 их нет: repeat_days
+            сервер ставит лишь при диагностике Методов 1–2. */}
+        {c.id && c.repeat_days != null && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             {c.dynamics_available ? (
               <Link href={`/companies/${c.id}/dynamics`} style={S.btnDark}>Динамика →</Link>
@@ -153,7 +164,7 @@ function CompanyCard({ c }: { c: Company }) {
         {c.assessments.map(a => (
           <li key={a.id} style={{ fontFamily: 'sans-serif', fontSize: 13, padding: '3px 0' }}>
             <Link href={reportHref(a.method, a.id)} style={{ color: '#1a2540', textDecoration: 'none' }}>
-              {fmt(a.created_at)} · {METHOD_LABEL[a.method] ?? a.method}
+              {fmt(a.created_at)} · {methodLabel(a.method, a.mode)}
             </Link>
             {a.is_followup && <span style={S.tag}>повтор</span>}
           </li>
