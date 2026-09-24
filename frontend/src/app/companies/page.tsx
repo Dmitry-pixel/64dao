@@ -160,6 +160,22 @@ function CompanyCard({ c }: { c: Company }) {
         </div>
       )}
 
+      {c.m4_next_repeat_at && (() => {
+        const due = new Date(c.m4_next_repeat_at)
+        const ready = due.getTime() <= Date.now()
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 10 }}>
+            <span style={{ fontFamily: 'sans-serif', fontSize: 12, color: ready ? '#c0392b' : 'rgba(26,37,64,0.55)' }}>
+              Алмазное колесо: {ready ? 'пора пройти повторную диагностику' : `повторную диагностику рекомендуем после ${fmt(c.m4_next_repeat_at)}`}
+              {c.m4_followup_available ? ' · повтор входит в стоимость' : ''}
+            </span>
+            <Link href={`/m4?mode=full&company=${encodeURIComponent(c.name)}`} style={S.btnGhost}>
+              Повторить Метод 4
+            </Link>
+          </div>
+        )
+      })()}
+
       <ul style={{ listStyle: 'none', margin: '12px 0 0', padding: '10px 0 0', borderTop: '1px solid rgba(26,37,64,0.08)' }}>
         {c.assessments.map(a => (
           <li key={a.id} style={{ fontFamily: 'sans-serif', fontSize: 13, padding: '3px 0' }}>

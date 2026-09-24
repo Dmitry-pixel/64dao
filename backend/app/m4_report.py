@@ -48,6 +48,10 @@ CAUSE_EFFECT_TEXT = {
 
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
+# Изменение балла модуля, с которого оно считается движением, а не шумом
+# ответов. Калибровка, как и пороги расчёта.
+DYNAMICS_DELTA = 5
+
 
 def _card(c: M4Card | None) -> dict | None:
     if c is None:
@@ -139,6 +143,7 @@ async def build(db: AsyncSession, run: M4Run, snap: M4Snapshot) -> dict:
     }
 
     ce = snap.cause_effect
+    dynamics = await _dynamics(db, run, snap, name, cards)
     return {
         "run": {"id": run.id, "mode": run.mode, "company_name": company.name if company else None,
                 "calculated_at": run.calculated_at, "calc_version": snap.calc_version, "reduced": snap.reduced},
@@ -151,4 +156,80 @@ async def build(db: AsyncSession, run: M4Run, snap: M4Snapshot) -> dict:
         "actions": actions,
         "resistance": float(snap.resistance_factor),
         "confidence": confidence,
+        "dynamics": dynamics,
+        "is_followup": run.is_followup,
+    }
+
+
+async def _previous(db: AsyncSession, run: M4Run) -> tuple[M4Run, M4Snapshot] | None:
+    """Прошлая рассчитанная диагностика той же компании и того же вида.
+
+    Не только родитель повтора: после использованного повтора новая платная
+    диагностика продолжает историю компании, и сравнивать её нужно с
+    последней по времени, как «Динамику» Метода 1."""
+    if run.calculated_at is None:
+        return None
+    prev = await db.scalar(
+        select(M4Run)
+        .where(M4Run.company_id == run.company_id, M4Run.user_id == run.user_id, M4Run.mode == run.mode,
+               M4Run.status == "calculated", M4Run.deleted_at.is_(None), M4Run.id != run.id,
+               M4Run.calculated_at < run.calculated_at)
+        .order_by(M4Run.calculated_at.desc())
+        .limit(1)
+    )
+    if prev is None:
+        return None
+    snap = await db.get(M4Snapshot, prev.id)
+    return (prev, snap) if snap else None
+
+
+async def _dynamics(db, run: M4Run, snap: M4Snapshot, name, cards: dict) -> dict | None:
+    """Сравнение с прошлой диагностикой компании: сдвиг баллов модулей и
+    смена системного ограничения. Тексты — карточки kind=dynamics:
+    improved / worsened / stuck — по модулям, closed_gap / new_gap — по
+    ограничению. «Стоит на месте» ставится только модулю, который и в прошлый
+    раз был низким или средним: по нему давались рекомендации."""
+    found = await _previous(db, run)
+    if found is None:
+        return None
+    prev_run, prev = found
+    modules = []
+    for code in range(1, 11):
+        before = (prev.module_scores.get(str(code)) or {})
+        now = (snap.module_scores.get(str(code)) or {})
+        b, n = before.get("score"), now.get("score")
+        trend = None
+        if b is not None and n is not None:
+            delta = n - b
+            if delta >= DYNAMICS_DELTA:
+                trend = "improved"
+            elif delta <= -DYNAMICS_DELTA:
+                trend = "worsened"
+            elif before.get("state") in ("low", "mid"):
+                trend = "stuck"
+        modules.append({"code": code, "name": name(code), "before": b, "now": n,
+                        "delta": None if b is None or n is None else round(n - b, 1), "trend": trend})
+
+    was, now_c = prev.constraint_module, snap.constraint_module
+    constraint = None
+    if was != now_c:
+        constraint = {
+            "before": {"code": was, "name": name(was)} if was else None,
+            "now": {"code": now_c, "name": name(now_c)} if now_c else None,
+            "closed": was is not None,
+            "new": now_c is not None,
+        }
+
+    keys = {m["trend"] for m in modules if m["trend"]}
+    if constraint and constraint["closed"]:
+        keys.add("closed_gap")
+    if constraint and constraint["new"]:
+        keys.add("new_gap")
+    order = ["improved", "worsened", "stuck", "closed_gap", "new_gap"]
+    return {
+        "previous": {"id": prev_run.id, "calculated_at": prev_run.calculated_at},
+        "modules": modules,
+        "constraint": constraint,
+        "cards": [{"key": k, **_card(cards.get(("dynamics", k)))} for k in order
+                  if k in keys and cards.get(("dynamics", k))],
     }

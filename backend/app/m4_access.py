@@ -36,8 +36,62 @@ NO_CREDITS = ("Нет доступных полных диагностик Ме�
 NOT_PAID = "Отчёт недоступен: диагностика не оплачена или оплата возвращена."
 
 
+EXPRESS_LIMIT = 1
+NO_EXPRESS = ("Бесплатная экспресс-диагностика уже использована. Полная диагностика входит "
+              "в пакет «Метод 3 + Метод 4».")
+
+
 def free_pass(user: User) -> bool:
     return not enforce_credits_enabled() or user.role == "admin"
+
+
+# ── Экспресс: одна бесплатная на аккаунт ─────────────────────────────────────
+async def express_left(db: AsyncSession, user: User) -> int | None:
+    """Сколько бесплатных экспрессов осталось; None — без ограничения (админ).
+
+    Решение владельца: один экспресс на аккаунт. Считается рассчитанный,
+    включая удалённый: иначе «удалить и пройти снова» обходило бы лимит.
+    Незаконченный черновик не считается — его можно продолжить.
+
+    Лимит не зависит от флага обязательной оплаты: это защита бесплатного
+    продукта, а не касса.
+    """
+    if user.role == "admin":
+        return None
+    used = await db.scalar(
+        select(func.count(M4Run.id)).where(
+            M4Run.user_id == user.id, M4Run.mode == "express", M4Run.status == "calculated")
+    ) or 0
+    return max(0, EXPRESS_LIMIT - used)
+
+
+# ── Повтор полной диагностики ────────────────────────────────────────────────
+async def find_primary(db: AsyncSession, user: User, company_id) -> M4Run | None:
+    """Первичная полная диагностика компании с неиспользованным правом на
+    повтор — та же логика, что у Метода 1 (routers/assessments.py):
+    сначала первичная с правом, среди равных самая свежая. После
+    использованного повтора новая диагностика компании — снова платная
+    первичная со своим правом. Админ лимитом не ограничен."""
+    primary = await db.scalar(
+        select(M4Run)
+        .where(M4Run.user_id == user.id, M4Run.company_id == company_id, M4Run.mode == "full",
+               M4Run.status == "calculated", M4Run.is_followup.is_(False), M4Run.deleted_at.is_(None))
+        .order_by((M4Run.followup_used < M4Run.followup_allowed).desc(), M4Run.calculated_at.desc())
+        .limit(1)
+    )
+    if primary is None:
+        return None
+    if user.role != "admin" and primary.followup_used >= primary.followup_allowed:
+        return None
+    return primary
+
+
+def use_followup(primary: M4Run) -> None:
+    """Засчитать повтор. У админа право может быть исчерпано — поднимаем
+    followup_allowed, иначе нарушится проверка used <= allowed в базе."""
+    if primary.followup_used >= primary.followup_allowed:
+        primary.followup_allowed = primary.followup_used + 1
+    primary.followup_used += 1
 
 
 def _used_filter():
@@ -159,7 +213,13 @@ def ensure_result_access(run: M4Run, user: User) -> None:
 async def revoke_order_runs(db: AsyncSession, order: Order) -> int:
     """Возврат заказа пакета: полные прогоны Метода 4 этого заказа — в
     'filled'. Снимок не удаляется: после новой оплаты расчёт его перепишет."""
-    rows = (await db.execute(select(M4Run).where(M4Run.order_id == order.id))).scalars().all()
+    rows = list((await db.execute(select(M4Run).where(M4Run.order_id == order.id))).scalars().all())
+    # Повторы куплены вместе с первичной и отзываются вместе с ней — как у
+    # Метода 1 (payments.revoke_order_access).
+    if rows:
+        rows += list((await db.execute(
+            select(M4Run).where(M4Run.parent_run_id.in_([r.id for r in rows]))
+        )).scalars().all())
     closed = 0
     for run in rows:
         if run.status in USED_STATUSES:
@@ -169,4 +229,8 @@ async def revoke_order_runs(db: AsyncSession, order: Order) -> int:
             # оплаченным и пересчитал бы его без новой оплаты.
             run.order_id = None
             closed += 1
+        # Право на повтор сгорает вместе с оплатой. Прогон-повтор при
+        # пересчёте увидит исчерпанное право и станет обычным платным.
+        run.followup_allowed = 0
+        run.followup_used = 0
     return closed

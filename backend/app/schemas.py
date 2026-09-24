@@ -372,6 +372,10 @@ class CompanyOut(BaseModel):
     followup_available: bool = False
     # «Динамика» сравнивает замеры Метода 1: у Методов 2 и 3 сравнивать нечего.
     dynamics_available: bool = False
+    # Метод 4: неиспользованный повтор полной диагностики и рекомендуемая
+    # дата повтора (последняя полная + тот же срок из «Рассылки»).
+    m4_followup_available: bool = False
+    m4_next_repeat_at:     datetime | None = None
     assessments:        list[CompanyAssessmentOut] = []
 
 

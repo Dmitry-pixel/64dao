@@ -182,9 +182,26 @@ async def questionnaire(
 
 
 @router.get("/credits")
-async def credits(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """Сколько полных диагностик доступно; null — без ограничения."""
-    return {"full_available": await access.credits(db, user)}
+async def credits(
+    company_name: str | None = Query(None, max_length=255),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Что доступно пользователю; null — без ограничения.
+
+    full_available — полные диагностики из пакета; express_available —
+    бесплатные экспрессы; followup_available — есть ли у компании с этим
+    названием неиспользованный повтор (тогда полная не требует пакета)."""
+    followup = False
+    name = (company_name or "").strip()
+    if name:
+        company = await db.scalar(select(Company).where(Company.user_id == user.id, Company.name == name))
+        followup = bool(company and await access.find_primary(db, user, company.id))
+    return {
+        "full_available": await access.credits(db, user),
+        "express_available": await access.express_left(db, user),
+        "followup_available": followup,
+    }
 
 
 # ── Профиль компании ──────────────────────────────────────────────────────────
@@ -211,18 +228,9 @@ async def create_run(body: RunCreate, user: User = Depends(get_current_user), db
         await _save_profile(db, company, body.profile)
     profile = await svc.profile_of(db, company.id)
 
-    if body.mode == "full":
-        # Профиль обязателен: от модели выручки зависят вопросы модуля 4.
-        if not profile:
-            raise HTTPException(status_code=400, detail="Укажите, как устроена оплата у компании")
-        # Проверка до анкеты, а не только на расчёте: иначе клиент заполнит
-        # 120 вопросов и узнает, что пакет не оплачен.
-        left = await access.credits(db, user)
-        if left is not None and left <= 0:
-            raise HTTPException(status_code=403, detail=access.NO_CREDITS)
-
     # Незаконченная диагностика той же компании и того же вида продолжается,
     # а не заводится вторая: иначе в кабинете копятся пустые черновики.
+    # Проверка черновика — до лимитов: продолжить начатое можно всегда.
     draft = await db.scalar(
         select(M4Run).where(M4Run.user_id == user.id, M4Run.company_id == company.id,
                             M4Run.mode == body.mode, M4Run.status != "calculated",
@@ -230,13 +238,36 @@ async def create_run(body: RunCreate, user: User = Depends(get_current_user), db
         .order_by(M4Run.created_at.desc())
     )
     if draft is not None:
-        return await _run_out(db, draft, with_answers=True)
+        out = await _run_out(db, draft, with_answers=True)
+        await db.commit()      # профиль мог измениться — анкета читает его сразу
+        return out
 
-    run = M4Run(user_id=user.id, company_id=company.id, mode=body.mode, status="draft")
+    primary = None
+    if body.mode == "full":
+        # Профиль обязателен: от модели выручки зависят вопросы модуля 4.
+        if not profile:
+            raise HTTPException(status_code=400, detail="Укажите, как устроена оплата у компании")
+        # Повтор входит в стоимость первичной диагностики и пакета не требует.
+        primary = await access.find_primary(db, user, company.id)
+        if primary is None:
+            # Проверка до анкеты, а не только на расчёте: иначе клиент
+            # заполнит 120 вопросов и узнает, что пакет не оплачен.
+            left = await access.credits(db, user)
+            if left is not None and left <= 0:
+                raise HTTPException(status_code=403, detail=access.NO_CREDITS)
+    else:
+        left = await access.express_left(db, user)
+        if left is not None and left <= 0:
+            raise HTTPException(status_code=403, detail=access.NO_EXPRESS)
+
+    run = M4Run(user_id=user.id, company_id=company.id, mode=body.mode, status="draft",
+                is_followup=primary is not None, parent_run_id=primary.id if primary else None)
     db.add(run)
     await db.flush()
 
-    if body.mode == "full":
+    # Повтор отвечает заново, без подстановки прошлых ответов: он нужен,
+    # чтобы измерить изменение, а подставленные ответы его бы скрыли.
+    if body.mode == "full" and primary is None:
         # Ответы последнего экспресса этой компании переносятся: это те же
         # 20 вопросов, клиент не должен отвечать на них второй раз.
         express = await db.scalar(
@@ -249,7 +280,9 @@ async def create_run(body: RunCreate, user: User = Depends(get_current_user), db
                 db.add(M4Answer(run_id=run.id, question_code=a.question_code, value=a.value,
                                 numeric_value=a.numeric_value, source="direct", item_version=a.item_version))
             await db.flush()
-    return await _run_out(db, run, with_answers=True)
+    out = await _run_out(db, run, with_answers=True)
+    await db.commit()          # см. calculate_run: клиент сразу открывает анкету
+    return out
 
 
 @router.get("/runs")
@@ -298,7 +331,9 @@ async def put_answers(run_id: uuid.UUID, body: AnswersIn, user: User = Depends(g
     progress = await _progress(db, run)
     run.status = "filled" if not progress["missing"] else "draft"
     await db.flush()
-    return await _run_out(db, run)
+    out = await _run_out(db, run)
+    await db.commit()          # см. calculate_run: за сохранением сразу идёт расчёт
+    return out
 
 
 @router.post("/runs/{run_id}/calculate")
@@ -313,10 +348,31 @@ async def calculate_run(run_id: uuid.UUID, user: User = Depends(get_current_user
             "message": "Ответьте на все вопросы анкеты — «Не знаю» тоже ответ",
             "missing": progress["missing"],
         })
+    if run.mode == "express":
+        left = await access.express_left(db, user)
+        if left is not None and left <= 0:
+            raise HTTPException(status_code=403, detail=access.NO_EXPRESS)
+    parent = None
+    if run.is_followup:
+        # Право могли израсходовать другим прогоном или снять возвратом, пока
+        # анкета заполнялась. Тогда это обычная платная диагностика.
+        parent = await db.get(M4Run, run.parent_run_id) if run.parent_run_id else None
+        if parent is None or (user.role != "admin" and parent.followup_used >= parent.followup_allowed):
+            run.is_followup, run.parent_run_id, parent = False, None, None
     grant, order = await access.reserve_payment(db, run, user)
     snap = await svc.calculate(db, run)
     access.attach_payment(run, grant, order)
-    await db.flush()
+    if parent is not None:
+        access.use_followup(parent)
+    elif run.mode == "full" and grant is None:
+        # Первичная полная диагностика приносит право на один повтор, как у
+        # Метода 1. Грантовая — нет: квота гранта должна совпадать с числом
+        # прогонов (решение D1).
+        run.followup_allowed = 1
+    # Явный commit до ответа: get_db коммитит в завершении зависимости, и
+    # следующий запрос клиента (страница отчёта сразу после расчёта) мог
+    # успеть раньше и увидеть прогон нерассчитанным — отчёт отвечал 403.
+    await db.commit()
     return _snapshot_out(run, snap)
 
 

@@ -101,7 +101,7 @@ async def list_companies(
                                  created_at=p.calculated_at or p.created_at)
             for p in g["m3"]
         ] + [
-            CompanyAssessmentOut(id=r.id, method="method4", mode=r.mode,
+            CompanyAssessmentOut(id=r.id, method="method4", mode=r.mode, is_followup=r.is_followup,
                                  created_at=r.calculated_at or r.created_at)
             for r in g["m4"]
         ]
@@ -114,6 +114,8 @@ async def list_companies(
         # Та же логика, что при создании повтора в routers/assessments.py.
         free_repeat = any(a.method == "method1" and not a.is_followup
                           and a.followup_used < a.followup_allowed for a in items)
+        full = sorted((r for r in g["m4"] if r.mode == "full"), key=lambda r: r.calculated_at or r.created_at)
+        last_m4 = (full[-1].calculated_at or full[-1].created_at) if full else None
         out.append(CompanyOut(
             id=g["id"],
             name=g["name"],
@@ -125,6 +127,8 @@ async def list_companies(
             followup_available=free_repeat,
             # «Динамика» сравнивает замеры Метода 1: у Метода 2 и 3 нечего сравнивать.
             dynamics_available=sum(1 for a in items if a.method == "method1") >= 2,
+            m4_followup_available=any(not r.is_followup and r.followup_used < r.followup_allowed for r in full),
+            m4_next_repeat_at=last_m4 + timedelta(days=repeat_days) if last_m4 else None,
             assessments=entries,
         ))
     out.sort(key=lambda c: c.latest_at, reverse=True)

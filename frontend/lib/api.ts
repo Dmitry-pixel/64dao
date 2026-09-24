@@ -295,6 +295,9 @@ export interface Company {
   next_repeat_at: string | null
   followup_available: boolean
   dynamics_available: boolean
+  /** Метод 4: неиспользованный повтор полной и рекомендуемая дата повтора. */
+  m4_followup_available?: boolean
+  m4_next_repeat_at?: string | null
   assessments: CompanyAssessment[]
 }
 

@@ -66,7 +66,7 @@ export default function M4ReportCard(
           </span>
         </div>
         <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)', marginTop: 4 }}>
-          {r.mode === 'express' ? 'Экспресс-диагностика' : 'Полная диагностика'}
+          {r.mode === 'express' ? 'Экспресс-диагностика' : r.is_followup ? 'Повторная диагностика' : 'Полная диагностика'}
           {!done && ` · отвечено ${r.progress.answered} из ${r.progress.required}`}
         </div>
       </div>

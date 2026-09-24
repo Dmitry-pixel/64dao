@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { m4, type M4CardText, type M4Report, type M4ReportAction } from '@/lib/m4'
+import { m4, type M4CardText, type M4Dynamics, type M4Report, type M4ReportAction } from '@/lib/m4'
 import { M4, STATE_COLOR, STATE_LABEL } from '@/components/m4/styles'
 import M4Wheel from '@/components/m4/M4Wheel'
 
@@ -95,6 +95,57 @@ function Action({ a }: { a: M4ReportAction }) {
   )
 }
 
+const TREND_LABEL: Record<string, string> = { improved: 'растёт', worsened: 'снижается', stuck: 'на месте' }
+const TREND_COLOR: Record<string, string> = { improved: '#2e7d5b', worsened: '#c0392b', stuck: '#c8902a' }
+
+function Dynamics({ d }: { d: M4Dynamics }) {
+  const date = d.previous.calculated_at ? new Date(d.previous.calculated_at).toLocaleDateString('ru-RU') : ''
+  const c = d.constraint
+  const byTrend = (t: string) => d.modules.filter(m => m.trend === t).map(m => m.name)
+  return (
+    <section style={R.section}>
+      <h2 style={R.h2}>Что изменилось</h2>
+      <p style={R.lead}>
+        Сравнение с прошлой диагностикой компании{date && ` от ${date}`}. Движением считается
+        изменение балла на 5 и больше; меньшее — в пределах точности ответов.
+      </p>
+      {c && (
+        <div style={{ ...M4.card, borderLeft: '3px solid #c0392b' }}>
+          <p style={{ ...R.body, margin: 0 }}>
+            {c.before && c.now && <>Системное ограничение сместилось: было <b>{c.before.name}</b>, теперь <b>{c.now.name}</b>.</>}
+            {c.before && !c.now && <>Системное ограничение <b>{c.before.name}</b> снято, нового нет.</>}
+            {!c.before && c.now && <>Появилось системное ограничение: <b>{c.now.name}</b>.</>}
+          </p>
+        </div>
+      )}
+      <div style={M4.card}>
+        {d.modules.map(m => (
+          <div key={m.code} style={M4.listRow}>
+            <span>{m.code}. {m.name}</span>
+            <span style={{ whiteSpace: 'nowrap' }}>
+              {m.before == null ? '—' : Math.round(m.before)} → {m.now == null ? '—' : Math.round(m.now)}
+              {m.delta != null && (
+                <span style={{ marginLeft: 10, color: m.trend ? TREND_COLOR[m.trend] : 'rgba(26,37,64,0.5)' }}>
+                  {m.delta > 0 ? '+' : ''}{Math.round(m.delta)}{m.trend && ` · ${TREND_LABEL[m.trend]}`}
+                </span>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+      {d.cards.map(card => {
+        const mods = card.key in TREND_LABEL ? byTrend(card.key) : []
+        return (
+          <div key={card.key} style={M4.card}>
+            <CardBody card={card} />
+            {mods.length > 0 && <p style={M4.note}>Модули: {mods.join(', ')}.</p>}
+          </div>
+        )
+      })}
+    </section>
+  )
+}
+
 export default function M4ReportPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
@@ -130,7 +181,7 @@ export default function M4ReportPage() {
   return (
     <div style={M4.page}><div style={M4.stage}>
       <span style={M4.label}>
-        Метод 04 · {full ? 'Полная диагностика' : 'Экспресс'} · {rep.run.company_name}{date && ` · ${date}`}
+        Метод 04 · {full ? (rep.is_followup ? 'Повторная диагностика' : 'Полная диагностика') : 'Экспресс'} · {rep.run.company_name}{date && ` · ${date}`}
       </span>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <h1 style={M4.h1}>Алмазное колесо</h1>
@@ -177,6 +228,8 @@ export default function M4ReportPage() {
         </p>
         {rep.cause_effect?.text && <p style={{ ...R.body, marginBottom: 0 }}>{rep.cause_effect.text}</p>}
       </div>
+
+      {rep.dynamics && <Dynamics d={rep.dynamics} />}
 
       {/* ── Ограничение ─────────────────────────────────────────────── */}
       {full && c && (

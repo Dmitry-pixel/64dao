@@ -29,6 +29,8 @@ function M4PageInner() {
   const [runs, setRuns] = useState<M4RunOut[]>([])
   const [revenueOptions, setRevenueOptions] = useState<M4ClientOption[]>([])
   const [fullLeft, setFullLeft] = useState<number | null>(null)
+  const [expressLeft, setExpressLeft] = useState<number | null>(null)
+  const [followup, setFollowup] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const [companyName, setCompanyName] = useState(companyParam)
@@ -43,6 +45,9 @@ function M4PageInner() {
         setRuns(rs)
         setRevenueOptions(q.profile_options.revenue_model ?? [])
         setFullLeft(cr.full_available)
+        setExpressLeft(cr.express_available)
+        // Экспресс уже израсходован — по умолчанию предлагаем полную.
+        if (cr.express_available === 0) setMode('full')
         setPhase(companyParam || !rs.length ? 'setup' : 'list')
       })
       .catch((e: any) => setLoadError(
@@ -50,7 +55,22 @@ function M4PageInner() {
       ))
   }, [companyParam])
 
-  const fullBlocked = fullLeft !== null && fullLeft <= 0
+  // Повтор полной диагностики зависит от компании: спрашиваем сервер по
+  // названию, с задержкой, чтобы не бить по API на каждый символ.
+  useEffect(() => {
+    const name = companyName.trim()
+    if (!name) { setFollowup(false); return }
+    const t = setTimeout(() => {
+      m4.credits(name).then(cr => setFollowup(cr.followup_available)).catch(() => setFollowup(false))
+    }, 400)
+    return () => clearTimeout(t)
+  }, [companyName])
+
+  // Начатый экспресс этой компании продолжается и после исчерпания лимита.
+  const expressDraft = runs.some(r => r.mode === 'express' && r.status !== 'calculated'
+    && (r.company_name ?? '').trim() === companyName.trim())
+  const expressBlocked = expressLeft !== null && expressLeft <= 0 && !expressDraft
+  const fullBlocked = fullLeft !== null && fullLeft <= 0 && !followup
 
   async function start() {
     const name = companyName.trim()
@@ -94,7 +114,7 @@ function M4PageInner() {
       {runs.map(r => (
         <div key={r.id} style={M4.listRow}>
           <span>
-            {r.company_name || 'Без названия'} · {MODE_LABEL[r.mode]}
+            {r.company_name || 'Без названия'} · {MODE_LABEL[r.mode]}{r.is_followup && ' · повтор'}
             {r.status !== 'calculated' && ` · ${r.progress.answered} из ${r.progress.required}`}
           </span>
           <span style={M4.status}>{STATUS_LABEL[r.status] ?? r.status}</span>
@@ -130,9 +150,15 @@ function M4PageInner() {
       <div style={{ marginBottom: 20 }}>
         <div style={M4.fieldLabel}>Вид диагностики</div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
-          <button style={mode === 'express' ? M4.choiceOn : M4.choice} onClick={() => setMode('express')}>
+          <button
+            style={{ ...(mode === 'express' ? M4.choiceOn : M4.choice), opacity: expressBlocked ? 0.5 : 1 }}
+            onClick={() => !expressBlocked && setMode('express')}
+            disabled={expressBlocked}
+          >
             <b>Экспресс</b><br />
-            <span style={M4.choiceNote}>20 вопросов, по два на модуль · ≈ 7 минут · бесплатно</span>
+            <span style={M4.choiceNote}>
+              20 вопросов, по два на модуль · ≈ 7 минут · {expressBlocked ? 'уже использован' : 'бесплатно, один раз'}
+            </span>
           </button>
           <button
             style={{ ...(mode === 'full' ? M4.choiceOn : M4.choice), opacity: fullBlocked ? 0.5 : 1 }}
@@ -141,7 +167,8 @@ function M4PageInner() {
           >
             <b>Полная</b><br />
             <span style={M4.choiceNote}>
-              Все вопросы · ≈ 40 минут · {fullBlocked ? 'входит в пакет «Метод 3 + Метод 4»' : 'из пакета'}
+              Все вопросы · ≈ 40 минут · {followup ? 'повтор, входит в стоимость'
+                : fullBlocked ? 'входит в пакет «Метод 3 + Метод 4»' : 'из пакета'}
             </span>
           </button>
         </div>
@@ -171,7 +198,13 @@ function M4PageInner() {
         <p style={M4.note}>От этого зависит часть вопросов о продукте.</p>
       </div>
 
-      {mode === 'full' && (
+      {mode === 'full' && followup && (
+        <p style={M4.note}>
+          Это повторная диагностика компании: она входит в стоимость первой и не расходует пакет.
+          Отвечайте заново, по сегодняшнему положению дел — отчёт покажет, что изменилось.
+        </p>
+      )}
+      {mode === 'full' && !followup && (
         <p style={M4.note}>
           Если по этой компании уже пройден экспресс, его ответы перенесутся в полную анкету.
         </p>

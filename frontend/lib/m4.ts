@@ -205,6 +205,14 @@ export interface M4AnswerValue { code: string; value: string | null; number: num
 
 export interface M4Progress { answered: number; required: number; missing: string[] }
 
+export interface M4Credits {
+  /** null — без ограничения */
+  full_available: number | null
+  express_available: number | null
+  /** У компании с переданным названием есть неиспользованный повтор полной. */
+  followup_available: boolean
+}
+
 export interface M4RunOut {
   id: string
   mode: M4Mode
@@ -284,6 +292,20 @@ export interface M4ReportAction {
   how_to_check: string | null
 }
 
+export type M4Trend = 'improved' | 'worsened' | 'stuck'
+
+export interface M4Dynamics {
+  previous: { id: string; calculated_at: string | null }
+  modules: { code: number; name: string; before: number | null; now: number | null; delta: number | null; trend: M4Trend | null }[]
+  constraint: {
+    before: { code: number; name: string } | null
+    now: { code: number; name: string } | null
+    closed: boolean
+    new: boolean
+  } | null
+  cards: (M4CardText & { key: M4Trend | 'closed_gap' | 'new_gap' })[]
+}
+
 export interface M4Report {
   run: { id: string; mode: M4Mode; company_name: string | null; calculated_at: string | null; calc_version: string; reduced: boolean }
   modules: M4ReportModule[]
@@ -301,11 +323,14 @@ export interface M4Report {
     index: number; level: 'high' | 'medium' | 'low'; cautious: boolean
     card: M4CardText | null; no_accounting: { code: number; name: string }[]
   }
+  dynamics: M4Dynamics | null
+  is_followup: boolean
 }
 
 export const m4 = {
   questionnaire: (mode: M4Mode) => request<M4Questionnaire>(`${C}/questionnaire?mode=${mode}`),
-  credits: () => request<{ full_available: number | null }>(`${C}/credits`),
+  credits: (companyName?: string) =>
+    request<M4Credits>(`${C}/credits${companyName ? `?company_name=${encodeURIComponent(companyName)}` : ''}`),
   profile: (companyId: string) => request<M4Profile | null>(`${C}/companies/${companyId}/profile`),
   putProfile: (companyId: string, body: M4Profile) =>
     request<M4Profile>(`${C}/companies/${companyId}/profile`, { method: 'PUT', body: JSON.stringify(body) }),

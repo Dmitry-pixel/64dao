@@ -224,7 +224,7 @@ async def test_full_flow_with_rules_and_queue(auth_client, content, db_session):
 async def test_full_blocked_without_package(auth_client, content, enforce_on):
     assert (await _run(auth_client, "full")).status_code == 403
     assert (await _run(auth_client)).status_code == 201          # экспресс бесплатный
-    assert (await auth_client.get(f"{API}/credits")).json() == {"full_available": 0}
+    assert (await auth_client.get(f"{API}/credits")).json()["full_available"] == 0
 
 
 async def test_package_pays_m4_and_leaves_m3(auth_client, content, db_session, test_user, enforce_on):
@@ -236,7 +236,7 @@ async def test_package_pays_m4_and_leaves_m3(auth_client, content, db_session, t
     assert row.order_id == order.id and row.grant_id is None
 
     # Метод 4 из пакета израсходован, Метод 3 — нет
-    assert (await auth_client.get(f"{API}/credits")).json() == {"full_available": 0}
+    assert (await auth_client.get(f"{API}/credits")).json()["full_available"] == 0
     assert (await pick_order(db_session, test_user.id, "m3")).id == order.id
     assert (await _run(auth_client, "full", company_name="Вторая")).status_code == 403
 
@@ -246,7 +246,7 @@ async def test_m3_portfolio_does_not_spend_m4(auth_client, content, db_session, 
     db_session.add(M3Portfolio(user_id=test_user.id, title="П", company_name="ООО Колесо",
                                status="calculated", order_id=order.id))
     await db_session.flush()
-    assert (await auth_client.get(f"{API}/credits")).json() == {"full_available": 1}
+    assert (await auth_client.get(f"{API}/credits")).json()["full_available"] == 1
 
 
 async def test_grant_goes_first(auth_client, content, db_session, test_user, enforce_on):

@@ -123,7 +123,10 @@ def header(rep: dict) -> str:
     meta = []
     if run.get("calculated_at"):
         meta.append(f"Рассчитано {run['calculated_at'].strftime('%d.%m.%Y')}")
-    meta.append("Полная диагностика" if run["mode"] == "full" else "Экспресс-диагностика")
+    if run["mode"] != "full":
+        meta.append("Экспресс-диагностика")
+    else:
+        meta.append("Повторная диагностика" if rep.get("is_followup") else "Полная диагностика")
     meta.append(f"Достоверность ответов: {rep['confidence']['index']} из 100")
     meta_html = "".join(f'<span style="margin-right:24px;white-space:nowrap;">{e(m)}</span>' for m in meta)
     return (
@@ -241,6 +244,51 @@ def modules_section(no: str, rep: dict) -> str:
     return "".join(out)
 
 
+TREND_LABEL = {"improved": "растёт", "worsened": "снижается", "stuck": "на месте"}
+TREND_COLOR = {"improved": "#2e7d5b", "worsened": RED, "stuck": "#c8902a"}
+
+
+def dynamics_section(no: str, rep: dict) -> str:
+    d = rep["dynamics"]
+    prev = d["previous"].get("calculated_at")
+    date = f" от {prev.strftime('%d.%m.%Y')}" if prev else ""
+    out = [
+        section_title(no, "Что изменилось"),
+        f'<p style="{P}color:{MUTED};">Сравнение с прошлой диагностикой компании{date}. Движением '
+        f'считается изменение балла на 5 и больше; меньшее — в пределах точности ответов.</p>',
+    ]
+    c = d.get("constraint")
+    if c:
+        if c["before"] and c["now"]:
+            txt = (f'Системное ограничение сместилось: было <b>{e(c["before"]["name"])}</b>, '
+                   f'теперь <b>{e(c["now"]["name"])}</b>.')
+        elif c["before"]:
+            txt = f'Системное ограничение <b>{e(c["before"]["name"])}</b> снято, нового нет.'
+        else:
+            txt = f'Появилось системное ограничение: <b>{e(c["now"]["name"])}</b>.'
+        out.append(f'<div style="{CARD}border-left:3px solid {RED};"><p style="{P}margin:0;">{txt}</p></div>')
+    rows = []
+    for m in d["modules"]:
+        b = "—" if m["before"] is None else rnd(m["before"])
+        n = "—" if m["now"] is None else rnd(m["now"])
+        delta = ""
+        if m["delta"] is not None:
+            color = TREND_COLOR.get(m["trend"] or "", MUTED)
+            sign = "+" if m["delta"] > 0 else ""
+            label = f' · {TREND_LABEL[m["trend"]]}' if m["trend"] else ""
+            delta = f'<span style="color:{color};margin-left:8px;">{sign}{rnd(m["delta"])}{label}</span>'
+        rows.append(f'<tr><td style="padding:4px 0;">{m["code"]}. {e(m["name"])}</td>'
+                    f'<td style="padding:4px 0;text-align:right;white-space:nowrap;">{b} → {n}{delta}</td></tr>')
+    out.append(f'<div style="{CARD}"><table style="width:100%;border-collapse:collapse;font-size:12px;'
+               f'font-family:Arial,sans-serif;color:{DARK};">{"".join(rows)}</table></div>')
+    for card in d["cards"]:
+        mods = [m["name"] for m in d["modules"] if m["trend"] == card["key"]]
+        tail = (f'<p style="font-size:11px;color:{MUTED};font-family:Arial,sans-serif;margin:6px 0 0;">'
+                f'Модули: {e(", ".join(mods))}.</p>') if mods else ""
+        out.append(f'<div style="{CARD}">' + _card_body(card) + tail + "</div>")
+    return "".join(out)
+
+
 def confidence_section(no: str, rep: dict) -> str:
     conf = rep["confidence"]
     acc = ""
@@ -277,6 +325,8 @@ def build_report_html(rep: dict[str, Any]) -> str:
         n += 1
         return f"{n:02d}"
 
+    if rep.get("dynamics"):
+        sheets.append(page(dynamics_section(num(), rep)))
     if full and rep["constraint"]:
         sheets.append(page(constraint_section(num(), rep)
                            + (actions_section(num(), rep) if rep["actions"] else "")))

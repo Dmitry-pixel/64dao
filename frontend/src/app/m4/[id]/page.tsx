@@ -130,7 +130,7 @@ export default function M4RunPage() {
   return (
     <div style={M4.page}><div style={M4.stage}>
       <span style={M4.label}>
-        Метод 04 · {run.mode === 'express' ? 'Экспресс' : 'Полная диагностика'} · {run.company_name}
+        Метод 04 · {run.mode === 'express' ? 'Экспресс' : run.is_followup ? 'Повторная диагностика' : 'Полная диагностика'} · {run.company_name}
       </span>
 
       {/* Прогресс: число отвеченных считает сервер — с учётом вопросов-условий. */}
