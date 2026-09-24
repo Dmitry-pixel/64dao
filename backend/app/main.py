@@ -20,6 +20,7 @@ from app.routers import (
     admin,
     assessments,
     auth,
+    certs,
     checklist,
     companies,
     contact,
@@ -163,6 +164,7 @@ app.include_router(social_links.router)
 app.include_router(sample_report.router)
 app.include_router(support.router)
 app.include_router(site_mode.router)
+app.include_router(certs.router)
 app.include_router(fin_content.router)
 app.include_router(method1.router)
 app.include_router(companies.router)

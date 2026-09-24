@@ -364,6 +364,7 @@ export const adminApi = {
   resetContour:   (assessmentId: string, contour: string) =>
     request<void>(`/api/admin/assessments/${assessmentId}/contours/${contour}`, { method: 'DELETE' }),
   logs:           () => request<LogEntry[]>('/api/admin/logs'),
+  certs:          (probe = true) => request('/api/admin/certs?probe=' + (probe ? 1 : 0)),
   emailTemplates:     () => request<Record<string, EmailTemplate>>('/api/admin/email-templates'),
   saveEmailTemplates: (d: Record<string, EmailTemplate>) => request('/api/admin/email-templates', { method: 'PUT', body: JSON.stringify(d) }),
   remindersSettings:     () => request<RemindersSettings>('/api/admin/reminders-settings'),
