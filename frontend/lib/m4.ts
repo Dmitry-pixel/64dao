@@ -245,6 +245,64 @@ export interface M4Result {
   calculated_at: string | null
 }
 
+export interface M4CardText {
+  title: string
+  body: string
+  mistake: string | null
+  steps: string[] | null
+  first_step: string | null
+  how_to_check: string | null
+}
+
+export interface M4ReportModule {
+  code: number
+  name: string
+  client_question: string | null
+  is_effect: boolean
+  score: number | null
+  state: 'low' | 'mid' | 'high' | null
+  no_accounting: boolean
+  card: M4CardText | null
+}
+
+export interface M4ReportAction {
+  n: number
+  key: string
+  module_code: number | null
+  module_name: string | null
+  rule_code: string | null
+  is_constraint: boolean
+  blocked_by_constraint: boolean
+  effect: number
+  speed_weeks: number
+  cost: number
+  title: string
+  body: string | null
+  steps: string[] | null
+  options: string[] | null
+  first_step: string | null
+  how_to_check: string | null
+}
+
+export interface M4Report {
+  run: { id: string; mode: M4Mode; company_name: string | null; calculated_at: string | null; calc_version: string; reduced: boolean }
+  modules: M4ReportModule[]
+  top_gaps: { code: number; name: string }[]
+  constraint: { module: number; name: string; score: number; blocked: { code: number; name: string }[]; card: M4CardText | null } | null
+  cause_effect: { causes_avg: number; effect: number; case: string; text: string | null } | null
+  contradictions: {
+    code: string; title: string; severity: 'high' | 'medium' | 'low'; diagnosis: string
+    what_happens: string; fix_one_of: string[]; cost_of_inaction: string
+  }[]
+  unverified: { code: string; title: string }[]
+  actions: M4ReportAction[]
+  resistance: number
+  confidence: {
+    index: number; level: 'high' | 'medium' | 'low'; cautious: boolean
+    card: M4CardText | null; no_accounting: { code: number; name: string }[]
+  }
+}
+
 export const m4 = {
   questionnaire: (mode: M4Mode) => request<M4Questionnaire>(`${C}/questionnaire?mode=${mode}`),
   credits: () => request<{ full_available: number | null }>(`${C}/credits`),
@@ -259,6 +317,7 @@ export const m4 = {
     request<M4RunOut>(`${C}/runs/${id}/answers`, { method: 'PUT', body: JSON.stringify({ answers }) }),
   calculate: (id: string) => request<M4Result>(`${C}/runs/${id}/calculate`, { method: 'POST' }),
   result: (id: string) => request<M4Result>(`${C}/runs/${id}/result`),
+  report: (id: string) => request<M4Report>(`${C}/runs/${id}/report`),
   deleteRun: (id: string) => request<void>(`${C}/runs/${id}`, { method: 'DELETE' }),
 }
 

@@ -30,6 +30,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import m4_access as access
+from app import m4_report
 from app import m4_service as svc
 from app.auth import get_current_user
 from app.config import get_settings
@@ -323,6 +324,18 @@ async def get_result(run_id: uuid.UUID, user: User = Depends(get_current_user), 
     if snap is None:
         raise HTTPException(status_code=404, detail="Результата нет")
     return _snapshot_out(run, snap)
+
+
+@router.get("/runs/{run_id}/report")
+async def get_report(run_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Отчёт: снимок расчёта с текстами карточек и правил. Один источник
+    для веба и PDF."""
+    run = await _owned(db, run_id, user)
+    access.ensure_result_access(run, user)
+    snap = await db.get(M4Snapshot, run.id)
+    if snap is None:
+        raise HTTPException(status_code=404, detail="Результата нет")
+    return await m4_report.build(db, run, snap)
 
 
 @router.delete("/runs/{run_id}", status_code=204)
