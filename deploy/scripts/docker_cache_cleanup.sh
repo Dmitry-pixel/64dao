@@ -6,7 +6,7 @@ echo "=== $(date '+%Y-%m-%d %H:%M:%S') ===" >> "$LOG"
 # чистка обойти не могла. Суток достаточно: кэш нужен внутри рабочего дня.
 docker builder prune -af --filter "until=24h" >> "$LOG" 2>&1
 # Потолок по объёму — на случай нескольких пересборок за сутки.
-docker builder prune -f --keep-storage 2GB >> "$LOG" 2>&1
+docker builder prune -f --reserved-space 2GB >> "$LOG" 2>&1
 # Висячие образы (<none>) остаются после каждой пересборки фронтенда и
 # бэкенда — по 0,5–1 ГБ. Работающие образы prune -f не трогает.
 docker image prune -f >> "$LOG" 2>&1
