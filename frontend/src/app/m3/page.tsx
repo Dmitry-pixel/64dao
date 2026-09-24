@@ -75,7 +75,9 @@ function M3PageInner() {
   // Название компании приходит из /assessment: оно вводится ПЕРЕД
   // диагностикой, как в Методах 1 и 2. Второй формы ввода здесь нет —
   // поле ниже предзаполнено и остаётся редактируемым.
-  const companyParam = useSearchParams().get('company') || ''
+  const search = useSearchParams()
+  const companyParam = search.get('company') || ''
+  const repeatParam = search.get('repeat') === '1'
 
   const [phase, setPhase] = useState<Phase>('loading')
   const [industries, setIndustries] = useState<M3Industry[]>([])
@@ -151,7 +153,10 @@ function M3PageInner() {
 
       {portfolios.map(p => (
         <div key={p.id} style={P.listRow}>
-          <span>{p.company_name || p.title || 'Без названия'} · {p.objects.length} направлений</span>
+          <span>
+            {p.company_name || p.title || 'Без названия'} · {p.objects.length} направлений
+            {p.is_followup ? ' · повтор' : ''}
+          </span>
           <span style={P.status}>{STATUS_LABEL[p.status] ?? p.status}</span>
           <button
             style={P.btnGhost}
@@ -180,12 +185,21 @@ function M3PageInner() {
   if (phase === 'setup') return (
     <div style={P.page}><div style={P.stage}>
       <span style={P.label}>Метод 03 · матрица силы</span>
-      <h1 style={P.h1}>Новый портфель</h1>
-      <p style={P.text}>
-        Область задаёт веса линий и наследуется направлениями — у каждого её
-        можно переопределить. Веса клиент не настраивает и не видит: они
-        экспертные, и пересматриваются по мере накопления отчётов.
-      </p>
+      <h1 style={P.h1}>{repeatParam ? 'Повторная диагностика' : 'Новый портфель'}</h1>
+      {repeatParam ? (
+        <p style={P.text}>
+          Повтор по этой компании входит в стоимость: направления и область
+          перенесутся из прошлой диагностики, вы проверите цифры и ответите
+          на вопросы заново. Название компании не меняйте — по нему находится
+          прошлая диагностика.
+        </p>
+      ) : (
+        <p style={P.text}>
+          Область задаёт веса линий и наследуется направлениями — у каждого её
+          можно переопределить. Веса клиент не настраивает и не видит: они
+          экспертные, и пересматриваются по мере накопления отчётов.
+        </p>
+      )}
 
       <div style={{ ...P.field, marginBottom: 16 }}>
         <label style={P.fieldLabel} htmlFor="company">Название компании</label>
@@ -214,26 +228,28 @@ function M3PageInner() {
         />
       </div>
 
-      <div style={P.field}>
-        <label style={P.fieldLabel} htmlFor="industry">Основная область</label>
-        <select
-          id="industry"
-          style={P.input}
-          value={industryId ?? ''}
-          onChange={e => setIndustryId(e.target.value === '' ? null : Number(e.target.value))}
-        >
-          <option value="">Не выбрана — универсальные веса</option>
-          {industries.map(i => (
-            <option key={i.id} value={i.id}>{i.name}</option>
-          ))}
-        </select>
-      </div>
+      {!repeatParam && (<>
+        <div style={P.field}>
+          <label style={P.fieldLabel} htmlFor="industry">Основная область</label>
+          <select
+            id="industry"
+            style={P.input}
+            value={industryId ?? ''}
+            onChange={e => setIndustryId(e.target.value === '' ? null : Number(e.target.value))}
+          >
+            <option value="">Не выбрана — универсальные веса</option>
+            {industries.map(i => (
+              <option key={i.id} value={i.id}>{i.name}</option>
+            ))}
+          </select>
+        </div>
 
-      <p style={P.note}>
-        Если направления охватывают разные отрасли, укажите здесь основную,
-        а у остальных переопределите на следующем шаге. Единый пресет на весь
-        портфель исказил бы оценку.
-      </p>
+        <p style={P.note}>
+          Если направления охватывают разные отрасли, укажите здесь основную,
+          а у остальных переопределите на следующем шаге. Единый пресет на весь
+          портфель исказил бы оценку.
+        </p>
+      </>)}
 
       {error && <p style={P.warn}>{error}</p>}
 

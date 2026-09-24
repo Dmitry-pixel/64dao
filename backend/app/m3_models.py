@@ -72,8 +72,24 @@ class M3Portfolio(Base):
     order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="SET NULL"), nullable=True, index=True)
     grant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("access_grants.id", ondelete="SET NULL"), nullable=True, index=True)
 
+    # Повтор (миграция 044): один бесплатный на первичный портфель компании,
+    # как у assessments и m4_runs. Право — у первичного, отметка — у повтора.
+    is_followup:         Mapped[bool] = mapped_column(Boolean, nullable=False, default=False,
+                                                      server_default="false")
+    parent_portfolio_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("m3_portfolios.id", ondelete="SET NULL"), nullable=True, index=True,
+    )
+    followup_allowed:    Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    followup_used:       Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    # Письмо «пора повторить» по этой диагностике уже ушло.
+    repeat_reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     __table_args__ = (
         CheckConstraint("status IN ('draft','filled','calculated')", name="chk_m3_portfolio_status"),
+        CheckConstraint("followup_used >= 0 AND followup_used <= followup_allowed",
+                        name="chk_m3_portfolio_followup_used"),
+        CheckConstraint("NOT is_followup OR parent_portfolio_id IS NOT NULL",
+                        name="chk_m3_portfolio_followup_parent"),
     )
 
     objects: Mapped[list["M3Object"]] = relationship(

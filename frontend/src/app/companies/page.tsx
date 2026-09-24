@@ -160,6 +160,25 @@ function CompanyCard({ c }: { c: Company }) {
         </div>
       )}
 
+      {c.m3_next_repeat_at && (() => {
+        const due = new Date(c.m3_next_repeat_at)
+        const ready = due.getTime() <= Date.now()
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginTop: 10 }}>
+            <span style={{ fontFamily: 'sans-serif', fontSize: 12, color: ready ? '#c0392b' : 'rgba(26,37,64,0.55)' }}>
+              Матрица силы: {ready ? 'пора пройти повторную диагностику' : `повторную диагностику рекомендуем после ${fmt(c.m3_next_repeat_at)}`}
+              {c.m3_followup_available ? ' · повтор входит в стоимость' : ''}
+            </span>
+            <Link
+              href={`/m3?company=${encodeURIComponent(c.name)}${c.m3_followup_available ? '&repeat=1' : ''}`}
+              style={S.btnGhost}
+            >
+              Повторить Метод 3
+            </Link>
+          </div>
+        )
+      })()}
+
       {c.m4_next_repeat_at && (() => {
         const due = new Date(c.m4_next_repeat_at)
         const ready = due.getTime() <= Date.now()

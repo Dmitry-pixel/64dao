@@ -30,6 +30,14 @@ const TEMPLATE_META: Record<string, { label: string; vars: string[] }> = {
     label: 'Пора повторить диагностику',
     vars: ['{name}', '{name_part}', '{company}', '{company_part}', '{days_since}', '{app_url}'],
   },
+  repeat_m3: {
+    label: 'Пора повторить Метод 3 (матрица силы)',
+    vars: ['{name}', '{name_part}', '{company}', '{company_part}', '{days_since}', '{followup_part}', '{app_url}'],
+  },
+  repeat_m4: {
+    label: 'Пора повторить Метод 4 (алмазное колесо)',
+    vars: ['{name}', '{name_part}', '{company}', '{company_part}', '{days_since}', '{followup_part}', '{app_url}'],
+  },
 }
 
 const VAR_HINTS: Record<string, string> = {
@@ -39,6 +47,7 @@ const VAR_HINTS: Record<string, string> = {
   '{company_part}': 'Оборот « компании «Х»» или пусто, если названия нет',
   '{days_since}':   'Сколько дней прошло с последней диагностики',
   '{app_url}':      'Адрес сайта, без слэша на конце',
+  '{followup_part}': '« Повтор входит в стоимость первой диагностики.» или пусто, если бесплатный повтор уже использован',
   '{code}':       'OTP-код (6 цифр)',
   '{name}':       'Имя пользователя',
   '{name_part}':  'Имя с запятой: «, Иван» или пусто если нет имени',

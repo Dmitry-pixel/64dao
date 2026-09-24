@@ -376,6 +376,9 @@ class CompanyOut(BaseModel):
     # дата повтора (последняя полная + тот же срок из «Рассылки»).
     m4_followup_available: bool = False
     m4_next_repeat_at:     datetime | None = None
+    # То же для Метода 3 (миграция 044).
+    m3_followup_available: bool = False
+    m3_next_repeat_at:     datetime | None = None
     assessments:        list[CompanyAssessmentOut] = []
 
 

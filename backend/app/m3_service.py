@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import m3_portfolio as pf
@@ -24,6 +24,7 @@ from app.m3_models import (
     M3Content,
     M3Hint,
     M3Item,
+    M3Object,
     M3Portfolio,
     M3PortfolioResult,
     M3Result,
@@ -742,4 +743,70 @@ async def build_report(db: AsyncSession, portfolio: M3Portfolio) -> dict:
         "execution_order": execution,
         "analysis": analysis,
         "disclaimers": disclaimers(calc_like),
+        "dynamics": await dynamics_for(db, portfolio, results_only, summary_out),
+    }
+
+
+async def dynamics_for(db: AsyncSession, portfolio: M3Portfolio, results: list[dict],
+                       summary: dict) -> dict | None:
+    """Сравнение с прошлой рассчитанной диагностикой той же компании.
+
+    Не только с родителем повтора: после использованного повтора новая
+    платная диагностика продолжает историю компании, как «Динамика»
+    Метода 1. Направления сопоставляются по названию без учёта регистра:
+    у повтора они перенесены из прошлого портфеля, но клиент мог их
+    переименовать, добавить или убрать — такие показываются отдельно.
+
+    Что сравнивается: ячейка матрицы (сила × привлекательность), координаты
+    по обеим осям и место в приоритете вложения. Это то, что читается в
+    отчёте; линии по отдельности сравнивать клиенту незачем.
+    """
+    key = (portfolio.company_name or "").strip().lower()
+    if not key or portfolio.calculated_at is None:
+        return None
+    prev = await db.scalar(
+        select(M3Portfolio)
+        .where(M3Portfolio.user_id == portfolio.user_id, M3Portfolio.id != portfolio.id,
+               M3Portfolio.status == "calculated", M3Portfolio.deleted_at.is_(None),
+               M3Portfolio.calculated_at < portfolio.calculated_at,
+               func.lower(func.trim(M3Portfolio.company_name)) == key)
+        .order_by(M3Portfolio.calculated_at.desc())
+        .limit(1)
+    )
+    if prev is None:
+        return None
+    rows = (await db.execute(
+        select(M3Result, M3Object.name)
+        .join(M3Object, M3Object.id == M3Result.object_id)
+        .where(M3Result.portfolio_id == prev.id)
+    )).all()
+    if not rows:
+        return None
+
+    def pack(strength, attract, cs, ca, rank):
+        return {"cell_label": vd.cell_label(strength, attract), "cell_key": f"{strength}_{attract}",
+                "coord_strength": float(cs), "coord_attract": float(ca), "v_rank": rank}
+
+    before = {name.strip().lower(): (name, pack(r.cell_strength, r.cell_attract, r.coord_strength,
+                                                r.coord_attract, r.v_rank))
+              for r, name in rows}
+    directions = []
+    for x in sorted(results, key=lambda r: r["v_rank"]):
+        now = pack(x["cell_strength"], x["cell_attract"], x["coord_strength"], x["coord_attract"], x["v_rank"])
+        b = before.pop(x["name"].strip().lower(), None)
+        directions.append({
+            "name": x["name"], "now": now, "before": b[1] if b else None,
+            "cell_changed": bool(b) and b[1]["cell_key"] != now["cell_key"],
+            "d_strength": None if not b else round(now["coord_strength"] - b[1]["coord_strength"], 2),
+            "d_attract": None if not b else round(now["coord_attract"] - b[1]["coord_attract"], 2),
+        })
+    prev_summary = await db.scalar(select(M3PortfolioResult).where(M3PortfolioResult.portfolio_id == prev.id))
+    return {
+        "previous": {"id": prev.id, "calculated_at": prev.calculated_at},
+        "directions": directions,
+        "removed": [name for name, _ in before.values()],
+        "sum_positions": {
+            "before": prev_summary.sum_positions if prev_summary else None,
+            "now": summary.get("sum_positions"),
+        },
     }

@@ -298,6 +298,9 @@ export interface Company {
   /** Метод 4: неиспользованный повтор полной и рекомендуемая дата повтора. */
   m4_followup_available?: boolean
   m4_next_repeat_at?: string | null
+  /** Метод 3: то же для матрицы силы. */
+  m3_followup_available?: boolean
+  m3_next_repeat_at?: string | null
   assessments: CompanyAssessment[]
 }
 

@@ -190,6 +190,8 @@ class M3PortfolioOut(BaseModel):
     # PUT owner-ranks. Единому списку отчётов в кабинете хватает
     # calculated_at и created_at.
     calculated_at: datetime | None
+    # Повтор (миграция 044): входит в стоимость первичного портфеля компании.
+    is_followup: bool = False
     objects: list[M3ObjectOut] = []
 
 
@@ -475,6 +477,8 @@ class M3ReportOut(BaseModel):
     execution_order: list[uuid.UUID]    # ранг Z — очередь исполнения
     analysis: M3AnalysisOut
     disclaimers: list[str]
+    # Сравнение с прошлой диагностикой компании (m3_service.dynamics_for).
+    dynamics: dict | None = None
 
 
 # ── Trade-off и чек-лист ──────────────────────────────────────────────────────

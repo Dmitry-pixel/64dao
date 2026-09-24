@@ -219,9 +219,67 @@ function Lines({ r }: { r: M3Result }) {
 // отчёта, ни в оглавлении: пункт, ведущий в пустоту, хуже отсутствия пункта.
 const HIDDEN_WHEN_REDUCED = ['m3-03', 'm3-04']
 
+const signedDelta = (v: number | null) =>
+  v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2).replace('.', ',')}`
+
+/** Нулевые сдвиги не показываем — иначе у каждого неизменного направления
+ *  стоит «сила 0,00, привлекательность 0,00». Правило то же, что в PDF. */
+function deltaText(ds: number | null, da: number | null): string {
+  const parts: string[] = []
+  if (ds != null && Math.abs(ds) >= 0.005) parts.push(`сила ${signedDelta(ds)}`)
+  if (da != null && Math.abs(da) >= 0.005) parts.push(`привлекательность ${signedDelta(da)}`)
+  return parts.join(', ') || 'без изменений'
+}
+
+/** Сравнение с прошлой диагностикой компании. Данные собирает сервер
+ *  (m3_service.dynamics_for) — тот же словарь уходит в PDF. */
+function DynamicsSection({ d }: { d: import('@/lib/m3').M3Dynamics }) {
+  const date = d.previous.calculated_at ? new Date(d.previous.calculated_at).toLocaleDateString('ru-RU') : ''
+  return (
+    <>
+      <h2 id="m3-dyn" style={{ ...S.h2, scrollMarginTop: 20 }}><span style={S.num}>Δ</span>Что изменилось с прошлой диагностики</h2>
+      <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.7 }}>
+        Сравнение с диагностикой компании{date && ` от ${date}`}. Направления сопоставлены по названию.
+      </p>
+      <table style={S.table}>
+        <thead>
+          <tr>
+            <th style={S.th}>Направление</th><th style={S.th}>Было</th><th style={S.th}>Стало</th><th style={S.th}>Сдвиг</th>
+          </tr>
+        </thead>
+        <tbody>
+          {d.directions.map(x => (
+            <tr key={x.name}>
+              <td style={S.td}>{x.name}</td>
+              <td style={S.td}>{x.before ? `${x.before.cell_label} · место ${x.before.v_rank}` : 'новое направление'}</td>
+              <td style={S.td}>{`${x.now.cell_label} · место ${x.now.v_rank}`}</td>
+              <td style={S.td}>
+                {x.cell_changed && <b style={{ color: C.red }}>ячейка сменилась<br /></b>}
+                {x.before && deltaText(x.d_strength, x.d_attract)}
+              </td>
+            </tr>
+          ))}
+          {d.removed.map(name => (
+            <tr key={`rm-${name}`}>
+              <td style={S.td}>{name}</td><td style={S.td}>было в прошлой диагностике</td>
+              <td style={S.td}>убрано из портфеля</td><td style={S.td} />
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {d.sum_positions.before != null && d.sum_positions.now != null && (
+        <p style={{ fontSize: 13, lineHeight: 1.7 }}>
+          Сумма позиций портфеля: было {d.sum_positions.before}, стало {d.sum_positions.now}.
+        </p>
+      )}
+    </>
+  )
+}
+
 const M3_SECTIONS = [
   { label: '00 — Исходные данные', anchor: 'm3-00' },
   { label: '01 — Карта портфеля', anchor: 'm3-01' },
+  { label: 'Δ — Что изменилось', anchor: 'm3-dyn' },
   { label: '02 — Разбор направлений', anchor: 'm3-02' },
   { label: '03 — Портфельные ограничения', anchor: 'm3-03' },
   { label: '04 — Решение о распределении', anchor: 'm3-04' },
@@ -309,7 +367,10 @@ export default function M3ReportPage() {
     <div style={S.page}><div style={S.shell}>
       <aside style={S.toc}>
         <h4 style={S.tocTitle}>Содержание</h4>
-        {M3_SECTIONS.filter(s => !summary.reduced || !HIDDEN_WHEN_REDUCED.includes(s.anchor)).map((s, i) => (
+        {M3_SECTIONS
+          .filter(s => !summary.reduced || !HIDDEN_WHEN_REDUCED.includes(s.anchor))
+          .filter(s => s.anchor !== 'm3-dyn' || report.dynamics)
+          .map((s, i) => (
           <a key={s.anchor} href={`#${s.anchor}`}
              style={{ ...S.tocLink, ...(i === activeSection ? S.tocLinkOn : {}) }}
              onClick={() => setActiveSection(i)}>{s.label}</a>
@@ -435,6 +496,8 @@ export default function M3ReportPage() {
           ))}
         </tbody>
       </table>
+
+      {report.dynamics && <DynamicsSection d={report.dynamics} />}
 
       <h2 id="m3-02" style={{ ...S.h2, scrollMarginTop: 20 }}>
         <span style={S.num}>02</span>Разбор направлений — в порядке приоритета вложения

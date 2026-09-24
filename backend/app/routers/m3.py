@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app import m3_catalog
+from app import m3_access, m3_catalog
 from app import m3_service as svc
 from app.auth import get_current_user, require_admin
 from app.config import get_settings
@@ -170,9 +170,33 @@ async def create_portfolio(
     p = M3Portfolio(user_id=user.id, title=body.title,
                     company_name=body.company_name,
                     industry_id=body.industry_id)
+    # Повтор: у компании есть рассчитанный портфель с неиспользованным правом.
+    # Право списывается на расчёте, здесь только связь — брошенный черновик
+    # его не тратит.
+    primary = await m3_access.find_primary(db, user, body.company_name)
+    if primary is not None:
+        p.is_followup = True
+        p.parent_portfolio_id = primary.id
+        if body.industry_id is None:
+            p.industry_id = primary.industry_id
     db.add(p)
     await db.flush()
+    if primary is not None:
+        # Направления переносятся: повтор сравнивает те же направления.
+        # Цифры тоже переносятся — клиент правит их на шаге направлений.
+        # Ответы анкеты не переносятся: повтор измеряет изменение.
+        await db.refresh(primary, ["objects"])
+        for o in primary.objects:
+            db.add(M3Object(
+                portfolio_id=p.id, position=o.position, name=o.name, revenue=o.revenue,
+                revenue_dynamics=o.revenue_dynamics, revenue_share=o.revenue_share,
+                profitability=o.profitability, industry_id=o.industry_id,
+                screening_price=o.screening_price, screening_market=o.screening_market,
+                is_new_venture=o.is_new_venture,
+            ))
+        await db.flush()
     await db.refresh(p, ["objects"])
+    await db.commit()          # клиент сразу открывает шаг направлений
     return p
 
 
@@ -315,6 +339,13 @@ async def post_calculate(
     db: AsyncSession = Depends(get_db),
 ):
     p = await _owned(portfolio_id, user, db)
+    parent = None
+    if p.is_followup and p.status != "calculated":
+        # Право могли израсходовать другим портфелем или снять возвратом,
+        # пока анкета заполнялась. Тогда это обычная платная диагностика.
+        parent = await db.get(M3Portfolio, p.parent_portfolio_id) if p.parent_portfolio_id else None
+        if parent is None or (user.role != "admin" and parent.followup_used >= parent.followup_allowed):
+            p.is_followup, p.parent_portfolio_id, parent = False, None, None
     # Сначала выясняем, чем платим (403 при пустом балансе), потом считаем,
     # и только на успешном расчёте отмечаем списание: неудачная валидация
     # анкеты не должна съедать кредит.
@@ -324,6 +355,14 @@ async def post_calculate(
     except svc.M3ServiceError as e:
         raise _bad(e) from e
     attach_payment(p, grant, order)
+    if parent is not None:
+        m3_access.use_followup(parent)
+    elif not p.is_followup and p.grant_id is None and p.followup_allowed == 0:
+        # Первичный портфель приносит право на один повтор, как у Методов 1
+        # и 4. Грантовый — нет (решение D1). Пересчёт того же портфеля
+        # право не добавляет.
+        p.followup_allowed = 1
+    await db.commit()          # страница отчёта открывается сразу после расчёта
     return {
         "portfolio_id": p.id,
         "objects": len(calc["objects"]),

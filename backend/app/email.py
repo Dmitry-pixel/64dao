@@ -169,6 +169,29 @@ async def send_sample_report_email(
     )
 
 
+async def send_repeat_method_email(
+    key: str, to: str, name: str | None, company_name: str | None, days_since: int, followup: bool,
+) -> None:
+    """«Пора повторить» для Методов 3 и 4 (шаблоны repeat_m3 / repeat_m4).
+    Отдельный шаблон на метод: письмо Метода 1 говорит о жизненном цикле,
+    для матрицы и колеса это неверно."""
+    name_part = f", {name}" if name else ""
+    company_part = f" компании «{company_name}»" if company_name else ""
+    subject, body = _render(key, {
+        "name": name or "",
+        "name_part": name_part,
+        "company": company_name or "",
+        "company_part": company_part,
+        "days_since": days_since,
+        "followup_part": " Повтор входит в стоимость первой диагностики." if followup else "",
+        "app_url": settings.app_url.rstrip("/"),
+    })
+    if settings.debug:
+        logger.info("=== DEBUG REPEAT %s === email=%s days=%s ===", key, to, days_since)
+        return
+    await _send_message(to, subject, _wrap_html(body), _sender(key))
+
+
 async def send_repeat_diagnostic_email(
     to: str, name: str | None, company_name: str | None, days_since: int
 ) -> None:

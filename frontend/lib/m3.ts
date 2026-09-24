@@ -58,6 +58,8 @@ export interface M3Portfolio {
   owner_ranks: number[] | null
   created_at: string
   calculated_at: string | null
+  /** Повтор: входит в стоимость первичного портфеля компании. */
+  is_followup?: boolean
   objects: M3Object[]
 }
 
@@ -345,6 +347,30 @@ export interface M3Report {
   execution_order: string[]
   analysis: M3Analysis
   disclaimers: string[]
+  /** Сравнение с прошлой диагностикой компании; null у первой. */
+  dynamics?: M3Dynamics | null
+}
+
+export interface M3DynamicsPoint {
+  cell_label: string
+  cell_key: string
+  coord_strength: number
+  coord_attract: number
+  v_rank: number
+}
+
+export interface M3Dynamics {
+  previous: { id: string; calculated_at: string | null }
+  directions: {
+    name: string
+    now: M3DynamicsPoint
+    before: M3DynamicsPoint | null
+    cell_changed: boolean
+    d_strength: number | null
+    d_attract: number | null
+  }[]
+  removed: string[]
+  sum_positions: { before: number | null; now: number | null }
 }
 
 export function getReport(id: string) {

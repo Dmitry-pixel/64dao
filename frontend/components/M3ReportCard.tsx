@@ -71,7 +71,7 @@ export default function M3ReportCard(
           </span>
         </div>
         <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)', marginTop: 4 }}>
-          Направлений: {p.objects?.length ?? 0}
+          {p.is_followup ? 'Повторная диагностика · ' : ''}Направлений: {p.objects?.length ?? 0}
           {p.title && p.title !== name ? ` · ${p.title}` : ''}
         </div>
       </div>

@@ -102,6 +102,17 @@ export default function M3ObjectsPage() {
 
   return (
     <div style={P.page}><div style={P.stage}>
+      {portfolio.is_followup && (
+        <div style={{
+          fontFamily: 'sans-serif', fontSize: 13, lineHeight: 1.6, color: '#1a2540',
+          background: 'rgba(46,125,91,0.08)', border: '1px solid rgba(46,125,91,0.25)',
+          borderRadius: 8, padding: '14px 18px', marginBottom: 28,
+        }}>
+          <b>Повторная диагностика — входит в стоимость.</b> Направления перенесены
+          из прошлой диагностики. Проверьте цифры, добавьте или уберите направления
+          и ответьте на вопросы заново — отчёт покажет, что изменилось.
+        </div>
+      )}
       <PortfolioForm
         industries={industries}
         portfolioIndustryId={portfolio.industry_id}

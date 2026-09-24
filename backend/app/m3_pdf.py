@@ -1115,6 +1115,50 @@ def disclaimers_section(
 
 
 # ── Сборка документа ──────────────────────────────────────────────────────────
+def dynamics_section(d: dict[str, Any]) -> str:
+    """Сравнение с прошлой диагностикой компании. Данные собирает
+    m3_service.dynamics_for — тот же словарь, что видит веб."""
+    prev = d["previous"].get("calculated_at")
+    date = f" от {prev.strftime('%d.%m.%Y')}" if prev else ""
+    rows = []
+    for x in d["directions"]:
+        b, n = x.get("before"), x["now"]
+        if b is None:
+            was, delta = "новое направление", ""
+        else:
+            was = f'{e(b["cell_label"])} · место {b["v_rank"]}'
+            # Нулевые сдвиги не печатаем: «сила 0,00, привлекательность 0,00»
+            # у каждого неизменного направления превращает таблицу в шум.
+            parts = [f"{label} {signed_num(v)}" for label, v in
+                     (("сила", x["d_strength"]), ("привлекательность", x["d_attract"]))
+                     if v is not None and abs(v) >= 0.005]
+            delta = ", ".join(parts) or "без изменений"
+        now = f'{e(n["cell_label"])} · место {n["v_rank"]}'
+        mark = f'<b style="color:{RED};">ячейка сменилась</b><br>' if x.get("cell_changed") else ""
+        rows.append([e(x["name"]), was, now, mark + delta])
+    for name in d.get("removed") or []:
+        rows.append([e(name), "было в прошлой диагностике", "убрано из портфеля", ""])
+    sp = d.get("sum_positions") or {}
+    note = ""
+    if sp.get("before") is not None and sp.get("now") is not None:
+        note = (f'<p style="font-size:13px;margin:8px 0;font-family:{SERIF};">Сумма позиций портфеля: '
+                f'было {sp["before"]}, стало {sp["now"]}.</p>')
+    return (
+        section_title("Δ", "Что изменилось с прошлой диагностики")
+        + f'<p style="font-size:12px;color:{MUTED};line-height:1.7;font-family:{SERIF};">'
+          f'Сравнение с диагностикой компании{date}. Направления сопоставлены по названию.</p>'
+        + table([("Направление", False), ("Было", False), ("Стало", False), ("Сдвиг", False)], rows)
+        + note
+    )
+
+
+def signed_num(v: float | None) -> str:
+    if v is None:
+        return "—"
+    txt = f"{abs(v):.2f}".replace(".", ",")
+    return ("+" if v > 0 else "−" if v < 0 else "") + txt
+
+
 def build_portfolio_report_html(
     report: dict[str, Any],
     steps: list[Any],
@@ -1176,6 +1220,9 @@ def build_portfolio_report_html(
     sheets.append(page(
         map_section(results, shares, summary),
     ))
+
+    if report.get("dynamics"):
+        sheets.append(page(dynamics_section(report["dynamics"])))
 
     # Карточки идут подряд одним листом, а не по листу на направление.
     # Прежнее правило стоило пяти страниц из семнадцати: содержимое карточки

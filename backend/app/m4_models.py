@@ -479,6 +479,8 @@ class M4Run(Base):
     # Удаление скрывает прогон, но факт расчёта остаётся — иначе удаление
     # возвращало бы оплаченную диагностику. Та же схема, что у m3_portfolios.
     deleted_at:    Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Письмо «пора повторить» по этой диагностике уже ушло (миграция 044).
+    repeat_reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     answers:  Mapped[list["M4Answer"]] = relationship(back_populates="run", cascade="all, delete-orphan")
     snapshot: Mapped["M4Snapshot | None"] = relationship(back_populates="run", cascade="all, delete-orphan",

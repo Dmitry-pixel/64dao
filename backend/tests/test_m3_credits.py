@@ -270,3 +270,18 @@ async def test_refund_still_frees_m3_credit_after_deletion(
 
     row = await _portfolio_row(db_session, filled["id"])
     assert row.status == "filled"
+
+
+@pytest.mark.asyncio
+async def test_refunded_portfolio_needs_new_payment(auth_client, filled, db_session,
+                                                    test_user, enforce_on):
+    """После возврата портфель нельзя пересчитать бесплатно: раньше привязка
+    к возвращённому заказу оставалась, и пересчёт считался оплаченным."""
+    from app.routers.payments import revoke_order_access
+
+    order = await _paid_order(db_session, test_user, "m3")
+    assert (await auth_client.post(f"{M3}/portfolios/{filled['id']}/calculate")).status_code == 200
+    order.status = "refunded"
+    await revoke_order_access(db_session, order)
+    await db_session.flush()
+    assert (await auth_client.post(f"{M3}/portfolios/{filled['id']}/calculate")).status_code == 403

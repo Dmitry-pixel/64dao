@@ -20,6 +20,7 @@ assessments.py): сначала грант — он сгорает по срок
 from __future__ import annotations
 
 from fastapi import HTTPException
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.access_grants import pick_grant
@@ -70,7 +71,8 @@ async def reserve_payment(
     Уже оплаченный портфель второй раз не списывает: повторный расчёт того
     же портфеля — исправление ответов, а не новая диагностика.
     """
-    if _free_pass(user) or portfolio.order_id or portfolio.grant_id:
+    if _free_pass(user) or portfolio.order_id or portfolio.grant_id or portfolio.is_followup:
+        # Повтор входит в стоимость первичного портфеля.
         return None, None
 
     grant = await pick_grant(db, user.id, PRODUCT)
@@ -97,3 +99,42 @@ def attach_payment(
         portfolio.grant_id = grant.id
     if order is not None:
         portfolio.order_id = order.id
+
+
+# ── Повтор ────────────────────────────────────────────────────────────────────
+def company_key(name: str | None) -> str:
+    """Компания Метода 3 — это название (к companies портфель не привязан).
+    Сравнение без учёта регистра и пробелов по краям, как в «Моих компаниях»."""
+    return (name or "").strip().lower()
+
+
+async def find_primary(db: AsyncSession, user: User, company_name: str | None) -> M3Portfolio | None:
+    """Первичный рассчитанный портфель компании с неиспользованным правом на
+    повтор — та же логика, что у Методов 1 и 4: сначала портфель с правом,
+    среди равных самый свежий. Админ лимитом не ограничен. Без названия
+    компании повтора нет: не с чем связать."""
+    key = company_key(company_name)
+    if not key:
+        return None
+    primary = await db.scalar(
+        select(M3Portfolio)
+        .where(M3Portfolio.user_id == user.id, M3Portfolio.status == "calculated",
+               M3Portfolio.is_followup.is_(False), M3Portfolio.deleted_at.is_(None),
+               func.lower(func.trim(M3Portfolio.company_name)) == key)
+        .order_by((M3Portfolio.followup_used < M3Portfolio.followup_allowed).desc(),
+                  M3Portfolio.calculated_at.desc())
+        .limit(1)
+    )
+    if primary is None:
+        return None
+    if user.role != "admin" and primary.followup_used >= primary.followup_allowed:
+        return None
+    return primary
+
+
+def use_followup(primary: M3Portfolio) -> None:
+    """Засчитать повтор; у админа право поднимается, чтобы не нарушить
+    проверку used <= allowed в базе."""
+    if primary.followup_used >= primary.followup_allowed:
+        primary.followup_allowed = primary.followup_used + 1
+    primary.followup_used += 1

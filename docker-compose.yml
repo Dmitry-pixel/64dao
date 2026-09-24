@@ -13,12 +13,23 @@
 #
 # ============================================================
 
+# Потолок логов контейнеров: без него json-file растёт без предела
+# (/var/lib/docker/containers/*/*-json.log) и однажды забивает диск.
+# 3 файла по 10 МБ на контейнер — около 90 МБ на все три.
+# Применяется при пересоздании контейнеров: docker compose up -d.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
 
   # ── PostgreSQL 16 ────────────────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
     container_name: dao64_db
+    logging: *default-logging
     restart: unless-stopped
     environment:
       POSTGRES_USER:     ${DB_USER:-dao64}
@@ -48,6 +59,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: dao64_backend
+    logging: *default-logging
     restart: unless-stopped
     env_file:
       - ./backend/.env
@@ -81,6 +93,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: https://64dao.ru
     container_name: dao64_frontend
+    logging: *default-logging
     restart: unless-stopped
     env_file:
       - ./frontend/.env.local

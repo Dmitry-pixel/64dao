@@ -97,7 +97,7 @@ async def list_companies(
                                  is_followup=a.is_followup)
             for a in items
         ] + [
-            CompanyAssessmentOut(id=p.id, method="method3",
+            CompanyAssessmentOut(id=p.id, method="method3", is_followup=p.is_followup,
                                  created_at=p.calculated_at or p.created_at)
             for p in g["m3"]
         ] + [
@@ -116,6 +116,8 @@ async def list_companies(
                           and a.followup_used < a.followup_allowed for a in items)
         full = sorted((r for r in g["m4"] if r.mode == "full"), key=lambda r: r.calculated_at or r.created_at)
         last_m4 = (full[-1].calculated_at or full[-1].created_at) if full else None
+        m3s = sorted(g["m3"], key=lambda p: p.calculated_at or p.created_at)
+        last_m3 = (m3s[-1].calculated_at or m3s[-1].created_at) if m3s else None
         out.append(CompanyOut(
             id=g["id"],
             name=g["name"],
@@ -129,6 +131,8 @@ async def list_companies(
             dynamics_available=sum(1 for a in items if a.method == "method1") >= 2,
             m4_followup_available=any(not r.is_followup and r.followup_used < r.followup_allowed for r in full),
             m4_next_repeat_at=last_m4 + timedelta(days=repeat_days) if last_m4 else None,
+            m3_followup_available=any(not p.is_followup and p.followup_used < p.followup_allowed for p in m3s),
+            m3_next_repeat_at=last_m3 + timedelta(days=repeat_days) if last_m3 else None,
             assessments=entries,
         ))
     out.sort(key=lambda c: c.latest_at, reverse=True)

@@ -84,15 +84,28 @@ async def _revoke_m3_order_access(db: AsyncSession, order: Order) -> dict:
     повторный расчёт после новой оплаты его перезапишет. Удалять — значит
     терять историю без выигрыша.
     """
-    rows = (await db.execute(
+    rows = list((await db.execute(
         select(M3Portfolio).where(M3Portfolio.order_id == order.id)
-    )).scalars().all()
+    )).scalars().all())
+    # Повторы куплены вместе с первичным портфелем и отзываются с ним,
+    # как у Метода 1. Право на повтор сгорает вместе с оплатой.
+    if rows:
+        rows += list((await db.execute(
+            select(M3Portfolio).where(M3Portfolio.parent_portfolio_id.in_([p.id for p in rows]))
+        )).scalars().all())
     closed = 0
     for portfolio in rows:
         if portfolio.status in M3_USED_STATUSES:
             portfolio.status = "filled"
             portfolio.calculated_at = None
             closed += 1
+        # Привязку к возвращённому заказу снимаем: reserve_payment пропускает
+        # портфель с order_id как уже оплаченный, и после возврата его можно
+        # было пересчитать и снова открыть отчёт без новой оплаты.
+        if portfolio.order_id == order.id:
+            portfolio.order_id = None
+        portfolio.followup_allowed = 0
+        portfolio.followup_used = 0
     # Пакет «Метод 3 + Метод 4» возвращается целиком: полные прогоны
     # Метода 4 этого заказа закрываются вместе с портфелями.
     from app.m4_access import revoke_order_runs
