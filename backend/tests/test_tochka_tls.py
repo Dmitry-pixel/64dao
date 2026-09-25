@@ -55,3 +55,36 @@ def test_existing_bundle_is_used(monkeypatch, tmp_path):
 @pytest.mark.parametrize("value", ["", "/nonexistent.pem", "/etc/hosts"])
 def test_verify_is_never_disabled(monkeypatch, value):
     assert _reload_client(monkeypatch, value).TOCHKA_SSL_VERIFY is not False
+
+
+def test_context_is_built_and_verifies(monkeypatch, tmp_path):
+    """Рядом с путём живёт готовый SSLContext — его и получает httpx.
+
+    Проверка сильнее прежней «verify не False»: контекст обязан требовать
+    сертификат и сверять имя хоста. Отключить одно из двух — значит молча
+    снять защиту, оставив verify внешне заполненным.
+    """
+    import ssl
+
+    bundle = tmp_path / "bundle.pem"
+    bundle.write_text("-----BEGIN CERTIFICATE-----\n")
+    ctx = _reload_client(monkeypatch, str(bundle)).TOCHKA_SSL_CONTEXT
+    assert isinstance(ctx, ssl.SSLContext)
+    assert ctx.verify_mode is ssl.CERT_REQUIRED
+    assert ctx.check_hostname is True
+
+
+def test_broken_bundle_does_not_crash_import(monkeypatch, tmp_path):
+    """Битый бандл не роняет приложение на старте.
+
+    tests/test_tochka_tls.py уже кладёт неполный PEM в
+    test_existing_bundle_is_used: create_default_context на таком файле
+    бросает исключение, и без отката импорт модуля упал бы.
+    """
+    import ssl
+
+    bundle = tmp_path / "broken.pem"
+    bundle.write_text("не сертификат вовсе")
+    mod = _reload_client(monkeypatch, str(bundle))
+    assert isinstance(mod.TOCHKA_SSL_CONTEXT, ssl.SSLContext)
+    assert mod.TOCHKA_SSL_VERIFY is not False

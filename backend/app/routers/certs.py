@@ -26,6 +26,7 @@ from app.auth import require_admin
 from app.jobs.check_ca_expiry import (
     CERT_DIR,
     LEAF_WARN_DAYS,
+    PAY_HOST,
     ROOT_CERT,
     STATE_FILE,
     SUB_CERT,
@@ -83,13 +84,6 @@ def _card(path: Path, role: str) -> dict | None:
     }
 
 
-def _bundle_exists() -> bool:
-    """Отдельной синхронной функцией: вызов Path.is_file() прямо в async-
-    обработчике ruff запрещает (ASYNC240), и CI падал на этой строке.
-    Проверка — один stat локального файла, пул потоков ей не нужен."""
-    return Path(TOCHKA_BUNDLE).is_file()
-
-
 @router.get("/api/admin/certs")
 async def read_certs(
     probe: bool = Query(True, description="опрашивать банк вживую"),
@@ -108,8 +102,9 @@ async def read_certs(
     """
     data: dict = {
         "host": TOCHKA_HOST,
+        "pay_host": PAY_HOST,
         "bundle": TOCHKA_BUNDLE,
-        "bundle_exists": _bundle_exists(),
+        "bundle_exists": Path(TOCHKA_BUNDLE).is_file(),
         "cert_dir": str(CERT_DIR),
         "warn_days": WARN_DAYS,
         "leaf_warn_days": LEAF_WARN_DAYS,
@@ -129,6 +124,14 @@ async def read_certs(
             "handshake_error": obs.handshake_error,
             "issuer": obs.issuer,
             "leaf_days": obs.leaf_days,
+            # Страница оплаты — другой хост и другое хранилище доверия:
+            # корни Mozilla, то есть то, чему доверяет браузер клиента.
+            # Системное хранилище контейнера здесь не годится, в нём наш
+            # корень Минцифры.
+            "pay_trusted": obs.pay_trusted,
+            "pay_error": obs.pay_error,
+            "pay_issuer": obs.pay_issuer,
+            "pay_days": obs.pay_days,
         }
 
     return data

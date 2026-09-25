@@ -63,6 +63,41 @@ def _resolve_ca_bundle() -> str | bool:
 # Считается один раз при импорте: путь в рантайме не меняется, а os.path.isfile
 # на каждый запрос — лишний syscall. После правки .env нужен рестарт контейнера.
 TOCHKA_SSL_VERIFY: str | bool = _resolve_ca_bundle()
+
+
+def _build_ssl_context():
+    """Хранилище доверия для вызовов к Точке, собранное один раз.
+
+    httpx помечает verify=<str> устаревшим и просит готовый SSLContext.
+    Побочная выгода: бандл читается и разбирается один раз при импорте, а не
+    на каждый из четырёх вызовов, то есть не на каждый платёж.
+
+    Битый бандл не роняет приложение: откатываемся на дефолтное хранилище и
+    громко пишем в лог. Проверка при этом НЕ отключается — verify=False здесь
+    недопустим, JWT банка уходит в заголовке Authorization. Практически такой
+    откат означает, что корня Минцифры в хранилище нет и рукопожатие с банком
+    не пройдёт; это заметит еженедельная задача check_ca_expiry.
+    """
+    import ssl
+
+    if TOCHKA_SSL_VERIFY is True:
+        return ssl.create_default_context()
+    try:
+        return ssl.create_default_context(cafile=TOCHKA_SSL_VERIFY)
+    except Exception as exc:
+        logger.error(
+            "TOCHKA_CA_BUNDLE=%s не удалось загрузить (%s) — откат на дефолтное "
+            "хранилище CA. Рукопожатие с Точкой, скорее всего, не пройдёт.",
+            TOCHKA_SSL_VERIFY,
+            exc,
+        )
+        return ssl.create_default_context()
+
+
+# Контекст, а не путь: именно он передаётся в httpx во все четыре вызова.
+# TOCHKA_SSL_VERIFY остаётся рядом как диагностическое значение — на него
+# ссылаются DEPLOY.md (раздел 8a) и tests/test_tochka_tls.py.
+TOCHKA_SSL_CONTEXT = _build_ssl_context()
 _PUBLIC_KEY_TTL_SECONDS = 3600  # раз в час; ключ может обновляться на стороне Точки
 
 _public_key_cache: dict = {"key": None, "fetched_at": 0.0}
@@ -78,7 +113,7 @@ async def _get_tochka_public_key():
     if _public_key_cache["key"] and now - _public_key_cache["fetched_at"] < _PUBLIC_KEY_TTL_SECONDS:
         return _public_key_cache["key"]
 
-    async with httpx.AsyncClient(timeout=10.0, verify=TOCHKA_SSL_VERIFY) as client:
+    async with httpx.AsyncClient(timeout=10.0, verify=TOCHKA_SSL_CONTEXT) as client:
         resp = await client.get(TOCHKA_PUBLIC_KEY_URL)
         resp.raise_for_status()
         jwk_dict = resp.json()
@@ -167,7 +202,7 @@ class TochkaClient:
             data["merchantId"] = self.merchant_id
 
         payload = {"Data": data}
-        async with httpx.AsyncClient(timeout=15.0, verify=TOCHKA_SSL_VERIFY) as client:
+        async with httpx.AsyncClient(timeout=15.0, verify=TOCHKA_SSL_CONTEXT) as client:
             resp = await client.post(
                 f"{self.base_url}/uapi/acquiring/v1.0/payments_with_receipt",
                 json=payload,
@@ -177,7 +212,7 @@ class TochkaClient:
             return resp.json()
 
     async def get_payment_status(self, operation_id: str) -> dict:
-        async with httpx.AsyncClient(timeout=15.0, verify=TOCHKA_SSL_VERIFY) as client:
+        async with httpx.AsyncClient(timeout=15.0, verify=TOCHKA_SSL_CONTEXT) as client:
             resp = await client.get(
                 f"{self.base_url}/uapi/acquiring/v1.0/payments/{operation_id}",
                 headers=self._headers(),
@@ -196,7 +231,7 @@ class TochkaClient:
         # "Field Data : Field required" (воспроизведено на боевом возврате
         # тестового платежа 1 ₽). Рабочее тело — {"Data": {"amount": N}}.
         payload = {"Data": {"amount": float(amount)}}
-        async with httpx.AsyncClient(timeout=15.0, verify=TOCHKA_SSL_VERIFY) as client:
+        async with httpx.AsyncClient(timeout=15.0, verify=TOCHKA_SSL_CONTEXT) as client:
             resp = await client.post(
                 f"{self.base_url}/uapi/acquiring/v1.0/payments/{operation_id}/refund",
                 json=payload,

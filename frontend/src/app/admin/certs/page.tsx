@@ -86,6 +86,16 @@ export default function AdminCertsPage() {
   const hsText = hs === true ? 'Проходит' : hs === false ? 'НЕ ПРОХОДИТ' : hs === null && p ? 'Банк не ответил' : 'Не проверялось'
   const hsColor = hs === true ? '#1a2540' : hs === false ? '#c0392b' : 'rgba(26,37,64,0.5)'
 
+  // Страница оплаты — про клиента, а не про нас. Отдельный блок намеренно:
+  // смешать её с состоянием нашего соединения значит повторить ошибку,
+  // из которой вырос экран подтверждения перед оплатой.
+  const payT = p ? p.pay_trusted : undefined
+  const payText = payT === true ? 'Доверяют'
+    : payT === false ? 'НЕ ДОВЕРЯЮТ'
+      : p ? 'Не удалось проверить' : 'Не проверялось'
+  const payColor = payT === true ? '#1a2540'
+    : payT === false ? '#c0392b' : 'rgba(26,37,64,0.5)'
+
   const certs = [data?.root, data?.sub].filter(Boolean)
 
   return (
@@ -152,6 +162,45 @@ export default function AdminCertsPage() {
                 {error}
               </div>
             )}
+          </div>
+
+          <div style={CARD}>
+            <span className="label-red">Страница оплаты глазами клиента</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap', marginTop: 12, marginBottom: 12 }}>
+              <div style={{ fontFamily: 'Georgia,serif', fontSize: 24, color: payColor }}>{payText}</div>
+              <div style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.45)' }}>
+                {data?.pay_host}
+              </div>
+            </div>
+
+            {p && (
+              <table style={{ borderCollapse: 'collapse', fontFamily: 'sans-serif', fontSize: 13, marginBottom: 12 }}>
+                <tbody>
+                  <tr>
+                    <td style={{ ...TD, color: 'rgba(26,37,64,0.45)' }}>Издатель сертификата</td>
+                    <td style={TD}>{p.pay_issuer || 'не определён'}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ ...TD, color: 'rgba(26,37,64,0.45)' }}>Истекает через</td>
+                    <td style={TD}>{human(p.pay_days)}</td>
+                  </tr>
+                  {p.pay_error && (
+                    <tr>
+                      <td style={{ ...TD, color: 'rgba(26,37,64,0.45)' }}>Ошибка</td>
+                      <td style={{ ...TD, color: '#c0392b' }}>{p.pay_error}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+
+            <div style={{ fontFamily: 'sans-serif', fontSize: 11, lineHeight: 1.5, color: 'rgba(26,37,64,0.45)' }}>
+              Это другой хост, чем API банка, и проверяется он по корням Mozilla — тому
+              набору, которому доверяют Chrome, Firefox и Safari. Системное хранилище
+              сервера здесь не годится: в нём лежит корень Минцифры, который мы положили
+              туда сами, и проверка по нему сказала бы «всё хорошо» независимо от того,
+              что видит клиент.
+            </div>
           </div>
 
           <div style={CARD}>
