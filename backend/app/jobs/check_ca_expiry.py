@@ -24,6 +24,20 @@
    стороны нет, но близкое истечение — ранний признак, что у банка что-то
    идёт не так.
 
+5. СТРАНИЦА ОПЛАТЫ, которую видит клиент (добавлено 2026-09-25). Это другой
+   хост: не enter.tochka.com, а эквайринговый merch.securepaytb.ru из
+   orders.tochka_payment_link. На 2026-09-25 он под GlobalSign, то есть у
+   клиентов всё открывается. Но смена CA там — единственное событие, которое
+   действительно ломает оплату у людей, и узнать о нём сейчас неоткуда.
+
+   Проверяем его НЕ системным хранилищем контейнера: туда через
+   update-ca-certificates добавлен корень Минцифры, и «проверка прошла» там
+   означала бы лишь то, что мы сами его и положили. Берём корни Mozilla из
+   certifi — ровно то, чему доверяют Chrome, Firefox и Safari у клиента,
+   который ничего не устанавливал. Та же ошибка в человеческом исполнении
+   стоила нам экрана подтверждения перед оплатой: проверка «открылось в моём
+   браузере» на машине с вручную установленным корнем не доказывала ничего.
+
 Чего здесь СОЗНАТЕЛЬНО больше нет: тревоги по сроку вендоренной копии
 выпускающего сертификата. Проверено 2026-09-13 и 2026-09-23 — Точка присылает
 свой выпускающий (выпуск 2024-07-15, до 2029-07-19), а на gu-st.ru лежит
@@ -70,6 +84,10 @@ TOCHKA_HOST = "enter.tochka.com"
 TOCHKA_BUNDLE = os.environ.get(
     "TOCHKA_SSL_VERIFY", "/etc/ssl/tochka/tochka-ca-bundle.pem")
 
+# Хост страницы оплаты — тот, что открывается в браузере клиента. Вынесен в
+# переменную окружения: сменится эквайер — поменять без правки кода.
+PAY_HOST = os.environ.get("PAY_PAGE_HOST", "merch.securepaytb.ru")
+
 WARN_DAYS = settings.ca_expiry_warn_days
 LEAF_WARN_DAYS = int(os.environ.get("CA_LEAF_WARN_DAYS", "14"))
 
@@ -85,6 +103,11 @@ class Observation:
     handshake_error: str
     issuer: str
     leaf_days: int | None
+    # Страница оплаты глазами обычного браузера (корни Mozilla).
+    pay_trusted: bool | None = None
+    pay_error: str = ""
+    pay_issuer: str = ""
+    pay_days: int | None = None
 
 
 def decode_cert_file(path: Path | str) -> dict:
@@ -177,6 +200,57 @@ def probe(host: str = TOCHKA_HOST, bundle: str | None = None,
     return decode_cert_der(der) if der else {}
 
 
+def browser_roots() -> str | None:
+    """Путь к корням Mozilla (certifi) — модель хранилища обычного браузера.
+
+    Возвращает None, если certifi почему-то нет: тогда проверку страницы
+    оплаты пропускаем молча. Лучше не проверить, чем проверить системным
+    хранилищем контейнера и получить заведомо неверное «всё хорошо».
+    """
+    try:
+        import certifi
+
+        return certifi.where()
+    except Exception:
+        return None
+
+
+def observe_pay_host(host: str = PAY_HOST) -> tuple[bool | None, str, str, int | None]:
+    """Страница оплаты глазами клиента: доверяет ли ей обычный браузер.
+
+    Возвращает (доверие, ошибка, издатель, дней до истечения).
+    Доверие: True — проходит, False — НЕ проходит (у клиентов ломается
+    оплата), None — не проверяли (нет certifi или сетевой сбой).
+    """
+    roots = browser_roots()
+    if not roots:
+        return None, "certifi недоступен, проверка пропущена", "", None
+
+    trusted: bool | None = True
+    error = ""
+    cert: dict = {}
+    try:
+        cert = probe(host=host, bundle=roots)
+    except ssl.SSLError as e:
+        trusted = False
+        error = f"{type(e).__name__}: {e}"
+    except OSError as e:
+        trusted = None
+        error = f"{type(e).__name__}: {e}"
+
+    if trusted is False:
+        # Кто выдал новый сертификат — важнее самого факта отказа: по издателю
+        # сразу видно, ушёл ли эквайер на российский УЦ.
+        try:
+            cert = probe(host=host, verify=False)
+        except Exception as e:
+            error += f"; диагностический опрос не удался ({type(e).__name__})"
+
+    leaf_days = (days_left(not_after_from_info(cert))
+                 if cert.get("notAfter") else None)
+    return trusted, error, issuer_cn(cert) if cert else "", leaf_days
+
+
 def observe() -> Observation:
     root_days = days_left(cert_not_after(ROOT_CERT))
     sub_days = days_left(cert_not_after(SUB_CERT)) if SUB_CERT.is_file() else None
@@ -204,6 +278,8 @@ def observe() -> Observation:
     leaf_days = (days_left(not_after_from_info(cert))
                  if cert.get("notAfter") else None)
 
+    pay_trusted, pay_error, pay_issuer, pay_days = observe_pay_host()
+
     return Observation(
         root_days=root_days,
         sub_days=sub_days,
@@ -211,6 +287,10 @@ def observe() -> Observation:
         handshake_error=error,
         issuer=issuer_cn(cert) if cert else "",
         leaf_days=leaf_days,
+        pay_trusted=pay_trusted,
+        pay_error=pay_error,
+        pay_issuer=pay_issuer,
+        pay_days=pay_days,
     )
 
 
@@ -227,10 +307,16 @@ def decide(obs: Observation, state: dict,
     last_issuer = state.get("last_issuer")
     last_ok = state.get("handshake_ok")
 
+    last_pay_ok = state.get("pay_trusted")
+    last_pay_issuer = state.get("last_pay_issuer")
+
     flags = {
         "handshake_ok": last_ok if obs.handshake_ok is None else obs.handshake_ok,
         "root_warned": bool(state.get("root_warned")),
         "leaf_warned": bool(state.get("leaf_warned")),
+        "pay_trusted": (last_pay_ok if obs.pay_trusted is None
+                        else obs.pay_trusted),
+        "pay_leaf_warned": bool(state.get("pay_leaf_warned")),
     }
 
     # 1. Рукопожатие. Сетевой сбой (None) молчит и состояние не меняет.
@@ -270,6 +356,34 @@ def decide(obs: Observation, state: dict,
         else:
             flags["leaf_warned"] = False
 
+    # 5. Страница оплаты глазами клиента. Единственная проверка здесь, которая
+    # говорит не о нашем сервере, а о том, что видит человек с картой.
+    if obs.pay_trusted is False and last_pay_ok is not False:
+        reasons.append(
+            f"Страница оплаты {PAY_HOST} не проходит проверку по корням "
+            f"Mozilla: {obs.pay_error}. У клиентов в Chrome, Firefox и Safari "
+            "оплата сейчас открывается с предупреждением безопасности.")
+    elif obs.pay_trusted is True and last_pay_ok is False:
+        reasons.append(
+            f"Страница оплаты {PAY_HOST} снова проходит проверку "
+            "браузерными корнями.")
+
+    if last_pay_issuer and obs.pay_issuer and obs.pay_issuer != last_pay_issuer:
+        reasons.append(
+            f"Сменился издатель сертификата {PAY_HOST}: "
+            f"было «{last_pay_issuer}», стало «{obs.pay_issuer}».")
+
+    if obs.pay_days is not None:
+        if obs.pay_days < leaf_warn_days:
+            if not state.get("pay_leaf_warned"):
+                reasons.append(
+                    f"Сертификат {PAY_HOST} истекает через {obs.pay_days} дн. "
+                    "Обновляет его эквайер; если не обновит, оплата встанет "
+                    "у всех клиентов.")
+            flags["pay_leaf_warned"] = True
+        else:
+            flags["pay_leaf_warned"] = False
+
     return bool(reasons), reasons, flags
 
 
@@ -279,16 +393,23 @@ def build_html(reasons: list[str], obs: Observation) -> str:
           None: "не проверено (сетевой сбой)"}[obs.handshake_ok]
     leaf = f"{obs.leaf_days} дн." if obs.leaf_days is not None else "неизвестно"
     sub = f"{obs.sub_days} дн." if obs.sub_days is not None else "нет файла"
+    pay = {True: "проходит", False: "НЕ ПРОХОДИТ",
+           None: "не проверено"}[obs.pay_trusted]
+    pay_leaf = f"{obs.pay_days} дн." if obs.pay_days is not None else "неизвестно"
     return (
         "<p><b>64 ДАО — проверка доверия к API Точки</b></p>"
         f"<ul>{items}</ul>"
-        "<p><b>Состояние</b><br>"
+        "<p><b>Наше соединение с банком</b><br>"
         f"Рукопожатие с {TOCHKA_HOST}: {hs}<br>"
         f"Издатель сертификата {TOCHKA_HOST}: {obs.issuer or 'не определён'}<br>"
         f"Сертификат {TOCHKA_HOST} истекает через: {leaf}<br>"
         f"Корневой сертификат НУЦ Минцифры: {obs.root_days} дн.<br>"
         f"Вендоренная копия выпускающего: {sub} — в проверке цепочки "
         "не участвует, приведена справочно</p>"
+        "<p><b>Страница оплаты глазами клиента</b><br>"
+        f"Проверка {PAY_HOST} по корням Mozilla: {pay}<br>"
+        f"Издатель: {obs.pay_issuer or 'не определён'}<br>"
+        f"Сертификат истекает через: {pay_leaf}</p>"
         "<p><b>Что делать</b><br>"
         "• Рукопожатие не прошло или сменился издатель — DEPLOY.md, раздел 8a. "
         "Живая цепочка:<br>"
@@ -339,6 +460,14 @@ def main() -> int:
     print(f"вендоренная копия выпускающего: "
           f"{obs.sub_days if obs.sub_days is not None else 'нет файла'} дн. "
           "(справочно, в проверке цепочки не участвует)")
+    pay = {True: "проходит", False: "НЕ ПРОХОДИТ", None: "не проверено"}
+    print(f"страница оплаты {PAY_HOST} по корням Mozilla: "
+          f"{pay[obs.pay_trusted]}"
+          + (f" — {obs.pay_error}" if obs.pay_error else ""))
+    print(f"издатель страницы оплаты: {obs.pay_issuer or 'не определён'} "
+          f"(в прошлый раз: {state.get('last_pay_issuer') or 'нет данных'}), "
+          f"истекает через "
+          f"{obs.pay_days if obs.pay_days is not None else '?'} дн.")
 
     need_mail, reasons, flags = decide(obs, state)
     if need_mail:
@@ -355,6 +484,8 @@ def main() -> int:
     # сотрёт память и следующий успешный запуск промолчит о смене.
     if obs.issuer:
         new_state["last_issuer"] = obs.issuer
+    if obs.pay_issuer:
+        new_state["last_pay_issuer"] = obs.pay_issuer
     write_json(STATE_FILE, new_state)
     return 0
 

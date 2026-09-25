@@ -29,6 +29,10 @@ NOW = datetime(2026, 9, 23, tzinfo=UTC)
 
 ISSUER = "Russian Trusted Sub CA"
 OLD_ISSUER = "TrustAsia DV TLS RSA CA 2024"
+PAY_ISSUER = "GlobalSign GCC R46 DV TLS CA 2025"
+
+BASE = {"last_issuer": ISSUER, "handshake_ok": True,
+        "last_pay_issuer": PAY_ISSUER, "pay_trusted": True}
 
 
 def obs(**kw) -> Observation:
@@ -40,6 +44,10 @@ def obs(**kw) -> Observation:
         handshake_error="",
         issuer=ISSUER,
         leaf_days=268,       # сертификат Точки до 2027-06-18
+        pay_trusted=True,
+        pay_error="",
+        pay_issuer=PAY_ISSUER,
+        pay_days=169,        # *.securepaytb.ru до 2027-03-13
     )
     base.update(kw)
     return Observation(**base)
@@ -210,6 +218,69 @@ def test_expired_root_still_warns():
     assert need is True
 
 
+# --- страница оплаты глазами клиента ----------------------------------------
+
+def test_mail_when_payment_page_untrusted_by_browsers():
+    """Единственная проверка, которая говорит о клиенте, а не о нашем сервере.
+
+    Проверяется корнями Mozilla (certifi), а не системным хранилищем
+    контейнера: туда добавлен корень Минцифры, и «проверка прошла» там
+    означала бы лишь то, что мы сами его и положили.
+    """
+    need, reasons, flags = decide(
+        obs(pay_trusted=False, pay_error="SSLCertVerificationError: x",
+            pay_issuer="Russian Trusted Sub CA"), BASE)
+    assert need is True
+    assert "не проходит проверку" in reasons[0]
+    assert flags["pay_trusted"] is False
+
+
+def test_no_repeat_mail_while_payment_page_untrusted():
+    need, _, _ = decide(
+        obs(pay_trusted=False, pay_error="x"),
+        {**BASE, "pay_trusted": False})
+    assert need is False
+
+
+def test_mail_when_payment_page_trust_restored():
+    need, reasons, flags = decide(obs(), {**BASE, "pay_trusted": False})
+    assert need is True
+    assert "снова проходит" in reasons[0]
+    assert flags["pay_trusted"] is True
+
+
+def test_mail_when_payment_page_issuer_changed():
+    """Уход эквайера на российский УЦ надо заметить до жалоб клиентов."""
+    need, reasons, _ = decide(
+        obs(pay_issuer="Russian Trusted Sub CA"), BASE)
+    assert need is True
+    assert "Russian Trusted Sub CA" in reasons[0]
+
+
+def test_certifi_missing_is_not_an_alarm_and_keeps_state():
+    """Нет certifi — проверку пропускаем молча и состояние не трогаем.
+
+    Лучше не проверить, чем проверить системным хранилищем и получить
+    заведомо неверное «всё хорошо».
+    """
+    need, _, flags = decide(
+        obs(pay_trusted=None, pay_error="certifi недоступен",
+            pay_issuer="", pay_days=None), BASE)
+    assert need is False
+    assert flags["pay_trusted"] is True
+
+
+def test_mail_when_payment_certificate_expires_soon():
+    need, reasons, _ = decide(obs(pay_days=9), BASE)
+    assert need is True
+    assert "истекает через 9" in reasons[0]
+
+
+def test_payment_certificate_warns_once():
+    need, _, _ = decide(obs(pay_days=9), {**BASE, "pay_leaf_warned": True})
+    assert need is False
+
+
 # --- письмо -----------------------------------------------------------------
 
 def test_html_is_self_sufficient():
@@ -230,3 +301,13 @@ def test_html_marks_vendored_sub_as_informational():
 def test_html_reports_broken_handshake_visibly():
     html = build_html(["причина"], obs(handshake_ok=False))
     assert "НЕ ПРОШЛО" in html
+
+
+def test_html_separates_our_connection_from_the_client_view():
+    """Два разных хоста и два разных хранилища доверия. Смешать их в одном
+    списке — тот самый путь, которым появился экран подтверждения перед
+    оплатой: вывод о клиенте сделали из наблюдения за API."""
+    html = build_html(["причина"], obs())
+    assert "Наше соединение с банком" in html
+    assert "Страница оплаты глазами клиента" in html
+    assert "securepaytb" in html
