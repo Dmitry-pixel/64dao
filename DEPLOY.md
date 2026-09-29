@@ -15,6 +15,7 @@
 10a. [Досверка зависших оплат](#10a-досверка-зависших-оплат)
 10b. [Проверка живости сайта](#10b-проверка-живости-сайта)
 10c. [Диск, база и бэкапы](#10c-диск-база-и-бэкапы)
+10d. [Наблюдатель 5xx](#10d-наблюдатель-5xx)
 11. [Обновление кода](#11-обновление-кода)
 12. [Мониторинг и логи](#12-мониторинг-и-логи)
 13. [Решение проблем](#13-решение-проблем)
@@ -57,7 +58,7 @@ bash /tmp/server-setup.sh
 ```
 
 Скрипт автоматически установит:
-- **UFW Firewall** — открывает только 22, 80, 443
+- **UFW Firewall** — открывает только 22, 80, 443 (на боевом сервере дополнительно 8888 — панель FastPanel и 10050 — агент Zabbix, только для адресов мониторинга Timeweb)
 - **Fail2ban** — защита от брутфорса SSH и Nginx
 - **Docker + Docker Compose** — для контейнерного деплоя
 - **Node.js 20** — для деплоя без Docker
@@ -826,6 +827,43 @@ cd /var/www/64dao && STORAGE_DISK_WARN_PERCENT=99 bash deploy/scripts/check-stor
 
 ---
 
+## 10d. Наблюдатель 5xx
+
+Отдельно от задач в cron на хосте работает наблюдатель за ответами 5xx.
+Он читает общий access-лог FastPanel и присылает письмо на админский ящик,
+когда сайт начинает отвечать ошибками сервера.
+
+| Что | Где |
+|---|---|
+| Скрипт | `/opt/64dao-alerts/alert_watcher.py` (в репозитории его нет) |
+| Запуск | `64dao-alerts.timer` → `64dao-alerts.service` |
+| Настройки | `/etc/64dao-alerts.env` (права только root, в репозиторий не кладётся) |
+| Читает | `/var/log/fastpanel2/fastpanel2.access.log` |
+| Отправка | `smtp.timeweb.ru:465`, локальный exim не используется |
+
+Ключи в `/etc/64dao-alerts.env`: `NGINX_ACCESS_LOG`, `STATE_FILE`,
+`WEBHOOK_PATH`, `SITE_NAME`, `MAX_SAMPLES`, `SMTP_HOST`, `SMTP_PORT`,
+`SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `ALERT_EMAIL_TO`.
+
+`backup.sh` сохраняет юниты `64dao-alerts.service` и `.timer`, но не сам
+скрипт и не env-файл. При переезде на новый сервер их нужно перенести
+вручную, иначе наблюдатель молча пропадёт.
+
+### Проверка
+
+```bash
+systemctl is-active 64dao-alerts.timer
+systemctl list-timers 64dao-alerts.timer --no-pager
+journalctl -u 64dao-alerts.service -n 20 --no-pager
+# ключи настроек без значений
+sed -E 's/=.*/=***/' /etc/64dao-alerts.env
+```
+
+Access-лог ротирует `/etc/logrotate.d/fastpanel2-nginx`. Отключать или
+переносить этот лог нельзя: наблюдатель перестанет видеть ошибки.
+
+---
+
 ## 11. Обновление кода
 
 ### Docker-режим
@@ -1015,6 +1053,17 @@ docker system prune -f
 # Старые логи
 journalctl --vacuum-size=500M
 ```
+
+Полный разбор по категориям с пометками «можно удалить автоматически» /
+«нужна проверка» / «не трогать» даёт `deploy/scripts/disk_audit.sh`.
+Скрипт только читает, ничего не удаляет:
+
+```bash
+bash /var/www/64dao/deploy/scripts/disk_audit.sh 2>&1 | tee /root/disk_audit_report.txt
+```
+
+Образ `alpine` не удалять: он используется при восстановлении uploads
+из бэкапа (раздел 10).
 
 ---
 
