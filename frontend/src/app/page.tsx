@@ -1,23 +1,26 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import './landing-b.css'
 import SiteNav from '@/components/SiteNav'
 import SiteFooter from '@/components/SiteFooter'
-import HeroSection from '@/components/HeroSection'
-import FaqSection from '@/components/FaqSection'
 import ContactSection from '@/components/ContactSection'
 import CookieBanner from '@/components/CookieBanner'
 import LandingFonts from '@/components/LandingFonts'
 import JsonLd from '@/components/JsonLd'
 import SampleReportButton from '@/components/SampleReportButton'
-import { buildFaqSchema } from '@/lib/faqData'
+import { buildFaqData, buildFaqSchema } from '@/lib/faqData'
+import { getPricing, getPricingM3, formatPrice } from '@/lib/landingPricing'
+
+const PAGE_TITLE = 'Стратегическая диагностика компании по 64 фазам «И-цзин» | 64 ДАО'
+const PAGE_DESCRIPTION =
+  'Стратегическая диагностика на основе «И-цзин»: определяет фазу компании, уместные управленческие решения, служит опорой для стратегических сессий.'
 
 export const metadata: Metadata = {
-  title: '64 ДАО — «И-цзин» для стратегии компании',
-  description:
-    'Стратегическая диагностика на основе «И-цзин»: определяет фазу компании, уместные управленческие решения, служит опорой для стратегических сессий.',
+  title: PAGE_TITLE,
+  description: PAGE_DESCRIPTION,
 }
 
-const LAST_UPDATED = '2026-07-28'
+const LAST_UPDATED = '2026-09-30'
 
 const landingSchema = {
   '@context': 'https://schema.org',
@@ -44,359 +47,149 @@ const landingSchema = {
   ],
 }
 
-// ─── Server-side helpers для секции «Что в отчёте» ───────────────────────────
+// ─── Метод 2: пример оценки 9 блоков ─────────────────────────────────────────
 
 type DotTone = 'alert' | 'warn' | 'ok'
+const DOT_COLOR: Record<DotTone, string> = { ok: '#1F8A5B', warn: '#E0A21B', alert: '#C0392B' }
 
 function Dots({ value, tone }: { value: number; tone: DotTone }) {
-  const color =
-    tone === 'alert'
-      ? 'var(--accent)'
-      : tone === 'warn'
-      ? 'oklch(0.78 0.16 75)'
-      : 'oklch(0.55 0.13 160)'
   return (
-    <div style={{ display: 'flex', gap: 4 }}>
+    <div className="lb-dots" aria-label={`Оценка ${value} из 5`}>
       {[1, 2, 3, 4, 5].map((i) => (
-        <span
-          key={i}
-          style={{
-            height: 8,
-            width: 8,
-            borderRadius: '9999px',
-            background: i <= value ? color : 'var(--muted)',
-          }}
-        />
+        <span key={i} style={i <= value ? { background: DOT_COLOR[tone] } : undefined} />
       ))}
     </div>
   )
 }
 
-function CycleCurve() {
-  const labels: { x: number; l: string; bold?: boolean }[] = [
-    { x: 62, l: 'ЗАРОЖДЕНИЕ' },
-    { x: 185, l: 'РОСТ', bold: true },
-    { x: 322, l: 'ЗРЕЛОСТЬ' },
-    { x: 452, l: 'ОБНОВЛЕНИЕ' },
-  ]
-  return (
-    <svg viewBox="0 0 600 220" style={{ height: 'auto', width: '100%' }}>
-      <path
-        d="M10 178 C 55 176, 90 172, 120 162 C 148 152, 160 128, 175 108 C 196 82, 226 64, 265 61 C 305 58, 345 58, 378 60 C 398 61, 412 72, 425 88"
-        fill="none"
-        stroke="oklch(0.28 0.08 260)"
-        strokeWidth={2.2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M425 88 C 445 84, 462 72, 485 60 C 500 52, 510 48, 520 45"
-        fill="none"
-        stroke="oklch(0.28 0.08 260)"
-        strokeWidth={2.2}
-        strokeLinecap="round"
-      />
-      <path
-        d="M425 88 C 448 104, 468 130, 490 152 C 502 164, 512 174, 520 182"
-        fill="none"
-        stroke="oklch(0.28 0.08 260)"
-        strokeWidth={2}
-        strokeDasharray="4 5"
-        strokeLinecap="round"
-        opacity={0.5}
-      />
-      <circle cx={425} cy={88} r={3.5} fill="oklch(0.28 0.08 260)" />
-      <text x={528} y={44} fontSize={9} fontWeight={600} fill="oklch(0.16 0.03 260)" style={{ letterSpacing: '0.14em' }}>НОВЫЙ</text>
-      <text x={528} y={57} fontSize={9} fontWeight={600} fill="oklch(0.16 0.03 260)" style={{ letterSpacing: '0.14em' }}>ЦИКЛ</text>
-      <text x={528} y={186} fontSize={9} fill="oklch(0.45 0.03 260)" style={{ letterSpacing: '0.14em' }}>СПАД</text>
-      <circle cx={175} cy={108} r={18} fill="oklch(0.28 0.08 260)" opacity={0.08} />
-      <circle cx={175} cy={108} r={6} fill="var(--accent)" />
-      <text x={148} y={86} textAnchor="middle" fontSize={11} fill="var(--accent)" style={{ letterSpacing: '0.18em' }}>ВЫ ЗДЕСЬ</text>
-      <line x1={10} y1={200} x2={590} y2={200} stroke="oklch(0.86 0.02 92)" />
-      {labels.map((t) => (
-        <text
-          key={t.l}
-          x={t.x}
-          y={216}
-          textAnchor="middle"
-          fontSize={10}
-          fill={t.bold ? 'oklch(0.16 0.03 260)' : 'oklch(0.45 0.03 260)'}
-          fontWeight={t.bold ? 600 : 400}
-          style={{ letterSpacing: '0.18em' }}
-        >
-          {t.l}
-        </text>
-      ))}
-    </svg>
-  )
-}
-
-function GaugeSvg() {
-  // cx=100 cy=100 r=78 — фиксированные значения
-  return (
-    <svg viewBox="0 0 200 130" style={{ height: 'auto', width: '100%', maxWidth: 220 }}>
-      {/* левый сектор — «Рискованно» */}
-      <path d="M 22 100 A 78 78 0 0 1 75.82 25.9" fill="none" stroke="oklch(0.6 0.22 27)" strokeWidth={14} />
-      {/* центральный сектор — «Взвешенно» */}
-      <path d="M 75.82 25.9 A 78 78 0 0 1 124.18 25.9" fill="none" stroke="oklch(0.78 0.16 75)" strokeWidth={14} />
-      {/* правый сектор — «Инвестировать» */}
-      <path d="M 124.18 25.9 A 78 78 0 0 1 178 100" fill="none" stroke="oklch(0.55 0.13 160)" strokeWidth={14} />
-      {/* стрелка */}
-      <g transform="rotate(-40 100 100)">
-        <line x1={100} y1={100} x2={170} y2={100} stroke="oklch(0.16 0.03 260)" strokeWidth={3} strokeLinecap="round" />
-      </g>
-      <circle cx={100} cy={100} r={6} fill="oklch(0.16 0.03 260)" />
-    </svg>
-  )
-}
-
-const reportBlocks: { n: string; t: string; v: number; tone: DotTone }[] = [
-  { n: '01', t: 'Ключевые партнёры',      v: 4, tone: 'ok'    },
-  { n: '02', t: 'Ключевые активности',    v: 3, tone: 'ok'    },
-  { n: '03', t: 'Ключевые ресурсы',       v: 4, tone: 'ok'    },
-  { n: '04', t: 'Ценностное предложение', v: 5, tone: 'ok'    },
-  { n: '05', t: 'Отношения с клиентами',  v: 3, tone: 'warn'  },
-  { n: '06', t: 'Каналы',                 v: 2, tone: 'alert' },
-  { n: '07', t: 'Сегменты клиентов',      v: 4, tone: 'ok'    },
-  { n: '08', t: 'Структура издержек',     v: 3, tone: 'warn'  },
-  { n: '09', t: 'Потоки доходов',         v: 4, tone: 'ok'    },
+const canvasBlocks: { n: string; t: string; v: number; tone: DotTone }[] = [
+  { n: '01', t: 'Ключевые партнёры', v: 4, tone: 'ok' },
+  { n: '02', t: 'Ключевые активности', v: 3, tone: 'ok' },
+  { n: '03', t: 'Ключевые ресурсы', v: 4, tone: 'ok' },
+  { n: '04', t: 'Ценностное предложение', v: 5, tone: 'ok' },
+  { n: '05', t: 'Отношения с клиентами', v: 3, tone: 'warn' },
+  { n: '06', t: 'Каналы', v: 2, tone: 'alert' },
+  { n: '07', t: 'Сегменты клиентов', v: 4, tone: 'ok' },
+  { n: '08', t: 'Структура издержек', v: 3, tone: 'warn' },
+  { n: '09', t: 'Потоки доходов', v: 4, tone: 'ok' },
 ]
 
-// ─── Компонент страницы ───────────────────────────────────────────────────────
+// Гексаграмма 11 «Расцвет»: снизу три сплошные, сверху три прерывистые.
+// Рисуем сверху вниз.
+const HERO_HEX: ('yin' | 'yang')[] = ['yin', 'yin', 'yin', 'yang', 'yang', 'yang']
 
-// ─── Тип и дефолт для блока цены (GET /api/pricing) ──────────────────────────
-
-interface PricingData {
-  title: string
-  price: number
-  currency: string
-  description: string
-  features: { label: string; value: string }[]
-}
-
-const DEFAULT_PRICING: PricingData = {
-  title: 'Полный отчёт 64 ДАО',
-  price: 14900,
-  currency: '₽',
-  description: 'разовая оплата · НДС не облагается',
-  features: [
-    { label: 'Диагностика', value: 'Метод 1 + Метод 2' },
-    { label: 'PDF-отчёт', value: 'Включён' },
-    { label: 'Онлайн-просмотр', value: 'Без ограничений' },
-    { label: 'Срок готовности', value: 'До 30 минут' },
-  ],
-}
-
-async function getPricing(): Promise<PricingData> {
-  try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? ''
-    const res = await fetch(`${apiUrl}/api/pricing`, { next: { revalidate: 300 } })
-    if (res.ok) {
-      const data = await res.json()
-      return {
-        title: data.title ?? DEFAULT_PRICING.title,
-        price: data.price ?? DEFAULT_PRICING.price,
-        currency: data.currency ?? DEFAULT_PRICING.currency,
-        description: data.description ?? DEFAULT_PRICING.description,
-        features: Array.isArray(data.features) && data.features.length > 0 ? data.features : DEFAULT_PRICING.features,
-      }
-    }
-  } catch {
-    // используем дефолт ниже
-  }
-  return DEFAULT_PRICING
-}
-
-// ─── Тариф Метода 3 (GET /api/pricing -> products.m3) ────────────────────────
-// Отдельный запрос, а не расширение getPricing(): у getPricing семь мест
-// использования, и менять её форму ради одного блока — лишний риск.
-// Next дедуплицирует одинаковые fetch в пределах одного рендера, второго
-// похода в сеть не будет.
-
-const DEFAULT_PRICING_M3: PricingData = {
-  title: 'Матрица силы · Метод 3 + Алмазное колесо · Метод 4',
-  price: 20000,
-  currency: '₽',
-  description: 'разовая оплата · НДС не облагается',
-  features: [
-    { label: 'Диагностика', value: 'Метод 3 + Метод 4' },
-    { label: 'Направлений в портфеле', value: 'От 3 до 8' },
-    { label: 'PDF-отчёт', value: 'Включён' },
-    { label: 'Онлайн-просмотр', value: 'Без ограничений' },
-  ],
-}
-
-async function getPricingM3(): Promise<PricingData> {
-  try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? ''
-    const res = await fetch(`${apiUrl}/api/pricing`, { next: { revalidate: 300 } })
-    if (res.ok) {
-      const data = await res.json()
-      const m3 = data?.products?.m3
-      if (m3) {
-        return {
-          title: m3.title ?? DEFAULT_PRICING_M3.title,
-          price: m3.price ?? DEFAULT_PRICING_M3.price,
-          currency: m3.currency ?? DEFAULT_PRICING_M3.currency,
-          description: m3.description ?? DEFAULT_PRICING_M3.description,
-          features: Array.isArray(m3.features) && m3.features.length > 0 ? m3.features : DEFAULT_PRICING_M3.features,
-        }
-      }
-    }
-  } catch {
-    // используем дефолт ниже
-  }
-  return DEFAULT_PRICING_M3
-}
-
-// ─── Алмазное колесо (Метод 4) ────────────────────────────────────────────────
-// Оригинальная схема 64DAO: десять модулей, десятый (финансы) выделен как
-// следствие остальных девяти. Баллов на схеме нет — она поясняет метод.
-function DiamondWheelSvg() {
+function HeroMap() {
   return (
-    <svg viewBox="0 0 600 472" width="100%" role="img" aria-label="Алмазное колесо: десять управленческих модулей" style={{ display: 'block' }}>
-      <g fill="none" stroke="rgba(26,37,64,0.22)" strokeWidth={1}>
-        <path d="M 253.6 93.3 A 150 150 0 0 1 346.4 93.3 L 326.0 156.1 A 84 84 0 0 0 274.0 156.1 Z" fill="var(--background)" fillOpacity={1} />
-        <path d="M 346.4 93.3 A 150 150 0 0 1 421.4 147.8 L 368.0 186.6 A 84 84 0 0 0 326.0 156.1 Z" fill="var(--background)" fillOpacity={1} />
-        <path d="M 421.4 147.8 A 150 150 0 0 1 450.0 236.0 L 384.0 236.0 A 84 84 0 0 0 368.0 186.6 Z" fill="var(--background)" fillOpacity={1} />
-        <path d="M 450.0 236.0 A 150 150 0 0 1 421.4 324.2 L 368.0 285.4 A 84 84 0 0 0 384.0 236.0 Z" fill="var(--background)" fillOpacity={1} />
-        <path d="M 421.4 324.2 A 150 150 0 0 1 346.4 378.7 L 326.0 315.9 A 84 84 0 0 0 368.0 285.4 Z" fill="var(--background)" fillOpacity={1} />
-        <path d="M 346.4 378.7 A 150 150 0 0 1 253.6 378.7 L 274.0 315.9 A 84 84 0 0 0 326.0 315.9 Z" fill="var(--background)" fillOpacity={1} />
-        <path d="M 253.6 378.7 A 150 150 0 0 1 178.6 324.2 L 232.0 285.4 A 84 84 0 0 0 274.0 315.9 Z" fill="var(--background)" fillOpacity={1} />
-        <path d="M 178.6 324.2 A 150 150 0 0 1 150.0 236.0 L 216.0 236.0 A 84 84 0 0 0 232.0 285.4 Z" fill="var(--background)" fillOpacity={1} />
-        <path d="M 150.0 236.0 A 150 150 0 0 1 178.6 147.8 L 232.0 186.6 A 84 84 0 0 0 216.0 236.0 Z" fill="var(--background)" fillOpacity={1} />
-        <path d="M 178.6 147.8 A 150 150 0 0 1 253.6 93.3 L 274.0 156.1 A 84 84 0 0 0 232.0 186.6 Z" fill="var(--accent)" fillOpacity={0.14} />
-      </g>
-      <circle cx={300} cy={236} r={76} fill="var(--background)" stroke="rgba(26,37,64,0.22)" strokeWidth={1} />
-      <g fontFamily="sans-serif" fontSize={13} fontWeight={600} fill="rgba(26,37,64,0.55)" textAnchor="middle">
-        <text x={300.0} y={123.0}>1</text>
-        <text x={368.8} y={145.3}>2</text>
-        <text x={411.3} y={203.8}>3</text>
-        <text x={411.3} y={276.2}>4</text>
-        <text x={368.8} y={334.7}>5</text>
-        <text x={300.0} y={357.0}>6</text>
-        <text x={231.2} y={334.7}>7</text>
-        <text x={188.7} y={276.2}>8</text>
-        <text x={188.7} y={203.8}>9</text>
-        <text x={231.2} y={145.3}>10</text>
-      </g>
-      <g fontFamily="sans-serif" fontSize={12} fill="var(--foreground)">
-        <text x={300.0} y={69.0} textAnchor="middle">Капитал и</text>
-        <text x={300.0} y={83.0} textAnchor="middle">собственность</text>
-        <text x={396.4} y={100.3} textAnchor="start">Стратегия</text>
-        <text x={396.4} y={114.3} textAnchor="start">и границы</text>
-        <text x={456.0} y={182.3} textAnchor="start">Ценность</text>
-        <text x={456.0} y={196.3} textAnchor="start">и отличие</text>
-        <text x={456.0} y={283.7} textAnchor="start">Продукт</text>
-        <text x={456.0} y={297.7} textAnchor="start">и фокус</text>
-        <text x={396.4} y={365.7} textAnchor="start">Организация</text>
-        <text x={396.4} y={379.7} textAnchor="start">и люди</text>
-        <text x={300.0} y={404.0} textAnchor="middle">Клиенты</text>
-        <text x={203.6} y={365.7} textAnchor="end">Планирование</text>
-        <text x={203.6} y={379.7} textAnchor="end">и бюджет</text>
-        <text x={144.0} y={283.7} textAnchor="end">Производительность</text>
-        <text x={144.0} y={297.7} textAnchor="end">и мотивация</text>
-        <text x={144.0} y={182.3} textAnchor="end">Цена</text>
-        <text x={144.0} y={196.3} textAnchor="end">и продвижение</text>
-        <text x={203.6} y={107.3} textAnchor="end">Финансы</text>
-      </g>
-      <text x={300} y={230} textAnchor="middle" fontFamily="sans-serif" fontSize={14} fontWeight={600} fill="var(--foreground)">Алмазное</text>
-      <text x={300} y={248} textAnchor="middle" fontFamily="sans-serif" fontSize={14} fontWeight={600} fill="var(--foreground)">колесо</text>
-      <text x={300} y={268} textAnchor="middle" fontFamily="sans-serif" fontSize={11} fill="rgba(26,37,64,0.55)">10 модулей</text>
-      <text x={300} y={456} textAnchor="middle" fontFamily="sans-serif" fontSize={12} fill="rgba(26,37,64,0.6)">Модуль 10 — следствие решений в остальных девяти</text>
-    </svg>
-  )
-}
-// ─── Матрица 3×3 в логике GE/McKinsey ────────────────────────────────────────
-// Ось конкурентоспособности развёрнута к канону: сильная слева.
-// Это то же правило, что в расчёте (COL_INDEX = {high: 0, mid: 1, low: 2}).
-// Пример на схеме — иллюстративный, к расчёту конкретного клиента отношения
-// не имеет.
-
-function PowerMatrixSvg() {
-  const cells: { r: number; c: number }[] = []
-  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) cells.push({ r, c })
-
-  const fillFor = (r: number, c: number) => {
-    const rank = r + c
-    if (rank <= 1) return 'rgba(30,58,138,0.16)'
-    if (rank === 2) return 'rgba(30,58,138,0.08)'
-    return 'rgba(192,57,43,0.08)'
-  }
-
-  const X0 = 96
-  const Y0 = 34
-  const S = 118
-
-  const rowLabels = ['Высокая', 'Средняя', 'Низкая']
-  const colLabels = ['Высокая', 'Средняя', 'Низкая']
-
-  return (
-    <svg viewBox="0 0 520 452" style={{ width: '100%', height: 'auto' }} role="img" aria-label="Матрица 3 на 3 в логике GE/McKinsey">
-      {cells.map(({ r, c }) => (
-        <rect
-          key={`${r}-${c}`}
-          x={X0 + c * S}
-          y={Y0 + r * S}
-          width={S - 6}
-          height={S - 6}
-          rx={4}
-          fill={fillFor(r, c)}
-          stroke="rgba(26,37,64,0.14)"
-          strokeWidth={1}
+    <div className="lb-map" aria-hidden="true">
+      <svg viewBox="0 0 600 460" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="lbCurve" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#5B9EA6" stopOpacity="0.25" />
+            <stop offset="0.3" stopColor="#5B9EA6" stopOpacity="1" />
+            <stop offset="1" stopColor="#5B9EA6" stopOpacity="0.35" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M40 360 C 110 358, 150 280, 190 230 S 250 130, 290 130 S 370 180, 410 240 S 470 310, 500 305 S 550 230, 565 190"
+          fill="none"
+          stroke="url(#lbCurve)"
+          strokeWidth={4}
+          strokeLinecap="round"
         />
-      ))}
-
-      {/* подписи строк — привлекательность рынка */}
-      {rowLabels.map((l, r) => (
-        <text key={l} x={88} y={Y0 + r * S + (S - 6) / 2 + 4} textAnchor="end" fontSize={12} fill="rgba(26,37,64,0.65)">{l}</text>
-      ))}
-
-      {/* подписи столбцов — конкурентоспособность */}
-      {colLabels.map((l, c) => (
-        <text key={l} x={X0 + c * S + (S - 6) / 2} y={Y0 + 3 * S + 14} textAnchor="middle" fontSize={12} fill="rgba(26,37,64,0.65)">{l}</text>
-      ))}
-
-      {/* названия осей */}
-      <text x={18} y={Y0 + 1.5 * S} textAnchor="middle" fontSize={12} fontWeight={600} fill="#1a2540" transform={`rotate(-90 18 ${Y0 + 1.5 * S})`}>
-        ПРИВЛЕКАТЕЛЬНОСТЬ РЫНКА
-      </text>
-      <text x={X0 + 1.5 * S - 3} y={Y0 + 3 * S + 44} textAnchor="middle" fontSize={12} fontWeight={600} fill="#1a2540">
-        КОНКУРЕНТОСПОСОБНОСТЬ
-      </text>
-
-      {/* текущая позиция и условный переход */}
-      <defs>
-        <marker id="m3arrow" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
-          <path d="M0,0 L7,3.2 L0,6.4 z" fill="#c0392b" />
-        </marker>
-      </defs>
-      <line
-        x1={X0 + 1.5 * S - 3}
-        y1={Y0 + 1.5 * S - 3}
-        x2={X0 + 0.5 * S + 6}
-        y2={Y0 + 0.5 * S + 10}
-        stroke="#c0392b"
-        strokeWidth={2}
-        strokeDasharray="5 4"
-        markerEnd="url(#m3arrow)"
-      />
-      <circle cx={X0 + 1.5 * S - 3} cy={Y0 + 1.5 * S - 3} r={6} fill="#c0392b" />
-      <text x={X0 + 1.5 * S + 10} y={Y0 + 1.5 * S + 1} fontSize={11} fill="#c0392b" fontWeight={600}>Сегодня</text>
-      <text x={X0 + 0.5 * S - 30} y={Y0 + 0.5 * S - 4} fontSize={11} fill="#c0392b" fontWeight={600}>Условный переход</text>
-
-      <text x={X0} y={446} fontSize={10} fill="rgba(26,37,64,0.45)">Пример раскладки. Позиция и переход рассчитываются по вашим ответам.</text>
-    </svg>
+        <path d="M40 395 H 565" stroke="rgba(248,244,236,0.12)" strokeDasharray="4 6" />
+        {[[40, 360], [290, 130], [410, 240], [500, 305], [565, 190]].map(([cx, cy]) => (
+          <circle key={cx} cx={cx} cy={cy} r={6} fill="#1E2A44" stroke="#5B9EA6" strokeWidth={2} />
+        ))}
+        <circle cx={190} cy={230} r={22} fill="none" stroke="#C0392B" strokeOpacity={0.35} strokeWidth={2} />
+        <circle cx={190} cy={230} r={9} fill="#C0392B" />
+        <g fontFamily="'Golos Text', sans-serif" fontSize={13} fill="#B9C2CE">
+          <text x={40} y={420} textAnchor="middle">Зарождение</text>
+          <text x={190} y={420} textAnchor="middle" fill="#F8F4EC" fontWeight={600}>Рост</text>
+          <text x={290} y={420} textAnchor="middle">Зрелость</text>
+          <text x={410} y={420} textAnchor="middle">Спад</text>
+          <text x={500} y={420} textAnchor="middle">Обновление</text>
+          <text x={565} y={440} textAnchor="middle">Новый цикл</text>
+        </g>
+      </svg>
+      <div className="lb-map__card">
+        <div className="lb-hex">
+          {HERO_HEX.map((l, i) =>
+            l === 'yang' ? (
+              <div key={i} className="lb-hex__yang" />
+            ) : (
+              <div key={i} className="lb-hex__yin"><span /><span /></div>
+            ),
+          )}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontSize: 12, color: '#5A6A7A' }}>Вы здесь · пример</span>
+          <span className="lb-display" style={{ fontSize: 18, fontWeight: 800 }}>Фаза роста</span>
+          <span style={{ fontSize: 13, color: '#C0392B', fontWeight: 600 }}>11 / 64 · ваша фаза</span>
+        </div>
+      </div>
+    </div>
   )
 }
+
+function WheelMini() {
+  const nodes = Array.from({ length: 10 }, (_, j) => {
+    const a = -Math.PI / 2 + (j * 2 * Math.PI) / 10
+    return {
+      n: j + 1,
+      left: Math.round((85 + 65 * Math.cos(a) - 13) * 10) / 10,
+      top: Math.round((85 + 65 * Math.sin(a) - 13) * 10) / 10,
+      key: j === 3,
+      last: j === 9,
+    }
+  })
+  return (
+    <div className="lb-wheel" aria-hidden="true">
+      <div className="lb-wheel__ring" />
+      {nodes.map((w) => (
+        <span
+          key={w.n}
+          className="lb-wheel__node"
+          style={{
+            left: w.left,
+            top: w.top,
+            ...(w.key ? { background: '#C0392B', color: '#FFFFFF' } : {}),
+            ...(w.last ? { background: '#1E2A44', color: '#FFFFFF' } : {}),
+          }}
+        >
+          {w.n}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function MatrixMini() {
+  const fills = [0.2, 0.32, 0.5, 0.12, 0.2, 0.32, 0.06, 0.12, 0.2]
+  return (
+    <div className="lb-matrix" aria-hidden="true">
+      {fills.map((f, i) => (
+        <div key={i} style={{ background: `rgba(91,158,166,${f})` }}>
+          {i === 4 && <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#1E2A44' }} />}
+          {i === 5 && (
+            <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#C0392B', boxShadow: '0 0 0 5px rgba(192,57,43,0.18)' }} />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const ICON = { fill: 'none', strokeWidth: 1.8, width: 20, height: 20, viewBox: '0 0 24 24', 'aria-hidden': true } as const
 
 export default async function HomePage() {
   const year = new Date().getFullYear()
   const pricing = await getPricing()
-  const priceFormatted = pricing.price.toLocaleString('ru-RU')
-  const priceLabel = `${priceFormatted} ${pricing.currency}`
   const pricingM3 = await getPricingM3()
-  const priceM3Formatted = pricingM3.price.toLocaleString('ru-RU')
+  const priceFormatted = formatPrice(pricing)
+  const priceLabel = `${priceFormatted} ${pricing.currency}`
+  const priceM3Formatted = formatPrice(pricingM3)
+  const faq = buildFaqData(priceLabel)
+
   const pageSchema = {
     ...landingSchema,
     '@graph': [
@@ -405,7 +198,7 @@ export default async function HomePage() {
         '@type': 'WebPage',
         '@id': 'https://64dao.ru/#webpage',
         url: 'https://64dao.ru/',
-        name: '64 ДАО — «И-цзин» для стратегии компании',
+        name: PAGE_TITLE,
         inLanguage: 'ru-RU',
         about: { '@id': 'https://64dao.ru/#software' },
         publisher: { '@id': 'https://64dao.ru/#organization' },
@@ -431,615 +224,406 @@ export default async function HomePage() {
           url: 'https://64dao.ru/login',
         },
       },
+      // FAQPage собирается из того же faqData, что и видимый блок ниже:
+      // разметка и текст на странице совпадают дословно.
       buildFaqSchema(priceLabel),
     ],
   }
 
   return (
-    <div className="landing-scope" style={{ fontFamily: 'Inter, sans-serif', color: 'var(--foreground)', background: 'var(--background)' }}>
+    <div id="top" className="landing-scope lb">
       <JsonLd data={pageSchema} />
       <LandingFonts />
       <SiteNav />
 
-      <main style={{ minHeight: '100vh' }}>
-
+      <main>
         {/* ── HERO ── */}
-        <HeroSection />
-
-        {/* ── PROBLEM ── */}
-        <section style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'color-mix(in oklab, var(--muted) 40%, var(--background))' }}>
-          <div className="g-pad96" style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 40px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-              <span style={{ display: 'inline-block', width: 32, height: 2, background: 'var(--accent)' }} />
-              <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#888888' }}>Знакомо?</span>
-            </div>
-            <h2 style={{ margin: 0, maxWidth: 820, fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(28px,4.5vw,44px)', lineHeight: 1.15, color: 'var(--foreground)' }}>
-              Дело не в слабой команде. Дело в том, что все приходят без общей картины.
-            </h2>
-            <p style={{ marginTop: 24, maxWidth: 720, fontSize: 17, lineHeight: 1.7, color: '#4A4A4A' }}>
-              Стратегия живёт в голове собственника. Решения принимаются в режиме тушения пожаров — и каждое «логичное» из них тихо сливает бюджет.
-            </p>
-            <div style={{ width: 60, height: 2, background: 'var(--accent)', marginTop: 40 }} />
-            <div style={{ fontSize: 14, fontStyle: 'italic', color: '#888888', marginTop: 40, marginBottom: 20 }}>4 типичных симптома</div>
-            <div className="g-symptoms" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
-              {[
-                { title: 'Сессии без выводов',            desc: 'Собрались, поспорили о прошлом квартале, разошлись. Решения — на следующий раз.' },
-                { title: 'Слитые бюджеты',                desc: 'Запустили рекламу, вышли на рынок, масштабировались — а момент был не тот.' },
-                { title: 'Команда тянет в разные стороны', desc: 'У каждого своя картина, потому что общей точки сверки нет.' },
-                { title: 'Стратегия — в одной голове',    desc: 'Вы ведёте компанию как будто без навигатора: а туда ли вообще едем?' },
-              ].map((item) => (
-                <div
-                  key={item.title}
-                  style={{ borderRadius: 2, background: 'color-mix(in oklab, var(--muted) 70%, #000 6%)', borderLeft: '3px solid var(--accent)', padding: '32px 32px 32px 28px' }}
-                >
-                  <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--foreground)' }}>{item.title}</h3>
-                  <p style={{ margin: '14px 0 0', fontSize: 15, color: '#5A5A5A', lineHeight: 1.65 }}>{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── SOLUTION ── */}
-        <section style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div style={{ maxWidth: 880, margin: '0 auto', padding: '100px 40px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ display: 'inline-block', width: 32, height: 2, background: 'var(--accent)' }} />
-              <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#888888' }}>Что это</span>
-            </div>
-            <h2 style={{ margin: '24px 0 0', fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(28px,4vw,40px)', fontWeight: 700, lineHeight: 1.2, color: 'var(--foreground)' }}>
-              Это не гадание. Это диагностика фазы.
-            </h2>
-            <p style={{ marginTop: 32, fontSize: 18, lineHeight: 1.8, color: '#3A3A3A' }}>
-              64 ДАО не предсказывает будущее и не обещает «правильный ответ». Он определяет, в какой фазе цикла находится компания сейчас, что для этой фазы уместно, а что преждевременно — и формулирует это на управленческом языке.
-            </p>
-            <p style={{ marginTop: 16, fontSize: 18, lineHeight: 1.8, color: '#3A3A3A' }}>Без иероглифов и мистики.</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 40, marginTop: 40 }}>
-              {[
-                {
-                  icon: (
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <polygon points="16.2 7.8 13.4 13.4 7.8 16.2 10.6 10.6 16.2 7.8" fill="var(--accent)" stroke="none" />
-                    </svg>
-                  ),
-                  label: 'Определяем фазу',
-                },
-                {
-                  icon: (
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <circle cx="12" cy="12" r="6" />
-                      <circle cx="12" cy="12" r="2" fill="var(--accent)" stroke="none" />
-                    </svg>
-                  ),
-                  label: 'Что уместно сейчас',
-                },
-                {
-                  icon: (
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7a8.5 8.5 0 0 1-.9-3.8A8.38 8.38 0 0 1 12.5 3 8.38 8.38 0 0 1 21 11.5z" />
-                    </svg>
-                  ),
-                  label: 'Управленческий язык',
-                },
-              ].map((item) => (
-                <div key={item.label} style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
-                  {item.icon}
-                  <div style={{ fontSize: 13, fontWeight: 500, color: '#3A3A3A', lineHeight: 1.35 }}>{item.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── HOW ── */}
-        <section id="how" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'color-mix(in oklab, var(--muted) 40%, var(--background))' }}>
-          <div className="g-pad96" style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 40px' }}>
-            <div style={{ marginBottom: 16, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--muted-foreground)' }}>
-              Как это работает
-            </div>
-            <h2 style={{ margin: 0, maxWidth: 760, fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(32px,4.6vw,48px)', lineHeight: 1.1, color: 'var(--foreground)' }}>
-              Три шага до точки сверки
-            </h2>
-            <div style={{ marginTop: 56, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px,1fr))', gap: 32 }}>
-              {[
-                {
-                  n: '01',
-                  title: '6 простых вопросов',
-                  desc: 'Выбираете из двух вариантов: растущий рынок или устоявшийся, рост или сокращение затрат. Никаких «опишите стратегию на 5 лет».',
-                },
-                {
-                  n: '02',
-                  title: 'Определяется фаза',
-                  desc: 'Ответы складываются в одну из 64 фаз — как доктор ставит диагноз: где вы на кривой прямо сейчас.',
-                },
-                {
-                  n: '03',
-                  title: 'Стратегический отчёт',
-                  desc: 'Разбор по 12 направлениям плюс карта бизнес-модели. Готовый предмет для стратегической сессии, а не пустой лист.',
-                },
-              ].map((step) => (
-                <div key={step.n} style={{ borderTop: '1px solid var(--foreground)', paddingTop: 24 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--accent)' }}>{step.n}</div>
-                  <h3 style={{ margin: '16px 0 0', fontSize: 20, fontWeight: 600, color: 'var(--foreground)' }}>{step.title}</h3>
-                  <p style={{ margin: '12px 0 0', fontSize: 14, lineHeight: 1.6, color: 'var(--muted-foreground)' }}>{step.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── REPORT ── */}
-        <section id="report" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div className="g-pad96" style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 40px' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, marginBottom: 20, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--muted-foreground)' }}>
-              <span style={{ height: 1, width: 32, background: 'rgba(0,0,0,0.3)' }} />Что внутри отчёта
-            </div>
-            <h2 style={{ margin: 0, maxWidth: 760, fontFamily: 'Inter,sans-serif', fontSize: 'clamp(32px,4.6vw,48px)', fontWeight: 700, lineHeight: 1.1, letterSpacing: '-0.01em', color: 'var(--foreground)' }}>
-              Не таблица слов.<br />Карта вашего положения в цикле.
-            </h2>
-            <p style={{ marginTop: 20, fontSize: 16, color: 'var(--muted-foreground)' }}>Пример обезличенного заключения доступен до оплаты.</p>
-
-            <div style={{ marginTop: 48, borderRadius: 2, border: '1px solid var(--border)', background: 'var(--card)', boxShadow: '0 30px 80px -50px rgba(20,30,60,0.35)', overflow: 'hidden' }}>
-              <div style={{ borderBottom: '1px solid var(--border)', padding: '24px 32px' }}>
-                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.24em', color: 'var(--accent)' }}>Отчёт · фаза определена</div>
-                <div style={{ marginTop: 8, display: 'flex', alignItems: 'baseline', gap: 12 }}>
-                  <h3 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--foreground)' }}>Фаза роста</h3>
-                  <span style={{ fontSize: 14, color: 'var(--muted-foreground)' }}>· 11 / 64</span>
-                </div>
-              </div>
-              <div className="g-2col-report" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 1, background: 'var(--border)' }}>
-                <div style={{ background: 'var(--card)', padding: 32 }}>
-                  <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.24em', color: 'var(--muted-foreground)' }}>Где вы на кривой цикла</div>
-                  <div style={{ marginTop: 32 }}><CycleCurve /></div>
-                </div>
-                <div style={{ background: 'var(--card)', padding: 32 }}>
-                  <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.24em', color: 'var(--muted-foreground)' }}>Инвестировать или подождать</div>
-                  <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <GaugeSvg />
-                    <div style={{ marginTop: 8, fontSize: 20, fontWeight: 600, color: 'oklch(0.45 0.13 160)' }}>Инвестировать</div>
-                    <p style={{ marginTop: 12, textAlign: 'center', fontSize: 14, lineHeight: 1.6, color: 'var(--muted-foreground)' }}>
-                      в масштаб — момент попутный.<br />Преждевременно: резать затраты.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div style={{ borderTop: '1px solid var(--border)', background: 'color-mix(in oklab, var(--background) 40%, var(--card))', padding: 32 }}>
-                <div style={{ marginBottom: 24, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-                  <h4 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--foreground)' }}>Метод 2 — бизнес-модель по 9 блокам</h4>
-                  <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.24em', color: 'var(--accent)' }}>бонус · в подарок · оценка 1–5</div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px,1fr))', gap: 12 }}>
-                  {reportBlocks.map((b) => (
-                    <div key={b.n} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: 2, border: '1px solid var(--border)', background: 'var(--card)', padding: '16px 20px' }}>
-                      <div>
-                        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.24em', color: 'var(--muted-foreground)' }}>{b.n}</div>
-                        <div style={{ marginTop: 4, fontSize: 14, fontWeight: 600, color: 'var(--foreground)' }}>{b.t}</div>
-                      </div>
-                      <Dots value={b.v} tone={b.tone} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── EXAMPLE ── */}
-        <section style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'var(--brand-navy)', color: 'var(--background)' }}>
-          <div className="g-2col g-pad96" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '0.85fr 1.15fr', gap: 48, padding: '96px 40px' }}>
-            <div>
-              <div style={{ marginBottom: 16, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.6)' }}>Пример отчёта</div>
-              <h2 style={{ margin: 0, fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(32px,4.6vw,48px)', lineHeight: 1.1, color: '#ffffff' }}>
-                Посмотрите образец заключения до оплаты
-              </h2>
-              <p style={{ marginTop: 24, maxWidth: 420, fontSize: 16, lineHeight: 1.6, color: 'rgba(255,255,255,0.7)' }}>
-                Обезличенный отчёт реальной компании — пролистайте структуру, тон и глубину разбора, чтобы решать осознанно, а не вслепую.
+        <section className="lb-hero">
+          <div className="lb-wrap lb-hero__grid">
+            <div className="lb-hero__text">
+              <span className="lb-chip">Стратегическая диагностика · 64 фазы</span>
+              <h1>Стратегическая диагностика компании по 64 фазам «И-цзин»</h1>
+              <p className="lb-hero__sub">
+                Где компания находится в цикле, что уместно сейчас и что преждевременно. На управленческом языке — готовая основа для стратегической сессии.
               </p>
-              {/* Форма сбора контактов — как у «Посмотреть пример отчёта» в первом экране. */}
-              <SampleReportButton method="1" style={{ marginTop: 40, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2, background: 'var(--background)', padding: '14px 24px', fontSize: 14, fontWeight: 500, color: 'var(--foreground)', textDecoration: 'none' }}>
-                Скачать пример отчёта
+              <div className="lb-hero__cta">
+                <a href="/login" className="lb-btn lb-btn--red">Пройти диагностику <span aria-hidden="true">→</span></a>
+                <SampleReportButton method="1" className="lb-btn lb-btn--ghost-light" style={{ background: 'transparent', border: '1px solid rgba(248,244,236,0.4)', fontFamily: 'inherit', fontSize: 17, fontWeight: 600 }}>
+                  Образец отчёта
+                </SampleReportButton>
+              </div>
+              <div className="lb-hero__meta">
+                <span>{priceLabel}</span><span aria-hidden="true">·</span>
+                <span>отчёт до 30 минут</span><span aria-hidden="true">·</span>
+                <span>без знания «И-цзин»</span>
+              </div>
+            </div>
+            <HeroMap />
+          </div>
+        </section>
+
+        {/* ── ПОЛОСА ФАКТОВ ── */}
+        <div className="lb-facts">
+          <div className="lb-wrap">
+            <div className="lb-facts__card">
+              {[
+                ['64', 'фазы цикла'],
+                ['12', 'направлений разбора'],
+                ['9', 'блоков бизнес-модели'],
+                ['≤ 30 мин', 'готовность отчёта'],
+                ['7 дней', 'обязательство по ясности'],
+              ].map(([n, l]) => (
+                <div key={l} className="lb-facts__item">
+                  <span className="lb-facts__num">{n}</span>
+                  <span className="lb-facts__label">{l}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── ЗНАКОМО? ── */}
+        <section className="lb-sec lb-sec--cream" style={{ paddingTop: 56 }}>
+          <div className="lb-wrap lb-symptoms">
+            <div>
+              <span className="lb-eyebrow">Знакомо?</span>
+              <h2 className="lb-h2">Признаки того, что стратегии не хватает общей картины</h2>
+              <p className="lb-lead">Стратегия живёт в одной голове. Решения — в режиме тушения пожаров.</p>
+            </div>
+            <div className="lb-grid2">
+              <div className="lb-card">
+                <span className="lb-icon"><svg {...ICON} stroke="#1E2A44"><path d="M4 6h16M4 12h10M4 18h6" /></svg></span>
+                <h3>Сессии без выводов</h3>
+                <p>Собрались, поспорили о прошлом квартале, разошлись. Решения — на следующий раз.</p>
+              </div>
+              <div className="lb-card">
+                <span className="lb-icon lb-icon--red"><svg {...ICON} stroke="#C0392B"><path d="M4 7l6 6 4-4 6 6" /><path d="M14 15h6V9" /></svg></span>
+                <h3>Слитые бюджеты</h3>
+                <p>Запустили рекламу, вышли на рынок, масштабировались — а момент был не тот.</p>
+              </div>
+              <div className="lb-card">
+                <span className="lb-icon"><svg {...ICON} stroke="#1E2A44"><path d="M12 12L5 5M12 12l7-7M12 12v8" /></svg></span>
+                <h3>Команда тянет в разные стороны</h3>
+                <p>У каждого своя картина, потому что общей точки сверки нет.</p>
+              </div>
+              <div className="lb-card">
+                <span className="lb-icon"><svg {...ICON} stroke="#1E2A44"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></svg></span>
+                <h3>Стратегия — в одной голове</h3>
+                <p>Компания едет без навигатора: а туда ли вообще едем?</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── ЧТО ЭТО ── */}
+        <section id="method" className="lb-sec lb-sec--white">
+          <div className="lb-wrap">
+            <div className="lb-center" style={{ maxWidth: 820, textAlign: 'center' }}>
+              <span className="lb-eyebrow">Что это</span>
+              <h2 className="lb-h2" style={{ fontSize: 'clamp(32px,3.8vw,46px)' }}>Это не гадание. Это диагностика фазы.</h2>
+              <p className="lb-lead">
+                64 ДАО использует структуру «И-цзин» — 64 состояния из шести линий — как карту циклов изменений. Инструмент не предсказывает будущее: он определяет фазу компании и переводит её в управленческие решения.
+              </p>
+            </div>
+            <div className="lb-grid3" style={{ marginTop: 48 }}>
+              {[
+                ['01', 'Определяем фазу', 'Одна из 64 позиций на кривой развития компании.'],
+                ['02', 'Что уместно сейчас', 'Какие действия поддерживают фазу, а какие преждевременны.'],
+                ['03', 'Управленческий язык', 'Без иероглифов и мистики. Документ для стратегической сессии.'],
+              ].map(([n, t, d]) => (
+                <div key={n} className="lb-card lb-card--cream">
+                  <span className="lb-num">{n}</span>
+                  <h3>{t}</h3>
+                  <p>{d}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── КАК ПРОХОДИТ ДИАГНОСТИКА ── */}
+        <section id="how" className="lb-sec lb-sec--cream">
+          <div className="lb-wrap">
+            <span className="lb-eyebrow">Как проходит диагностика</span>
+            <h2 className="lb-h2">Три шага до точки сверки</h2>
+            <div className="lb-steps">
+              <svg className="lb-steps__path" viewBox="0 0 1200 40" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M30 20 C 200 -6, 260 46, 430 20 S 660 -6, 830 20 S 1060 46, 1180 20" fill="none" stroke="#5B9EA6" strokeWidth={2} strokeDasharray="2 8" strokeLinecap="round" />
+              </svg>
+              <div className="lb-step">
+                <span className="lb-step__dot">01</span>
+                <h3>6 вопросов — общая картина</h3>
+                <p>Выбор из двух вариантов: растущий рынок или устоявшийся, рост или сокращение затрат. Никаких «опишите стратегию на 5 лет».</p>
+              </div>
+              <div className="lb-step">
+                <span className="lb-step__dot">02</span>
+                <h3>4 блока уточнений</h3>
+                <p>Раскрывают детали и находят узкое место, которое задаёт скорость всей системы. Раздел о жизненном цикле открывается после всех четырёх.</p>
+                <div className="lb-tags">
+                  <span className="lb-tag">Финансы</span>
+                  <span className="lb-tag">Продукт</span>
+                  <span className="lb-tag">Процессы</span>
+                  <span className="lb-tag">Рынок</span>
+                </div>
+              </div>
+              <div className="lb-step">
+                <span className="lb-step__dot lb-step__dot--red">03</span>
+                <h3>Фаза и стратегический отчёт</h3>
+                <p>Одна из 64 фаз, разбор по 12 направлениям и карта бизнес-модели. Готовый предмет для сессии, а не пустой лист.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── ЧТО ВХОДИТ В ОТЧЁТ ── */}
+        <section id="report" className="lb-sec lb-sec--navy">
+          <div className="lb-wrap lb-report">
+            <div>
+              <span className="lb-eyebrow">Что входит в отчёт</span>
+              <h2 className="lb-h2">Не таблица слов. Карта вашего положения в цикле.</h2>
+              <ul className="lb-report__list">
+                <li><span className="lb-bullet" />Фаза и номер из 64, кривая цикла с меткой «Вы здесь»</li>
+                <li><span className="lb-bullet" />Разбор по 12 направлениям</li>
+                <li><span className="lb-bullet" />Блок «Инвестировать или подождать»</li>
+                <li><span className="lb-bullet lb-bullet--red" />Бонус: бизнес-модель по 9 блокам (Метод 2)</li>
+              </ul>
+              <p className="lb-lead" style={{ margin: '0 0 20px', fontSize: 16 }}>Обезличенный образец отчёта доступен до оплаты.</p>
+              <SampleReportButton method="1" className="lb-btn lb-btn--cream" style={{ background: '#F8F4EC', fontFamily: 'inherit', fontSize: 17, fontWeight: 600 }}>
+                Скачать образец отчёта
               </SampleReportButton>
             </div>
-            <div>
-              <div style={{ borderRadius: 2, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.04)', padding: 32 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'rgba(255,255,255,0.5)' }}>
-                  <span>Стратегический отчёт</span><span>Стр. 04 / 28</span>
+            <div className="lb-sheet">
+              <div className="lb-sheet__head"><span>Стратегический отчёт</span><span>стр. 04 / 28</span></div>
+              <h3>Фаза 17. Удержание ядра в зреющем рынке</h3>
+              <svg width="100%" height="90" viewBox="0 0 560 90" preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                  <linearGradient id="lbSheet" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0" stopColor="#5B9EA6" stopOpacity="0.3" />
+                    <stop offset="0.5" stopColor="#5B9EA6" />
+                    <stop offset="1" stopColor="#5B9EA6" stopOpacity="0.3" />
+                  </linearGradient>
+                </defs>
+                <path d="M0 80 C 90 78, 150 20, 250 16 S 420 60, 560 70" fill="none" stroke="url(#lbSheet)" strokeWidth={3} />
+                <circle cx={300} cy={22} r={14} fill="none" stroke="#C0392B" strokeOpacity={0.35} strokeWidth={2} />
+                <circle cx={300} cy={22} r={6} fill="#C0392B" />
+              </svg>
+              <div className="lb-sheet__cells">
+                <div className="lb-sheet__cell"><b style={{ color: '#3E7F87' }}>УМЕСТНО</b>Фокус на ядре клиентов и удержании маржи</div>
+                <div className="lb-sheet__cell"><b style={{ color: '#C0392B' }}>ПРЕЖДЕВРЕМЕННО</b>Смежные рынки и масштабная реклама</div>
+                <div className="lb-sheet__cell"><b>ТОЧКА СВЕРКИ</b>Обсуждаем удержание, а не рост</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── МЕТОД 2: БИЗНЕС-МОДЕЛЬ ПО 9 БЛОКАМ ── */}
+        <section id="canvas" className="lb-sec lb-sec--cream">
+          <div className="lb-wrap">
+            <div className="lb-canvas__head">
+              <div>
+                <span className="lb-eyebrow">Метод 2 · в отчёте</span>
+                <h2 className="lb-h2">Метод 2 — бизнес-модель по 9 блокам</h2>
+              </div>
+              <span className="lb-canvas__note">Бонус · в подарок · оценка 1–5</span>
+            </div>
+            <div className="lb-canvas">
+              {canvasBlocks.map((b) => (
+                <div key={b.n} className="lb-canvas__item">
+                  <div>
+                    <div className="lb-canvas__n">{b.n}</div>
+                    <div className="lb-canvas__t">{b.t}</div>
+                  </div>
+                  <Dots value={b.v} tone={b.tone} />
                 </div>
-                <h3 style={{ margin: '24px 0 0', fontFamily: "'Golos Text',sans-serif", fontSize: 24, lineHeight: 1.2, color: '#ffffff' }}>
-                  Фаза 17. Удержание ядра в зреющем рынке
-                </h3>
-                <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,0.75)' }}>
-                  <p style={{ margin: 0 }}><span style={{ color: 'var(--accent)' }}>Уместно сейчас.</span> Сфокусироваться на ядре клиентов и удержании маржи. Точечно усиливать сильные продукты.</p>
-                  <p style={{ margin: 0 }}><span style={{ color: 'var(--accent)' }}>Преждевременно.</span> Выход на смежные рынки и масштабная рекламная экспансия. Высокая вероятность вернуться с ослабленным ядром.</p>
-                  <p style={{ margin: 0 }}><span style={{ color: 'var(--accent)' }}>Точка сверки для команды.</span> Договориться, что обсуждаем удержание, а не рост — и пересобрать KPI отдела продаж под эту рамку.</p>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── СЛЕДУЮЩИЙ УРОВЕНЬ ── */}
+        <section className="lb-sec lb-sec--white">
+          <div className="lb-wrap">
+            <div className="lb-head-row">
+              <div style={{ maxWidth: 720 }}>
+                <span className="lb-eyebrow">Следующий уровень</span>
+                <h2 className="lb-h2">Матрица GE/McKinsey и Алмазное колесо: куда вкладывать и что мешает</h2>
+              </div>
+              <Link href="/methods" className="lb-btn lb-btn--soft">Подробнее о методах <span aria-hidden="true">→</span></Link>
+            </div>
+            <div className="lb-grid2" style={{ marginTop: 44 }}>
+              <div className="lb-method">
+                <div className="lb-method__vis"><MatrixMini /></div>
+                <div className="lb-method__text">
+                  <span className="lb-method__kicker">Метод 3</span>
+                  <h3>Матрица силы</h3>
+                  <p>Позиция бизнеса в логике GE/McKinsey плюс 64 состояния: где вы сегодня и куда сдвинется позиция при каких условиях.</p>
                 </div>
-                <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: 24, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,255,255,0.5)' }}>
-                  <span>Диагноз</span><span>Навигация</span><span>Решение</span><span>Метод 2</span>
+              </div>
+              <div className="lb-method">
+                <div className="lb-method__vis"><WheelMini /></div>
+                <div className="lb-method__text">
+                  <span className="lb-method__kicker">Метод 4</span>
+                  <h3>Алмазное колесо</h3>
+                  <p>10 управленческих модулей: узел, который держит остальные, и пары решений, тянущие компанию в разные стороны.</p>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ── FOR WHOM ── */}
-        <section style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div className="g-pad96" style={{ maxWidth: 1280, margin: '0 auto', padding: '96px 40px' }}>
-            <div style={{ marginBottom: 16, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--muted-foreground)' }}>Квалификация</div>
-            <h2 style={{ margin: 0, fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(32px,4.6vw,48px)', lineHeight: 1.1, color: 'var(--foreground)' }}>Для кого это</h2>
-            <div style={{ marginTop: 48, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px,1fr))', gap: 32 }}>
-              <div style={{ borderRadius: 2, border: '1px solid var(--border)', background: 'var(--card)', padding: 32 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--accent)' }}>Это для вас, если</div>
-                <ul style={{ margin: '24px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {[
-                    'Вы собственник или CEO с реальным стратегическим запросом: рост, новый рынок, масштабирование, инвестиции, смена курса',
-                    'Впереди стратегическая сессия или крупное решение, а общей картины «где мы сейчас» нет',
-                    'Команда спорит о направлении, и каждый тянет в свою сторону',
-                    'Вы цените внешнюю оптику, а не только собственную интуицию',
-                  ].map((text) => (
-                    <li key={text} style={{ display: 'flex', gap: 12, fontSize: 14, lineHeight: 1.6, color: 'var(--foreground)' }}>
-                      <span style={{ marginTop: 8, height: 6, width: 6, flexShrink: 0, borderRadius: '9999px', background: 'var(--accent)' }} />
-                      {text}
-                    </li>
-                  ))}
+        {/* ── ДЛЯ КОГО И КАК ПРИМЕНЯЮТ ── */}
+        <section id="audience" className="lb-sec lb-sec--cream">
+          <div className="lb-wrap">
+            <span className="lb-eyebrow">Для кого и как применяют</span>
+            <h2 className="lb-h2">Как 64 ДАО используют на стратегических сессиях</h2>
+            <div className="lb-grid2" style={{ marginTop: 44, alignItems: 'start' }}>
+              <div className="lb-audience">
+                <span className="lb-audience__tag">Собственникам и CEO</span>
+                <h3>Это для вас, если</h3>
+                <ul className="lb-checks">
+                  <li>Вы собственник или CEO с реальным стратегическим запросом: рост, новый рынок, масштабирование, инвестиции, смена курса</li>
+                  <li>Впереди стратегическая сессия или крупное решение, а общей картины «где мы сейчас» нет</li>
+                  <li>Команда спорит о направлении, и каждый тянет в свою сторону</li>
+                  <li>Вы цените внешнюю оптику, а не только собственную интуицию</li>
                 </ul>
+                <div className="lb-divider" />
+                <div className="lb-case">
+                  <h4>«Масштабироваться или укрепить ядро»</h4>
+                  <p>Команда проходит диагностику до сессии. Спор «кто прав» сменяется вопросом «что уместно в этой фазе».</p>
+                </div>
+                <div className="lb-divider" />
+                <div className="lb-case">
+                  <h4>«Почему снова не сработал запуск»</h4>
+                  <p>Запуски разбираются через «Инвестировать или подождать». Фокус смещается с исполнения на тайминг решений.</p>
+                </div>
               </div>
-              <div style={{ borderRadius: 2, border: '1px solid var(--border)', background: 'var(--card)', padding: 32 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--accent)' }}>Что вы получите</div>
-                <ul style={{ margin: '24px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {[
-                    'Получите ясную карту текущей фазы цикла вашей компании',
-                    'Увидите следующий разумный шаг — без догадок и обещаний «единственно верного» решения',
-                    'Получите внешнюю оптику, которая помогает скорректировать курс вовремя',
-                  ].map((text) => (
-                    <li key={text} style={{ display: 'flex', gap: 12, fontSize: 14, lineHeight: 1.6, color: 'var(--foreground)' }}>
-                      <span style={{ marginTop: 8, height: 6, width: 6, flexShrink: 0, borderRadius: '9999px', background: 'var(--accent)' }} />
-                      {text}
-                    </li>
-                  ))}
+              <div className="lb-audience">
+                <span className="lb-audience__tag lb-audience__tag--teal">Для консультантов и фасилитаторов</span>
+                <h3>Начинайте сессию не с хаоса мнений, а с готовой диагностики</h3>
+                <ul className="lb-checks">
+                  <li>Вы подаёте не гадание, а входную диагностику фазы компании — деловой инструмент.</li>
+                  <li>Отчёт — не конец, а дверь: к сессии, сопровождению, регулярной работе с собственником.</li>
+                  <li>В комплекте — скрипт подачи клиенту: как представить отчёт деловым языком и в какой момент сессии его подать.</li>
                 </ul>
+                <div className="lb-divider" />
+                <div className="lb-case">
+                  <h4>Вход в проект</h4>
+                  <p>Клиент проходит диагностику до первой встречи. Разговор начинается со сверки по фазе, а не с «расскажите о бизнесе».</p>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ── FAQ ── */}
-        <FaqSection priceLabel={priceLabel} />
-
-        {/* ── PRICE ── */}
-        <section id="price" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div className="g-2col g-pad96" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '0.85fr 1.15fr', gap: 80, padding: '96px 40px' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ display: 'inline-block', width: 32, height: 2, background: 'var(--accent)' }} />
-                <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#888888' }}>Стоимость</span>
-              </div>
-              <h2 style={{ margin: '24px 0 0', fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(28px,4vw,38px)', fontWeight: 700, lineHeight: 1.2, color: 'var(--foreground)' }}>
-                Дешевле одного неудачного решения
-              </h2>
-              <div style={{ width: 80, height: 3, background: 'var(--accent)', margin: '28px 0' }} />
-              <p style={{ margin: 0, maxWidth: 420, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
+        {/* ── СТОИМОСТЬ ── */}
+        <section id="price" className="lb-sec lb-sec--white">
+          <div className="lb-wrap">
+            <div className="lb-center" style={{ maxWidth: 760, textAlign: 'center' }}>
+              <span className="lb-eyebrow">Стоимость</span>
+              <h2 className="lb-h2" style={{ fontSize: 'clamp(30px,3.6vw,44px)' }}>Стоимость стратегической диагностики</h2>
+              <p className="lb-lead">
                 Стратегическая консультация в России — от 300 000 ₽. Один день сессии «ни о чём» или один слитый рекламный бюджет стоят кратно дороже.
               </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 32 }}>
-                <span style={{ fontSize: 22, color: '#999999', textDecoration: 'line-through' }}>300 000 ₽</span>
-                <span style={{ fontSize: 20, color: '#888888' }}>→</span>
-                <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--accent)' }}>{priceFormatted} {pricing.currency}</span>
-              </div>
             </div>
-            <div>
-              <div style={{ background: 'color-mix(in oklab, var(--muted) 70%, #000 6%)', borderRadius: 8, padding: '48px 40px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#9a9a9a' }}>Оплата диагностики</div>
-                <h3 style={{ margin: '14px 0 0', fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(28px,3.6vw,34px)', fontWeight: 700, lineHeight: 1.1, color: 'var(--foreground)' }}>
-                  {pricing.title}
-                </h3>
-                <div style={{ marginTop: 28, display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 8 }}>
-                  <span style={{ fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(56px,9vw,80px)', fontWeight: 800, lineHeight: 1, color: 'var(--foreground)', letterSpacing: '-0.01em' }}>{priceFormatted}</span>
-                  <span style={{ fontSize: 32, fontWeight: 500, color: '#9a9a9a' }}>{pricing.currency}</span>
+            <div className="lb-grid2" style={{ marginTop: 44, gap: 24 }}>
+              <div className="lb-price lb-price--dark">
+                <div className="lb-price__top">
+                  <span className="lb-price__kicker">Оплата диагностики</span>
+                  <span className="lb-price__badge">Начать с этого</span>
                 </div>
-                <div style={{ marginTop: 16, fontSize: 14, color: '#888888' }}>{pricing.description}</div>
-                <div style={{ borderTop: '1px solid rgba(0,0,0,0.1)', margin: '32px 0 4px' }} />
-                <div style={{ textAlign: 'left' }}>
+                <h3>{pricing.title}</h3>
+                <div className="lb-price__amount"><b>{priceFormatted} {pricing.currency}</b><span>{pricing.description}</span></div>
+                <div className="lb-price__rows">
                   {pricing.features.map((row) => (
-                    <div key={row.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '18px 0', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-                      <span style={{ fontSize: 15, color: '#6A6A6A' }}>{row.label}</span>
-                      <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--foreground)' }}>{row.value}</span>
-                    </div>
+                    <div key={row.label} className="lb-price__row"><span>{row.label}</span><span>{row.value}</span></div>
                   ))}
                 </div>
-                <a href="/login" style={{ marginTop: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', borderRadius: 6, background: '#8597C6', padding: '18px 24px', fontSize: 16, fontWeight: 500, color: '#ffffff', textDecoration: 'none' }}>
-                  Перейти к оплате <span aria-hidden="true">→</span>
-                </a>
+                <a href="/login" className="lb-btn lb-btn--red lb-btn--block">Перейти к оплате <span aria-hidden="true">→</span></a>
               </div>
-              <div style={{ marginTop: 24, background: 'color-mix(in oklab, var(--muted) 70%, #000 6%)', borderRadius: 8, padding: '28px 32px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888888" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  </svg>
-                  <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#888888' }}>Обязательство по ясности</div>
+              <div className="lb-price lb-price--light">
+                <div className="lb-price__top">
+                  <span className="lb-price__kicker">Оплата диагностики</span>
                 </div>
-                <p style={{ margin: '14px 0 0', fontSize: 14, lineHeight: 1.75, color: '#555555' }}>
-                  Мы не обещаем рост выручки и не принимаем за вас стратегические решения — это зона вашей ответственности. Но мы отвечаем за то, что отчёт будет понятным и пригодным как рамка для разговора о стратегии. Если он окажется неясным — напишите в течение 7 дней, и мы бесплатно дадим короткий разбор-комментарий по вашему отчёту.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── POWER MATRIX (Метод 3) ── */}
-        <section id="power-matrix" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'color-mix(in oklab, var(--muted) 40%, var(--background))' }}>
-          <div className="g-2col g-pad96" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, padding: '96px 40px', alignItems: 'center' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ display: 'inline-block', width: 32, height: 2, background: 'var(--accent)' }} />
-                <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#888888' }}>Матрица силы · Метод 3</span>
-              </div>
-              <h2 style={{ margin: '24px 0 0', fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(28px,4vw,38px)', fontWeight: 700, lineHeight: 1.2, color: 'var(--foreground)' }}>
-                От классической матрицы — к управлению изменениями
-              </h2>
-              <div style={{ width: 80, height: 3, background: 'var(--accent)', margin: '28px 0' }} />
-
-              <p style={{ margin: 0, maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
-                Матрица GE/McKinsey показывает положение бизнеса. 64dao показывает, куда оно сдвинется — и при каких условиях.
-              </p>
-              <p style={{ margin: '18px 0 0', maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
-                Мы соединяем количественную оценку привлекательности рынка и силы бизнеса с системой из 64 состояний. Вы видите не только где бизнес находится сегодня:
-              </p>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 20, maxWidth: 560 }}>
-                {['что формирует эту позицию', 'что назрело и что перегрето', 'где точка воздействия', 'какой переход имеет смысл'].map((step, i, arr) => (
-                  <span key={step} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ display: 'inline-block', borderRadius: 4, border: '1px solid rgba(26,37,64,0.16)', background: 'var(--background)', padding: '8px 12px', fontSize: 14, color: 'var(--foreground)' }}>
-                      {step}
-                    </span>
-                    {i < arr.length - 1 && <span aria-hidden="true" style={{ fontSize: 14, color: 'var(--accent)' }}>→</span>}
-                  </span>
-                ))}
-              </div>
-
-              <p style={{ margin: '24px 0 0', maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
-                В одном отчёте: матрица 3×3 в логике GE/McKinsey, разбор шести факторов, назревшие и перегретые линии, приоритет вложения и очередь исполнения.
-              </p>
-              <p style={{ margin: '18px 0 0', maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
-                64dao можно использовать самостоятельно или дополнить им классический GE/McKinsey-анализ.
-              </p>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 36 }}>
-                <a href="/m3" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, borderRadius: 6, background: 'var(--brand-navy)', padding: '15px 26px', fontSize: 15, fontWeight: 500, color: 'var(--background)', textDecoration: 'none' }}>
-                  Пройти диагностику <span aria-hidden="true">→</span>
-                </a>
-                <SampleReportButton method="3" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, borderRadius: 6, border: '1px solid rgba(26,37,64,0.22)', background: 'var(--background)', padding: '15px 26px', fontSize: 15, fontWeight: 500, color: 'var(--foreground)', textDecoration: 'none' }}>
-                  Скачать пример отчёта
-                </SampleReportButton>
-              </div>
-            </div>
-
-            <div style={{ background: 'var(--background)', borderRadius: 8, padding: '32px 28px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-              <PowerMatrixSvg />
-            </div>
-          </div>
-        </section>
-
-        {/* ── DIAMOND WHEEL (Метод 4) ── */}
-        <section id="diamond-wheel" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div className="g-2col g-pad96" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, padding: '96px 40px', alignItems: 'center' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ display: 'inline-block', width: 32, height: 2, background: 'var(--accent)' }} />
-                <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#888888' }}>Алмазное колесо · Метод 4</span>
-              </div>
-              <h2 style={{ margin: '24px 0 0', fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(28px,4vw,38px)', fontWeight: 700, lineHeight: 1.2, color: 'var(--foreground)' }}>
-                Что мешает решению сработать
-              </h2>
-              <div style={{ width: 80, height: 3, background: 'var(--accent)', margin: '28px 0' }} />
-
-              <p style={{ margin: 0, maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
-                Метод 3 показывает, куда вкладывать ресурс. Метод 4 показывает, что мешает это сделать.
-              </p>
-              <p style={{ margin: '18px 0 0', maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
-                Десять управленческих модулей — от собственности и стратегии до цены и финансов. Финансовый результат стоит в этом кругу последним: он следствие решений в остальных девяти и напрямую не чинится.
-              </p>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 20, maxWidth: 560 }}>
-                {['колесо из 10 модулей', 'системное ограничение', 'противоречия в решениях', 'очередь действий'].map((step, i, arr) => (
-                  <span key={step} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ display: 'inline-block', borderRadius: 4, border: '1px solid rgba(26,37,64,0.16)', background: 'var(--background)', padding: '8px 12px', fontSize: 14, color: 'var(--foreground)' }}>
-                      {step}
-                    </span>
-                    {i < arr.length - 1 && <span aria-hidden="true" style={{ fontSize: 14, color: 'var(--accent)' }}>→</span>}
-                  </span>
-                ))}
-              </div>
-
-              <p style={{ margin: '24px 0 0', maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
-                Диагностика ищет не самый низкий балл, а узел, который держит остальные: место, где улучшение даёт наибольший эффект, и места, где оно бесполезно, пока этот узел не развязан.
-              </p>
-              <p style={{ margin: '18px 0 0', maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
-                Отдельным блоком — противоречия: пары управленческих решений, разумных по отдельности и тянущих компанию в разные стороны вместе. Обычный ассессмент скажет «слабое место в мотивации». Метод 4 покажет, какие именно два ваших решения друг другу мешают и что из них менять первым.
-              </p>
-              <p style={{ margin: '18px 0 0', maxWidth: 520, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
-                Метод 4 входит в стоимость Метода 3: две диагностики по одной цене.
-              </p>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 36 }}>
-                <a href="/m3" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, borderRadius: 6, background: 'var(--brand-navy)', padding: '15px 26px', fontSize: 15, fontWeight: 500, color: 'var(--background)', textDecoration: 'none' }}>
-                  Пройти диагностику <span aria-hidden="true">→</span>
-                </a>
-                <SampleReportButton method="4" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, borderRadius: 6, border: '1px solid rgba(26,37,64,0.22)', background: 'var(--background)', padding: '15px 26px', fontSize: 15, fontWeight: 500, color: 'var(--foreground)', textDecoration: 'none' }}>
-                  Скачать пример отчёта
-                </SampleReportButton>
-              </div>
-            </div>
-
-            <div style={{ background: 'var(--background)', borderRadius: 8, padding: '28px 24px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-              <DiamondWheelSvg />
-            </div>
-          </div>
-        </section>
-
-        {/* ── PRICE M3 (Метод 3) ── */}
-        <section id="price-m3" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div className="g-2col g-pad96" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '0.85fr 1.15fr', gap: 80, padding: '96px 40px' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ display: 'inline-block', width: 32, height: 2, background: 'var(--accent)' }} />
-                <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#888888' }}>Стоимость · Метод 3</span>
-              </div>
-              <h2 style={{ margin: '24px 0 0', fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(28px,4vw,38px)', fontWeight: 700, lineHeight: 1.2, color: 'var(--foreground)' }}>
-                Сравнение приоритетов
-              </h2>
-              <div style={{ width: 80, height: 3, background: 'var(--accent)', margin: '28px 0' }} />
-              <p style={{ margin: 0, maxWidth: 460, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
-                Вы называете свой порядок приоритетов до диагностики. Расчёт называет свой. Отчёт показывает, на каких направлениях вы расходитесь. Это то, ради чего собирают стратегическую сессию.
-              </p>
-              <p style={{ margin: '20px 0 0', maxWidth: 460, fontSize: 16, lineHeight: 1.75, color: '#4A4A4A' }}>
-                Отчёт говорит не о «направлении движения», а о том, куда позиция сдвинется и при каких условиях — это условный переход, а не прогноз траектории. И не о том, «что меняется», а о том, что назрело и что перегрето: назревшие и перегретые линии названы поимённо.
-              </p>
-            </div>
-            <div>
-              <div style={{ background: 'color-mix(in oklab, var(--muted) 70%, #000 6%)', borderRadius: 8, padding: '48px 40px', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#9a9a9a' }}>Оплата диагностики</div>
-                <h3 style={{ margin: '14px 0 0', fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(28px,3.6vw,34px)', fontWeight: 700, lineHeight: 1.1, color: 'var(--foreground)' }}>
-                  {pricingM3.title}
-                </h3>
-                <div style={{ marginTop: 28, display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 8 }}>
-                  <span style={{ fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(56px,9vw,80px)', fontWeight: 800, lineHeight: 1, color: 'var(--foreground)', letterSpacing: '-0.01em' }}>{priceM3Formatted}</span>
-                  <span style={{ fontSize: 32, fontWeight: 500, color: '#9a9a9a' }}>{pricingM3.currency}</span>
-                </div>
-                <div style={{ marginTop: 16, fontSize: 14, color: '#888888' }}>{pricingM3.description}</div>
-                <div style={{ borderTop: '1px solid rgba(0,0,0,0.1)', margin: '32px 0 4px' }} />
-                <div style={{ textAlign: 'left' }}>
+                <h3>{pricingM3.title}</h3>
+                <div className="lb-price__amount"><b>{priceM3Formatted} {pricingM3.currency}</b><span>{pricingM3.description}</span></div>
+                <div className="lb-price__rows">
                   {pricingM3.features.map((row) => (
-                    <div key={row.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '18px 0', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-                      <span style={{ fontSize: 15, color: '#6A6A6A' }}>{row.label}</span>
-                      <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--foreground)' }}>{row.value}</span>
-                    </div>
+                    <div key={row.label} className="lb-price__row"><span>{row.label}</span><span>{row.value}</span></div>
                   ))}
                 </div>
-                <a href="/login?next=/m3" style={{ marginTop: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', borderRadius: 6, background: '#8597C6', padding: '18px 24px', fontSize: 16, fontWeight: 500, color: '#ffffff', textDecoration: 'none' }}>
-                  Перейти к оплате <span aria-hidden="true">→</span>
-                </a>
-                <div style={{ marginTop: 14, fontSize: 13, lineHeight: 1.6, color: '#888888' }}>
-                  Оплата оформляется в личном кабинете: заказ привязывается к вашей учётной записи.
-                </div>
+                <a href="/login?next=/m3" className="lb-btn lb-btn--ghost-dark lb-btn--block">Перейти к оплате <span aria-hidden="true">→</span></a>
+                <p className="lb-price__foot">Оплата оформляется в личном кабинете: заказ привязывается к вашей учётной записи.</p>
               </div>
             </div>
+            <p className="lb-promise">
+              <b>Обязательство по ясности.</b> Мы не обещаем рост выручки и не принимаем за вас стратегические решения — это зона вашей ответственности. Но мы отвечаем за то, что отчёт будет понятным и пригодным как рамка для разговора о стратегии. Если он окажется неясным — напишите в течение 7 дней, и мы бесплатно дадим короткий разбор-комментарий по вашему отчёту.
+            </p>
           </div>
         </section>
 
-        {/* ── WHY FIRST ── */}
-        <section style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'color-mix(in oklab, var(--muted) 40%, var(--background))' }}>
-          <div className="g-pad100" style={{ maxWidth: 1100, margin: '0 auto', padding: '100px 40px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ display: 'inline-block', width: 32, height: 2, background: 'var(--accent)' }} />
-              <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 2, color: '#888888' }}>Почему диагностика идёт первой</span>
-            </div>
-            <div style={{ marginTop: 32, maxWidth: 880 }}>
-              <div style={{ fontFamily: 'Georgia,serif', fontSize: 72, lineHeight: 0.6, color: 'var(--accent)', opacity: 0.3, marginBottom: 8 }}>"</div>
-              <p style={{ margin: 0, fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(20px,2.6vw,28px)', fontWeight: 500, lineHeight: 1.5, color: '#1A1A1A' }}>
+        {/* ── КОНТАКТЫ (форма, как в исходном дизайне) ── */}
+        <ContactSection />
+
+        {/* ── ПОЧЕМУ ДИАГНОСТИКА ИДЁТ ПЕРВОЙ ── */}
+        <section className="lb-sec lb-sec--navy">
+          <div className="lb-wrap">
+            <div className="lb-quote">
+              <span className="lb-eyebrow">Почему диагностика идёт первой</span>
+              <div className="lb-quote__mark" aria-hidden="true" style={{ marginTop: 36 }}>“</div>
+              <p>
                 Стратегия, выстроенная без понимания текущей фазы, — это аккуратно оформленные предположения. Сверку имеет смысл проходить до решения, а не объяснять задним числом, почему прошлый шаг не сработал.
               </p>
-              <div style={{ marginTop: 40 }}>
-                <div style={{ width: 40, height: 2, background: '#CCCCCC' }} />
-                <div style={{ fontSize: 14, fontStyle: 'italic', color: '#888888', marginTop: 12 }}>Принцип 64 ДАО</div>
-              </div>
+              <div className="lb-quote__sign">Принцип 64 ДАО</div>
             </div>
           </div>
         </section>
 
-        {/* ── CONSULTANTS ── */}
-        <section id="consultants" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div className="g-2col g-pad96" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '0.85fr 1.15fr', gap: 48, padding: '96px 40px' }}>
-            <div>
-              <div style={{ marginBottom: 16, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--muted-foreground)' }}>Для консультантов и фасилитаторов</div>
-              <h2 style={{ margin: 0, fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(32px,4.6vw,48px)', lineHeight: 1.1, color: 'var(--foreground)' }}>
-                Начинайте сессию не с хаоса мнений, а с готовой диагностики
-              </h2>
-              <p style={{ marginTop: 24, maxWidth: 420, fontSize: 16, color: 'var(--muted-foreground)' }}>
-                Входной инструмент, который отличает вас от тех, кто работает только со SWOT и Canvas. Клиент говорит «давайте разберём подробнее» — и это вход к сессии и сопровождению.
-              </p>
-            </div>
-            <div>
-              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {[
-                  'Вы подаёте не гадание, а входную диагностику фазы компании — деловой инструмент.',
-                  'Отчёт — не конец, а дверь: к сессии, сопровождению, регулярной работе с собственником.',
-                  'Отличие от SWOT и Canvas — вы приходите с тем, чего у клиента раньше не было.',
-                  'В комплекте — скрипт подачи клиенту: как представить отчёт деловым языком и в какой момент сессии его подать.',
-                ].map((text) => (
-                  <li key={text} style={{ display: 'flex', gap: 16, borderTop: '1px solid var(--border)', paddingTop: 20, fontSize: 16, lineHeight: 1.6, color: 'var(--foreground)' }}>
-                    <span style={{ marginTop: 8, height: 1, width: 32, flexShrink: 0, background: 'var(--accent)' }} />
-                    {text}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* ── ABOUT TEASER ── */}
-        <section id="about" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div className="g-2col-about g-pad96" style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: '0.5fr 1fr', gap: 48, padding: '96px 40px' }}>
-            <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--muted-foreground)' }}>О нас</div>
-            <div>
-              <h2 style={{ margin: 0, fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(32px,4.6vw,48px)', lineHeight: 1.1, color: 'var(--foreground)' }}>Команда 64 ДАО</h2>
-              <p style={{ marginTop: 24, maxWidth: 680, fontSize: 16, lineHeight: 1.6, color: 'var(--muted-foreground)' }}>
-                Мы соединяем метафизику «И-цзин» с практикой стратегического управления. 64 ДАО — это инструмент, который помогает собственникам и консультантам опираться на структуру цикла, а не на догадки.
-              </p>
-              <Link href="/about" style={{ marginTop: 24, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 500, color: 'var(--accent)', textDecoration: 'none' }}>
-                Подробнее о проекте →
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* ── CROSS LINK ── */}
-        <section style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'color-mix(in oklab, var(--muted) 40%, var(--background))' }}>
-          <div className="g-pad64" style={{ maxWidth: 1280, margin: '0 auto', padding: '64px 40px' }}>
-            <div className="g-crosslink" style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: 24, borderRadius: 2, border: '1px solid var(--border)', background: 'var(--card)', padding: 32 }}>
+        {/* ── FAQ (ответы всегда в HTML: details/summary без состояния) ── */}
+        <section id="faq" className="lb-sec lb-sec--cream">
+          <div className="lb-wrap">
+            <div className="lb-head-row">
               <div>
-                <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--accent)' }}>Партнёрский проект</div>
-                <h3 style={{ margin: '8px 0 0', fontFamily: "'Golos Text',sans-serif", fontSize: 24, fontWeight: 600, color: 'var(--foreground)' }}>
-                  taoteam.ru — функциональная диагностика команд
-                </h3>
-                <p style={{ margin: '12px 0 0', maxWidth: 680, fontSize: 14, lineHeight: 1.6, color: 'var(--muted-foreground)' }}>
+                <span className="lb-eyebrow">Честные ответы</span>
+                <h2 className="lb-h2">Частые вопросы о диагностике 64 ДАО</h2>
+              </div>
+              <Link href="/method" className="lb-btn lb-btn--soft" style={{ background: '#FFFFFF' }}>Методика 64 ДАО <span aria-hidden="true">→</span></Link>
+            </div>
+            <div className="lb-faq">
+              {[0, 1].map((col) => (
+                <div key={col} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {faq
+                    .map((item, i) => ({ item, i }))
+                    .filter(({ i }) => i % 2 === col)
+                    .map(({ item, i }) => (
+                      <details key={i} open={i === 0}>
+                        <summary>
+                          <h3>{item.q}</h3>
+                          <span className="lb-faq__sign" aria-hidden="true" />
+                        </summary>
+                        <p>{item.a}</p>
+                      </details>
+                    ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── ПАРТНЁРСКИЙ ПРОЕКТ ── */}
+        <section className="lb-sec lb-sec--white" style={{ paddingTop: 88, paddingBottom: 88 }}>
+          <div className="lb-wrap">
+            <div className="lb-partner">
+              <div className="lb-partner__text">
+                <span className="lb-partner__kicker">Партнёрский проект</span>
+                <h3>taoteam.ru — функциональная диагностика команд</h3>
+                <p>
                   Если 64 ДАО показывает фазу компании, то taoteam.ru разбирает команду: роли, дефициты и зоны напряжения. Два инструмента работают вместе — стратегия и команда в одной рамке.
                 </p>
               </div>
-              <a href="https://taoteam.ru" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2, border: '1px solid rgba(0,0,0,0.2)', padding: '12px 24px', fontSize: 14, fontWeight: 500, color: 'var(--foreground)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                Перейти на taoteam.ru →
+              <a href="https://taoteam.ru" target="_blank" rel="noreferrer" className="lb-btn lb-btn--navy">
+                Перейти на taoteam.ru <span aria-hidden="true">→</span>
               </a>
             </div>
-          </div>
-        </section>
-
-        {/* ── CONTACT ── */}
-        <ContactSection />
-
-        {/* ── FINAL CTA ── */}
-        <section id="cta" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-          <div className="g-pad112" style={{ maxWidth: 1280, margin: '0 auto', padding: '112px 40px', textAlign: 'center' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--muted-foreground)' }}>
-              <span style={{ height: 1, width: 32, background: 'var(--accent)' }} />Точка сверки<span style={{ height: 1, width: 32, background: 'var(--accent)' }} />
-            </div>
-            <h2 style={{ margin: '24px auto 0', maxWidth: 760, fontFamily: "'Golos Text',sans-serif", fontSize: 'clamp(36px,5.2vw,64px)', lineHeight: 1.05, color: 'var(--foreground)' }}>
-              Узнайте свою фазу до следующего крупного решения
-            </h2>
-            <p style={{ margin: '24px auto 0', maxWidth: 560, fontSize: 16, color: 'var(--muted-foreground)' }}>
-              Несколько минут сейчас — вместо месяцев разбора последствий потом.
-            </p>
-            <div style={{ marginTop: 40, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-              <a href="/login" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2, background: 'var(--foreground)', padding: '16px 32px', fontSize: 14, fontWeight: 500, color: 'var(--background)', textDecoration: 'none' }}>
-                Пройти диагностику
-              </a>
-              <a href="#contact" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2, border: '1px solid rgba(0,0,0,0.2)', padding: '16px 32px', fontSize: 14, fontWeight: 500, color: 'var(--foreground)', textDecoration: 'none' }}>
-                Обсудить с нами
-              </a>
-            </div>
-            <p style={{ marginTop: 32, fontSize: 14, color: 'var(--muted-foreground)' }}>
-              {priceFormatted} {pricing.currency} · Метод 1 + Метод 2 · обязательство по ясности
-            </p>
           </div>
         </section>
       </main>

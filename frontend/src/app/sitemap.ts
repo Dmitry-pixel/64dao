@@ -9,7 +9,7 @@ import { METHOD_ARTICLES, METHOD_LAST_UPDATED } from '@/lib/methodArticles'
  * дату с содержимым.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticRoutes = ['', '/about']
+  const staticRoutes = ['', '/about', '/methods']
   const documentSlugs = ['privacy-policy', 'user-agreement', 'personal-data-consent']
 
   const now = new Date()

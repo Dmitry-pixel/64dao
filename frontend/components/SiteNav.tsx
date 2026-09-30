@@ -5,16 +5,24 @@ import { useState } from 'react'
 import SampleReportModal from '@/components/SampleReportModal'
 
 /**
- * SiteNav — липкая шапка сайта.
- * 'use client' — требование Next.js App Router для компонентов с браузерными
- * событиями. Плавная прокрутка к якорям реализована через CSS (globals.css:
- * scroll-behavior: smooth + scroll-padding-top), поэтому обычные <a href="#id">
- * работают корректно без JavaScript.
+ * SiteNav: липкая шапка сайта, вариант B (тёмно-синяя).
+ * 'use client' нужен для бургер-меню и модалки «Методика 64DAO».
  *
- * Адаптив: ниже 880px навигация и CTA скрываются за бургер-кнопкой.
- * Брейкпоинт и стили — через <style jsx>, так как остальная часть компонента
- * использует inline style={{}} (медиа-запросы в inline-стилях не работают).
+ * Ссылки на разделы главной даны как /#id: шапка стоит и на других страницах
+ * (/methods, /help/...), и голый #id там никуда не ведёт.
+ *
+ * Адаптив: ниже 1080px навигация и кнопки уходят в бургер.
  */
+const NAV = [
+  { href: '/#how', label: 'Как это работает' },
+  { href: '/#report', label: 'Что в отчёте' },
+  { href: '/#price', label: 'Стоимость' },
+  { href: '/about', label: 'О нас' },
+  { href: '/#contact', label: 'Контакты' },
+]
+
+const INK = '#F8F4EC'
+
 export default function SiteNav() {
   const [open, setOpen] = useState(false)
   // Методика отдаётся через ту же форму сбора контактов, что и примеры
@@ -23,222 +31,139 @@ export default function SiteNav() {
 
   return (
     <>
-    <header
-      className="site-nav"
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-        background: 'var(--brand-teal)',
-        borderBottom: '1px solid rgba(255,255,255,0.25)',
-        backdropFilter: 'blur(8px)',
-      }}
-    >
-      <div
-        className="site-nav__bar"
-        style={{
-          maxWidth: 1280,
-          margin: '0 auto',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 24,
-          padding: '12px 40px',
-        }}
-      >
-        {/* Логотип */}
-        <a href="#top" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-          <img src="/assets/logo.svg" alt="64 ДАО" style={{ height: 52, width: 'auto', display: 'block' }} />
-        </a>
+      <header className="site-nav">
+        <div className="site-nav__bar">
+          <Link href="/" className="site-nav__logo" aria-label="64 ДАО, на главную">
+            <img src="/assets/logo.svg" alt="64 ДАО" />
+          </Link>
 
-        {/* Навигация (desktop) */}
-        <nav
-          className="site-nav__links"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 28,
-            fontSize: 12,
-            textTransform: 'uppercase',
-            letterSpacing: '0.18em',
-          }}
-        >
-          <a href="#how"     style={{ color: '#1f3a52', textDecoration: 'none' }}>Как это работает</a>
-          <a href="#report"  style={{ color: '#1f3a52', textDecoration: 'none' }}>Что в отчёте</a>
-          <a href="#price"   style={{ color: '#1f3a52', textDecoration: 'none' }}>Стоимость</a>
-          <Link href="/about" style={{ color: '#1f3a52', textDecoration: 'none' }}>О нас</Link>
-          <a href="#contact" style={{ color: '#1f3a52', textDecoration: 'none' }}>Контакты</a>
-          <Link href="/login" style={{ color: '#1f3a52', textDecoration: 'none' }}>Вход / Регистрация</Link>
-        </nav>
+          <nav className="site-nav__links" aria-label="Разделы">
+            {NAV.map((i) => (
+              <Link key={i.href} href={i.href}>{i.label}</Link>
+            ))}
+          </nav>
 
-        {/* CTA (desktop) */}
-        <div className="site-nav__cta-group" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button
-          type="button"
-          onClick={() => setMethodOpen(true)}
-          className="site-nav__method"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 2,
-            background: 'transparent',
-            border: '1px solid rgba(31,58,82,0.35)',
-            padding: '11px 18px',
-            fontSize: 12,
-            fontWeight: 500,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            color: '#1f3a52',
-            whiteSpace: 'nowrap',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
-        >
-          Методика 64DAO
-        </button>
-        <a href="/login"
-          className="site-nav__cta"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 2,
-            background: 'var(--accent)',
-            padding: '12px 20px',
-            fontSize: 14,
-            fontWeight: 500,
-            color: 'var(--accent-foreground)',
-            textDecoration: 'none',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Пройти диагностику
-        </a>
+          <div className="site-nav__cta-group">
+            <button type="button" className="site-nav__method" onClick={() => setMethodOpen(true)}>
+              Методика 64DAO
+            </button>
+            <Link href="/login" className="site-nav__login">Войти</Link>
+            <a href="/login" className="site-nav__cta">Пройти диагностику</a>
+          </div>
+
+          <button
+            type="button"
+            className="site-nav__burger"
+            aria-label={open ? 'Закрыть меню' : 'Открыть меню'}
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+          >
+            <span /><span /><span />
+          </button>
         </div>
 
-        {/* Бургер-кнопка (mobile) */}
-        <button
-          type="button"
-          className="site-nav__burger"
-          aria-label={open ? 'Закрыть меню' : 'Открыть меню'}
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-          style={{
-            display: 'none',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            gap: 5,
-            width: 32,
-            height: 32,
-            padding: 0,
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          <span className="site-nav__burger-bar" style={{ background: '#1f3a52' }} />
-          <span className="site-nav__burger-bar" style={{ background: '#1f3a52' }} />
-          <span className="site-nav__burger-bar" style={{ background: '#1f3a52' }} />
-        </button>
-      </div>
+        {open && (
+          <nav className="site-nav__mobile-panel" aria-label="Меню">
+            {NAV.map((i) => (
+              <Link key={i.href} href={i.href} onClick={() => setOpen(false)}>{i.label}</Link>
+            ))}
+            <Link href="/login" onClick={() => setOpen(false)}>Вход / Регистрация</Link>
+            <button type="button" className="site-nav__method" onClick={() => { setOpen(false); setMethodOpen(true) }}>
+              Методика 64DAO
+            </button>
+            <a href="/login" className="site-nav__cta" onClick={() => setOpen(false)}>Пройти диагностику</a>
+          </nav>
+        )}
 
-      {/* Мобильное выпадающее меню */}
-      <nav
-        className="site-nav__mobile-panel"
-        style={{
-          display: open ? 'flex' : 'none',
-          flexDirection: 'column',
-          gap: 4,
-          padding: '8px 20px 20px',
-          fontSize: 13,
-          textTransform: 'uppercase',
-          letterSpacing: '0.14em',
-        }}
-      >
-        <a href="#how"     onClick={() => setOpen(false)} style={{ color: '#1f3a52', textDecoration: 'none', padding: '10px 0' }}>Как это работает</a>
-        <a href="#report"  onClick={() => setOpen(false)} style={{ color: '#1f3a52', textDecoration: 'none', padding: '10px 0' }}>Что в отчёте</a>
-        <a href="#price"   onClick={() => setOpen(false)} style={{ color: '#1f3a52', textDecoration: 'none', padding: '10px 0' }}>Стоимость</a>
-        <Link href="/about" onClick={() => setOpen(false)} style={{ color: '#1f3a52', textDecoration: 'none', padding: '10px 0' }}>О нас</Link>
-        <a href="#contact" onClick={() => setOpen(false)} style={{ color: '#1f3a52', textDecoration: 'none', padding: '10px 0' }}>Контакты</a>
-        <Link href="/login" onClick={() => setOpen(false)} style={{ color: '#1f3a52', textDecoration: 'none', padding: '10px 0' }}>Вход / Регистрация</Link>
-        <button
-          type="button"
-          onClick={() => { setOpen(false); setMethodOpen(true) }}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 2,
-            background: 'transparent',
-            border: '1px solid rgba(31,58,82,0.35)',
-            padding: '12px 20px',
-            marginTop: 8,
-            fontSize: 13,
-            fontWeight: 500,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            color: '#1f3a52',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
-        >
-          Методика 64DAO
-        </button>
-        <a href="/login"
-          onClick={() => setOpen(false)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 2,
-            background: 'var(--accent)',
-            padding: '12px 20px',
-            marginTop: 8,
-            fontSize: 13,
-            fontWeight: 500,
-            color: 'var(--accent-foreground)',
-            textDecoration: 'none',
-          }}
-        >
-          Пройти диагностику
-        </a>
-      </nav>
-
-      <style jsx>{`
-        @media (max-width: 880px) {
+        <style jsx>{`
+          .site-nav {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            background: #1E2A44;
+            border-bottom: 1px solid rgba(248, 244, 236, 0.12);
+            font-family: 'Golos Text', system-ui, sans-serif;
+          }
           .site-nav__bar {
-            padding: 12px 20px !important;
+            max-width: 1200px;
+            margin: 0 auto;
+            height: 80px;
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
           }
-          .site-nav__links {
-            display: none !important;
+          .site-nav :global(.site-nav__logo) { display: flex; align-items: center; }
+          .site-nav :global(.site-nav__logo img) { height: 52px; width: auto; display: block; }
+          .site-nav__links { display: flex; align-items: center; gap: 28px; font-size: 15px; }
+          .site-nav__links :global(a),
+          .site-nav__mobile-panel :global(a) { color: ${INK}; text-decoration: none; }
+          .site-nav__links :global(a:hover) { color: #5B9EA6; }
+          .site-nav__cta-group { display: flex; align-items: center; gap: 16px; }
+          .site-nav__method {
+            background: transparent;
+            border: 1px solid rgba(248, 244, 236, 0.35);
+            border-radius: 999px;
+            padding: 10px 16px;
+            font: inherit;
+            font-size: 14px;
+            color: ${INK};
+            cursor: pointer;
+            white-space: nowrap;
           }
-          .site-nav__cta,
-          .site-nav__cta-group {
-            display: none !important;
+          .site-nav__method:hover { border-color: ${INK}; }
+          .site-nav :global(.site-nav__login) { font-size: 15px; color: ${INK}; text-decoration: none; white-space: nowrap; }
+          .site-nav :global(.site-nav__cta) {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #C0392B;
+            color: #FFFFFF;
+            font-size: 15px;
+            font-weight: 600;
+            padding: 12px 20px;
+            border-radius: 999px;
+            text-decoration: none;
+            white-space: nowrap;
           }
+          .site-nav :global(.site-nav__cta:hover) { background: #A93226; }
           .site-nav__burger {
-            display: flex !important;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            gap: 5px;
+            width: 44px;
+            height: 44px;
+            padding: 10px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
           }
-        }
-        @media (min-width: 881px) {
+          .site-nav__burger span { display: block; height: 2px; border-radius: 1px; background: ${INK}; }
           .site-nav__mobile-panel {
-            display: none !important;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px 20px 24px;
+            font-size: 16px;
           }
-        }
-        .site-nav__burger-bar {
-          display: block;
-          width: 100%;
-          height: 2px;
-          border-radius: 1px;
-        }
-      `}</style>
-    </header>
+          .site-nav__mobile-panel :global(a) { padding: 12px 0; }
+          .site-nav__mobile-panel .site-nav__method { margin-top: 8px; padding: 14px 20px; }
+          .site-nav__mobile-panel :global(.site-nav__cta) { margin-top: 8px; padding: 14px 20px; }
+          @media (max-width: 1080px) {
+            .site-nav__bar { padding: 0 20px; height: 68px; }
+            .site-nav :global(.site-nav__logo img) { height: 44px; }
+            .site-nav__links,
+            .site-nav__cta-group { display: none; }
+            .site-nav__burger { display: flex; }
+          }
+        `}</style>
+      </header>
 
-    {/* Модалка вынесена из <header>: у него backdrop-filter, а он создаёт
-        containing block для position:fixed — внутри шапки оверлей прижался бы
-        к её высоте вместо всего экрана. */}
-    <SampleReportModal open={methodOpen} onClose={() => setMethodOpen(false)} method="methodology" />
+      {/* Модалка вынесена из <header>: sticky-шапка не должна быть
+          containing block для position:fixed оверлея. */}
+      <SampleReportModal open={methodOpen} onClose={() => setMethodOpen(false)} method="methodology" />
     </>
   )
 }
