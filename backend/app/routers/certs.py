@@ -104,7 +104,7 @@ async def read_certs(
         "host": TOCHKA_HOST,
         "pay_host": PAY_HOST,
         "bundle": TOCHKA_BUNDLE,
-        "bundle_exists": Path(TOCHKA_BUNDLE).is_file(),
+        "bundle_exists": Path(TOCHKA_BUNDLE).is_file(),  # noqa: ASYNC240 — один stat локального файла, микросекунды
         "cert_dir": str(CERT_DIR),
         "warn_days": WARN_DAYS,
         "leaf_warn_days": LEAF_WARN_DAYS,
