@@ -209,6 +209,26 @@
 .lb-btn--navy { background: var(--lb-navy); color: #F8F4EC; padding: 16px 26px; border: none; white-space: nowrap; }
 .lb-btn--navy:hover { background: #2B3A5C; color: #F8F4EC; }
 
+/* ── Контакты ── */
+.lb-contact { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
+.lb-contact__info { margin: 36px 0 0; display: flex; flex-direction: column; gap: 12px; }
+.lb-contact__row { background: #FFFFFF; border-radius: 16px; padding: 18px 22px; display: grid; grid-template-columns: 160px 1fr; gap: 16px; align-items: baseline; }
+.lb-contact__row dt { font-family: Manrope, sans-serif; font-weight: 700; font-size: 17px; }
+.lb-contact__row dd { margin: 0; font-size: 15px; color: var(--lb-muted); }
+.lb-contact__card { background: #FFFFFF; border-radius: 24px; padding: 36px; box-shadow: 0 8px 28px rgba(30, 42, 68, 0.08); }
+.lb-contact__form { display: grid; gap: 18px; }
+.lb-field { display: block; }
+.lb-field span { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 600; }
+.lb-field input, .lb-field textarea { width: 100%; border-radius: 12px; border: 1px solid rgba(30, 42, 68, 0.16); background: var(--lb-bg); padding: 14px 16px; font-family: inherit; font-size: 16px; color: var(--lb-navy); outline: none; transition: border-color .15s, background .15s; }
+.lb-field textarea { resize: vertical; min-height: 128px; }
+.lb-field input::placeholder, .lb-field textarea::placeholder { color: #8A96A5; }
+.lb-field input:focus, .lb-field textarea:focus { border-color: var(--lb-teal); background: #FFFFFF; box-shadow: 0 0 0 3px rgba(91, 158, 166, 0.2); }
+.lb-contact__form .lb-btn { margin-top: 6px; }
+.lb-contact__form .lb-btn:disabled { opacity: 0.6; cursor: default; }
+.lb-contact__error { font-size: 14px; color: var(--lb-red); }
+.lb-contact__done { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 40px 12px; text-align: center; font-family: Manrope, sans-serif; font-weight: 700; font-size: 20px; }
+.lb-contact__done-mark { width: 56px; height: 56px; border-radius: 50%; background: rgba(91, 158, 166, 0.18); color: #3E7F87; display: flex; align-items: center; justify-content: center; font-size: 26px; }
+
 /* ── Страница /methods ── */
 .lb-mhero { background: var(--lb-navy); color: #F8F4EC; padding: 88px 0 96px; }
 .lb-mhero h1 { margin: 16px 0 0; max-width: 860px; font-weight: 800; font-size: clamp(34px, 4vw, 52px); line-height: 1.08; letter-spacing: -0.02em; }
@@ -233,6 +253,7 @@
 
 @media (max-width: 1080px) {
   .lb-hero__grid, .lb-report, .lb-symptoms, .lb-split { grid-template-columns: 1fr; }
+  .lb-contact { grid-template-columns: 1fr; gap: 36px; }
   .lb-hero__grid { gap: 40px; }
   .lb-report, .lb-split { gap: 48px; }
   .lb-symptoms { gap: 36px; }
@@ -316,6 +337,10 @@
   .lb-partner { padding: 28px 22px; border-radius: 22px; }
   .lb-partner h3 { font-size: 22px; }
   .lb-partner .lb-btn { width: 100%; white-space: normal; text-align: center; }
+
+  /* Контакты */
+  .lb-contact__row { grid-template-columns: 1fr; gap: 4px; padding: 16px 18px; }
+  .lb-contact__card { padding: 24px 20px; border-radius: 20px; }
 
   /* /methods */
   .lb-mhero { padding: 48px 0 56px; }
