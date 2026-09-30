@@ -103,12 +103,12 @@ function HeroMap() {
         <circle cx={190} cy={230} r={22} fill="none" stroke="#C0392B" strokeOpacity={0.35} strokeWidth={2} />
         <circle cx={190} cy={230} r={9} fill="#C0392B" />
         <g fontFamily="'Golos Text', sans-serif" fontSize={13} fill="#B9C2CE">
-          <text x={40} y={420} textAnchor="middle">Зарождение</text>
+          <text x={14} y={420} textAnchor="start">Зарождение</text>
           <text x={190} y={420} textAnchor="middle" fill="#F8F4EC" fontWeight={600}>Рост</text>
           <text x={290} y={420} textAnchor="middle">Зрелость</text>
           <text x={410} y={420} textAnchor="middle">Спад</text>
           <text x={500} y={420} textAnchor="middle">Обновление</text>
-          <text x={565} y={440} textAnchor="middle">Новый цикл</text>
+          <text x={588} y={440} textAnchor="end">Новый цикл</text>
         </g>
       </svg>
       <div className="lb-map__card">
@@ -525,7 +525,7 @@ export default async function HomePage() {
                 Стратегическая консультация в России — от 300 000 ₽. Один день сессии «ни о чём» или один слитый рекламный бюджет стоят кратно дороже.
               </p>
             </div>
-            <div className="lb-grid2" style={{ marginTop: 44, gap: 24 }}>
+            <div className="lb-grid2 lb-prices" style={{ marginTop: 44, gap: 24 }}>
               <div className="lb-price lb-price--dark">
                 <div className="lb-price__top">
                   <span className="lb-price__kicker">Оплата диагностики</span>
@@ -589,21 +589,14 @@ export default async function HomePage() {
               <Link href="/method" className="lb-btn lb-btn--soft" style={{ background: '#FFFFFF' }}>Методика 64 ДАО <span aria-hidden="true">→</span></Link>
             </div>
             <div className="lb-faq">
-              {[0, 1].map((col) => (
-                <div key={col} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {faq
-                    .map((item, i) => ({ item, i }))
-                    .filter(({ i }) => i % 2 === col)
-                    .map(({ item, i }) => (
-                      <details key={i} open={i === 0}>
-                        <summary>
-                          <h3>{item.q}</h3>
-                          <span className="lb-faq__sign" aria-hidden="true" />
-                        </summary>
-                        <p>{item.a}</p>
-                      </details>
-                    ))}
-                </div>
+              {faq.map((item, i) => (
+                <details key={i} open={i === 0}>
+                  <summary>
+                    <h3>{item.q}</h3>
+                    <span className="lb-faq__sign" aria-hidden="true" />
+                  </summary>
+                  <p>{item.a}</p>
+                </details>
               ))}
             </div>
           </div>
