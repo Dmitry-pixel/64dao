@@ -230,7 +230,7 @@ function AssessmentInner() {
     return answers[i] === 'A' ? 'solid' : 'broken'
   })
 
-  const NavBar = () => (
+  const navBar = (
     <nav style={S.nav}>
       <div style={S.navInner}>
         <div style={S.navLogo} onClick={() => router.push('/dashboard')}>
@@ -252,7 +252,7 @@ function AssessmentInner() {
   // ── Ожидание отчёта ────────────────────────────────────────────────────────
   if (mode === 'waiting') return (
     <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
-      <NavBar />
+      {navBar}
       <div style={S.waitStage}>
         <div style={S.waitHex}>䷖</div>
         <span style={{ ...S.labelRed, marginTop: 14 }}>Анализ сценария</span>
@@ -268,7 +268,7 @@ function AssessmentInner() {
   // ── Выбор метода ──────────────────────────────────────────────────────────
   if (mode === 'choose') return (
     <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
-      <NavBar />
+      {navBar}
       <div style={S.choosePad}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
           <span style={S.labelRed}>Новая диагностика</span>
@@ -335,7 +335,7 @@ function AssessmentInner() {
   // ── Ввод названия компании ───────────────────────────────────────────────
   if (mode === 'company') return (
     <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
-      <NavBar />
+      {navBar}
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '80px 40px' }}>
         <span style={S.labelRed}>
           {pendingMethod === 'method1' ? 'Метод 01 · Стратегия'
@@ -383,7 +383,7 @@ function AssessmentInner() {
     const q = baseQ?.[step]
     if (!q) return (
       <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
-        <NavBar />
+        {navBar}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: '120px 20px' }}>
           <p style={{ fontFamily: 'sans-serif', fontSize: 14, color: 'rgba(26,37,64,0.6)' }}>
             {baseQError ? 'Не удалось загрузить вопросы.' : 'Загрузка вопросов…'}
@@ -401,7 +401,7 @@ function AssessmentInner() {
     const progress = ((step) / 6) * 100
     return (
       <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
-        <NavBar />
+        {navBar}
         <div style={S.qStage}>
           {/* Прогресс */}
           <div style={S.qProgress}>
@@ -484,7 +484,7 @@ function AssessmentInner() {
   // ── Финансовый блок — интерстициал ───────────────────────────────────────
   if (mode === 'finance_intro') return (
     <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
-      <NavBar />
+      {navBar}
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '64px 40px' }}>
         <span style={S.labelRed}>Метод 01 · Часть 2 из 2</span>
         <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 34, fontWeight: 400, color: '#1a2540', margin: '10px 0 12px' }}>
@@ -508,7 +508,7 @@ function AssessmentInner() {
   if (mode === 'finance') {
     if (!finItems) return (
       <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
-        <NavBar />
+        {navBar}
         <div style={S.qStage}>
           <p style={{ fontFamily: 'sans-serif', color: 'rgba(26,37,64,0.6)' }}>Загрузка…</p>
         </div>
@@ -516,7 +516,7 @@ function AssessmentInner() {
     )
     return (
       <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
-        <NavBar />
+        {navBar}
         <ContourSurvey
           title="Метод 01 · Часть 2 · Финансовая функция"
           blocks={finItems}
@@ -536,7 +536,7 @@ function AssessmentInner() {
     const score = bmcScores[activeBlock] || 0
     return (
       <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
-        <NavBar />
+        {navBar}
         <div style={S.bmcPad}>
           <span style={S.labelRed}>Метод 02 · Бизнес-модель</span>
           <h1 style={S.bmcH1}>9 блоков бизнес-модели</h1>

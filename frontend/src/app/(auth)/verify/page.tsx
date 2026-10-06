@@ -18,7 +18,8 @@ function VerifyForm() {
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
   const [resending, setResending] = useState(false)
-  const [resentAt,  setResentAt]  = useState<number | null>(null)
+  // Пауза 30 с после повторной отправки; снимается таймером, а не ре-рендером.
+  const [cooldown,  setCooldown]  = useState(false)
   const inputs = useRef<(HTMLInputElement | null)[]>([])
 
   useEffect(() => { inputs.current[0]?.focus() }, [])
@@ -81,7 +82,8 @@ function VerifyForm() {
     setError('')
     try {
       await resendOTP(email)
-      setResentAt(Date.now())
+      setCooldown(true)
+      setTimeout(() => setCooldown(false), 30_000)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Ошибка отправки')
     } finally {
@@ -89,7 +91,7 @@ function VerifyForm() {
     }
   }
 
-  const canResend = !resentAt || Date.now() - resentAt > 30_000
+  const canResend = !cooldown
 
   return (
     <div className="auth-split">
@@ -142,7 +144,7 @@ function VerifyForm() {
         </button>
 
         <div style={{ marginTop: '18px' }}>
-          {resentAt && !canResend ? (
+          {cooldown ? (
             <p style={{ fontSize: '12px', color: '#2a7a2a', margin: 0, fontFamily: 'sans-serif' }}>✓ Код отправлен повторно</p>
           ) : (
             <button

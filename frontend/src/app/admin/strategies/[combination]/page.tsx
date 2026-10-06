@@ -1,4 +1,7 @@
 'use client';
+/* eslint-disable react-hooks/refs -- форма неуправляемая намеренно: значения
+   живут в formRef, чтобы ввод не вызывал ре-рендер 50 полей; ref читается при
+   рендере один раз после загрузки (key={formKey}). */
 
 import { use, useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
