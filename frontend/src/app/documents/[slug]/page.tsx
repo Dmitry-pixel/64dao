@@ -15,10 +15,11 @@ export function generateStaticParams() {
   return Object.keys(TITLES).map((slug) => ({ slug }))
 }
 
-type Params = { slug: string }
+type Params = Promise<{ slug: string }>
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
-  const title = TITLES[params.slug] ?? 'Правовой документ'
+  const { slug } = await params
+  const title = TITLES[slug] ?? 'Правовой документ'
   return {
     title: `${title} — 64 ДАО`,
     description: `${title}. Сайт 64dao.ru. Редакция от 26 июня 2026 г.`,
@@ -28,12 +29,13 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 // ─── Страница ─────────────────────────────────────────────────────────────────
 
 export default async function DocumentPage({ params }: { params: Params }) {
+  const { slug } = await params
   let htmlContent = ''
   let apiTitle: string | null = null
 
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? ''
-    const res = await fetch(`${apiUrl}/api/documents/${params.slug}`, {
+    const res = await fetch(`${apiUrl}/api/documents/${slug}`, {
       next: { revalidate: 60 },
     })
     if (res.ok) {
@@ -49,7 +51,7 @@ export default async function DocumentPage({ params }: { params: Params }) {
     // Контент придёт пустым; LegalShell отрендерит обёртку без него
   }
 
-  const title = apiTitle ?? TITLES[params.slug] ?? 'Правовой документ'
+  const title = apiTitle ?? TITLES[slug] ?? 'Правовой документ'
 
   const breadcrumbSchema = {
     '@context': 'https://schema.org',
@@ -65,7 +67,7 @@ export default async function DocumentPage({ params }: { params: Params }) {
         '@type': 'ListItem',
         position: 2,
         name: title,
-        item: `https://64dao.ru/documents/${params.slug}`,
+        item: `https://64dao.ru/documents/${slug}`,
       },
     ],
   }
@@ -75,7 +77,7 @@ export default async function DocumentPage({ params }: { params: Params }) {
       <JsonLd data={breadcrumbSchema} />
       <LandingFonts />
       <LegalShell
-        slug={params.slug}
+        slug={slug}
         title={title}
         htmlContent={htmlContent}
       />

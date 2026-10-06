@@ -16,10 +16,11 @@ export function generateStaticParams() {
 // Несуществующий слаг должен отдавать 404, а не рендериться на лету.
 export const dynamicParams = false
 
-type Params = { slug: string }
+type Params = Promise<{ slug: string }>
 
-export function generateMetadata({ params }: { params: Params }): Metadata {
-  const a = getArticle(params.slug)
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { slug } = await params
+  const a = getArticle(slug)
   if (!a) return { title: 'Статья не найдена — 64 ДАО' }
 
   const url = `https://64dao.ru/method/${a.slug}`
@@ -39,8 +40,9 @@ export function generateMetadata({ params }: { params: Params }): Metadata {
   }
 }
 
-export default function MethodArticlePage({ params }: { params: Params }) {
-  const a = getArticle(params.slug)
+export default async function MethodArticlePage({ params }: { params: Params }) {
+  const { slug } = await params
+  const a = getArticle(slug)
   if (!a) notFound()
 
   const url = `https://64dao.ru/method/${a.slug}`

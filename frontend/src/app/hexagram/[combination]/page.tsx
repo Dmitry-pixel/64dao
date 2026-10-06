@@ -21,10 +21,11 @@ export const metadata = {
   title: 'Описание гексаграммы — 64dao',
 }
 
-export default function HexagramPage({ params }: { params: { combination: string } }) {
+export default async function HexagramPage({ params }: { params: Promise<{ combination: string }> }) {
+  const { combination } = await params
   return (
     <Suspense fallback={null}>
-      <HexagramDetail combination={params.combination.toUpperCase()} />
+      <HexagramDetail combination={combination.toUpperCase()} />
     </Suspense>
   )
 }

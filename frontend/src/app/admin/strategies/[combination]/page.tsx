@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { use, useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { HEXAGRAM_DATA, HEXAGRAM_MAP, comboToHex } from '@/lib/hexagrams';
 import { TargetHexagramSelect } from '@/components/TargetHexagramSelect'
@@ -137,9 +137,10 @@ const EMPTY_FORM: FormData = {
 };
 
 // ─── Страница ─────────────────────────────────────────────────────────────────
-export default function StrategyEditorPage({ params }: { params: { combination: string } }) {
+export default function StrategyEditorPage({ params }: { params: Promise<{ combination: string }> }) {
   const router = useRouter();
-  const { combination } = params;
+  // Next 15+: params — Promise, в клиентском компоненте разворачивается через use().
+  const { combination } = use(params);
   const hex = HEXAGRAM_MAP[combination];
 
   // formRef хранит все значения — изменения НЕ вызывают ре-рендер

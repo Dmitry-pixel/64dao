@@ -23,7 +23,7 @@ Web app for business strategy diagnostics based on 64 hexagrams / stratagems (I 
 ## Stack (actual)
 
 - **Backend:** FastAPI 0.139 · SQLAlchemy 2 async · asyncpg · PostgreSQL 16 · Alembic 1.14 · Pydantic v2 + pydantic-settings · PyJWT 2.15 (HS256) · cryptography 50 · aiosmtplib 5 · slowapi · Playwright 1.49 (Chromium, HTML->PDF).
-- **Frontend:** Next.js 14.2.35 App Router · React 18 · TypeScript 5 · Tailwind · react-hook-form + zod · lucide-react. Standalone Docker output.
+- **Frontend:** Next.js 16.4 App Router · React 19 · ESLint 9 (flat config `eslint.config.mjs`) · TypeScript 5 · Tailwind · react-hook-form + zod · lucide-react. Standalone Docker output.
 - **Infra:** Docker Compose · FastPanel nginx on the host (ports 80/443) · VPS.
 - **Payments:** Точка Банк acquiring (JWT auth, RS256 webhook signature). **No Stripe.**
 - **Email:** aiosmtplib to `smtp.timeweb.ru:465`, in-house template system in `app/email.py`. **No Resend.**
@@ -103,7 +103,7 @@ curl -sk https://64dao.ru/api/health
   - `@/components/AdminNav` -> `frontend/components/AdminNav.tsx`
 - **Pages:** `src/app/` (App Router). `(auth)` group = login/register/verify/forgot/reset. Admin under `src/app/admin/*`.
 - **Shared components:** `frontend/components/`. NOTE: `frontend/src/components/` is dead code (a stale duplicate `AdminNav.tsx` lives there) — do not import from it; prefer deleting it.
-- `middleware.ts` handles ONLY maintenance mode: it fetches `/api/site-mode` and rewrites to `/maintenance`. It does not guard routes. All authorization is server-side via `Depends(require_admin)` / `get_current_user`.
+- `src/proxy.ts` (Next 16 name for middleware) handles ONLY maintenance mode: it asks `http://backend:8000/api/site-mode` over the Docker network, caches the answer for 10 s, and rewrites to `/maintenance`. It must live in `src/` next to `src/app`; until 2026-10-06 it sat in `frontend/` root as `middleware.ts`, was never picked up, and maintenance mode did nothing. Verify by the `ƒ Proxy` line of `next build` (in Next 16 `middleware-manifest.json` stays empty even when proxy works). Caution: the mode flag lives in `uploads/site_mode.json`; while proxy was broken it was left `enabled: true`, and the first Next 16 deploy closed the whole site until it was switched off in /admin/site-mode. It does not guard routes. All authorization is server-side via `Depends(require_admin)` / `get_current_user`.
 - `next.config.js` is copied into the runtime image (`frontend/Dockerfile`). Before 2026-10-06 it was not, and `next start` silently ran with default config. The image optimizer is disabled (`images.unoptimized: true`, `/_next/image` returns 404); `next/image` is not used anywhere. Re-check this before adding `next/image`.
 - `styled-jsx` (`<style jsx>`) works only in Client Components. For Server Component pages, put `@media` rules in `globals.css`.
 - Dynamic `[slug]` routes need `generateStaticParams()` or they go `force-dynamic`/`no-store` and block crawling (see `napkin.md`).
@@ -130,7 +130,7 @@ curl -sk https://64dao.ru/api/health
 
 ## Important Constraints
 
-- Next.js 14 (not 15): `params` in page components is a plain object. Use `params.id` directly, not `React.use(params)`.
+- Next.js 16: `params` is a Promise. Server components: `const { id } = await params`. Client components: `const { id } = use(params)`. `next lint` no longer exists: run `npx eslint .`.
 - Async SQLAlchemy: `await db.flush()` after mutations; commit happens in the `get_db` dependency.
 - CORS is strict: `allow_origins` must exactly match `settings.app_url` (no trailing slash).
 - Admin bootstrap: `POST /api/admin/setup` works once (before any admin exists) and requires `ADMIN_SETUP_KEY`.
