@@ -67,6 +67,7 @@ async def reconcile_pending(session) -> dict:
     marked_paid = marked_failed = errors = 0
 
     for order in rows:
+        order._status_source = "reconcile_job"
         try:
             resp = await client.get_payment_status(order.tochka_operation_id)
         except Exception:

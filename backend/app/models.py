@@ -481,6 +481,11 @@ class AccessGrant(Base):
 # который импортируют все остальные методы. Импорт нужен для регистрации
 # в Base.metadata: без него create_all в тестах и autogenerate в alembic
 # таблиц m3_* не увидят.
+# Таблица журнала и слушатель смены статуса заказа (аудит 2026-10-06, R015).
+# Импорт здесь, а не в main.py: задачи cron (reconcile_pending) импортируют
+# модели без приложения, и без этого их смены статуса не попали бы в журнал.
+import app.audit  # noqa: E402,F401
+from app.audit_models import AuditEvent  # noqa: E402,F401
 from app.m3_models import (  # noqa: E402,F401
     M3Answer,
     M3ChecklistStep,

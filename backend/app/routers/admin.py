@@ -1007,3 +1007,63 @@ async def notify_access_grant(
     grant.email_sent_at = datetime.now(UTC)
     await db.flush()
     return _grant_out(grant, await grant_state(db, grant), user)
+
+
+# ── Журнал действий и статусов заказов (аудит 2026-10-06, R015) ──────────────
+
+@router.get("/audit")
+async def list_audit_events(
+    kind: str | None = None,
+    entity_id: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Журнал: свежие сверху. kind = admin | order, entity_id — точный id.
+
+    Для событий заказа подставляются email покупателя и сумма: id заказа
+    админ в глаза не видел, опознаёт заказ по email.
+    """
+    from app.audit import uuid_or_none
+    from app.audit_models import AuditEvent
+
+    base = select(AuditEvent)
+    if kind in ("admin", "order"):
+        base = base.where(AuditEvent.kind == kind)
+    if entity_id and entity_id.strip():
+        base = base.where(AuditEvent.entity_id == entity_id.strip())
+
+    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar_one()
+    rows = (await db.execute(
+        base.order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc())
+            .limit(max(1, min(limit, 500))).offset(max(offset, 0))
+    )).scalars().all()
+
+    order_ids = {uuid_or_none(e.entity_id) for e in rows if e.entity_type == "order"}
+    order_ids.discard(None)
+    orders = {}
+    if order_ids:
+        for o, email in (await db.execute(
+            select(Order, User.email).join(User, User.id == Order.user_id)
+            .where(Order.id.in_(order_ids))
+        )).all():
+            orders[str(o.id)] = {"user_email": email, "amount": float(o.amount),
+                                 "product": o.product, "is_test": o.is_test}
+
+    items = [{
+        "id": str(e.id),
+        "created_at": e.created_at.isoformat(),
+        "kind": e.kind,
+        "action": e.action,
+        "entity_type": e.entity_type,
+        "entity_id": e.entity_id,
+        "actor_email": e.actor_email,
+        "impersonated": e.impersonated_by is not None,
+        "status_code": e.status_code,
+        "before": e.before,
+        "after": e.after,
+        "note": e.note,
+        "order": orders.get(e.entity_id or ""),
+    } for e in rows]
+    return {"items": items, "total": total, "limit": limit, "offset": offset}

@@ -69,6 +69,11 @@ async def setup_test_database():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
+    # Журнал (app.audit) пишет через движок приложения, а не через
+    # db_session. Его соединения привязаны к циклу событий этого теста,
+    # в следующем тесте они непригодны: закрываем.
+    from app.db import engine as app_engine
+    await app_engine.dispose()
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     await test_engine.dispose()

@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import DBAPIError
 
+from app.audit import AdminAuditMiddleware
 from app.config import get_settings
 from app.limiter import limiter
 from app.pdf import close_browser
@@ -100,6 +101,10 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+# Журнал изменяющих запросов администратора и имперсонации (app/audit.py).
+# Импорт app.audit заодно регистрирует слушатель смены статуса заказа.
+app.add_middleware(AdminAuditMiddleware)
 
 # ── Ошибки данных в запросе ───────────────────────────────────────────────────
 def _is_data_error(exc: BaseException | None) -> bool:

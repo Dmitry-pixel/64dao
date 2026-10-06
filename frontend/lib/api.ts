@@ -342,6 +342,29 @@ export interface AdminOrdersResponse {
   offset: number
 }
 
+export interface AuditEventItem {
+  id: string
+  created_at: string
+  kind: 'admin' | 'order'
+  action: string
+  entity_type: string | null
+  entity_id: string | null
+  actor_email: string | null
+  impersonated: boolean
+  status_code: number | null
+  before: Record<string, unknown> | null
+  after: Record<string, unknown> | null
+  note: string | null
+  order: { user_email: string; amount: number; product: string; is_test: boolean } | null
+}
+
+export interface AuditResponse {
+  items: AuditEventItem[]
+  total: number
+  limit: number
+  offset: number
+}
+
 export interface RefundResult {
   status: string
   revoked_assessments: number
@@ -350,6 +373,15 @@ export interface RefundResult {
 
 export const adminApi = {
   stats:          () => request('/api/admin/stats'),
+
+  audit: (params: { kind?: string; entity_id?: string; limit?: number; offset?: number } = {}) => {
+    const qs = new URLSearchParams()
+    if (params.kind) qs.set('kind', params.kind)
+    if (params.entity_id) qs.set('entity_id', params.entity_id)
+    qs.set('limit', String(params.limit ?? 100))
+    qs.set('offset', String(params.offset ?? 0))
+    return request<AuditResponse>(`/api/admin/audit?${qs.toString()}`)
+  },
 
   orders: (params: { status?: string; q?: string; limit?: number; offset?: number } = {}) => {
     const qs = new URLSearchParams()

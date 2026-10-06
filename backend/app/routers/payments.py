@@ -604,6 +604,7 @@ async def tochka_webhook(
     if not order:
         logger.info("Tochka webhook: no order for operationId=%s (test/unknown webhook)", operation_id)
         return {"status": "ignored", "reason": "order not found"}
+    order._status_source = "webhook"
 
     # Публичный ключ у Точки общий для всех клиентов банка, поэтому валидная
     # подпись сама по себе не значит «вебхук наш». Сверяем торговую точку.
@@ -668,6 +669,7 @@ async def get_order_status(
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    order._status_source = "status_poll"
 
     if order.status in ("pending", "paid") and order.tochka_operation_id:
         client = get_tochka_client()
@@ -717,6 +719,7 @@ async def refund_order(
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    order._status_source = "admin_refund"
 
     if order.status != "paid":
         raise HTTPException(status_code=400, detail=f"Order status is '{order.status}', not 'paid'")
@@ -770,6 +773,7 @@ async def reconcile_orders(
     client = get_tochka_client()
     marked_paid = marked_refunded = errors = 0
     for order in rows:
+        order._status_source = "admin_reconcile"
         try:
             resp = await client.get_payment_status(order.tochka_operation_id)
         except Exception:

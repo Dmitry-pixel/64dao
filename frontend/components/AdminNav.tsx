@@ -175,6 +175,7 @@ export function AdminSide({ current }: AdminSideProps) {
       <Link href="/admin/social-links" className={current === 'social-links' ? 'on' : ''}>Соц. сети</Link>
       <Link href="/admin/site-mode" className={current === 'site-mode' ? 'on' : ''}>Режим заглушки</Link>
       <Link href="/admin/logs" className={current === 'logs' ? 'on' : ''}>Логи</Link>
+      <Link href="/admin/audit" className={current === 'audit' ? 'on' : ''}>Журнал действий</Link>
       <Link href="/404" className={current === '404' ? 'on' : ''}>Страница 404</Link>
       <Link href="/admin/sample-leads" className={current === 'sample-leads' ? 'on' : ''}>Сбор Адресов</Link>
     </aside>
