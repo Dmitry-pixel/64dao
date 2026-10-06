@@ -35,6 +35,7 @@ from app.schemas import (
     ReportOut,
     StrategyOut,
 )
+from app.wallet_lock import lock_wallet
 
 settings = get_settings()
 router = APIRouter(prefix="/api/assessments", tags=["assessments"])
@@ -92,6 +93,12 @@ async def create_assessment(
     # поиска primary неизвестно, повтор это или новая диагностика.
     grant = None
     order = None
+
+    # Запросы одного пользователя на создание диагностики идут по очереди:
+    # иначе два параллельных читали бы один остаток и оба его тратили
+    # (аудит 2026-10-06, R002). Заодно снимается гонка find-or-create
+    # компании ниже. Блокировка живёт до конца транзакции.
+    await lock_wallet(db, user.id, "m12")
 
     # Финансовый блок Метода 1: скоринг считает сервер (не доверяем фронту).
     is_method1 = not body.method2_data

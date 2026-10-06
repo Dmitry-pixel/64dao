@@ -59,6 +59,7 @@ from app.m3_schemas import (
     M3WeightUpsert,
 )
 from app.models import User
+from app.wallet_lock import lock_wallet
 
 
 async def _flag_gate() -> None:
@@ -339,6 +340,11 @@ async def post_calculate(
     db: AsyncSession = Depends(get_db),
 ):
     p = await _owned(portfolio_id, user, db)
+    # Расчёты одного пользователя по очереди (аудит 2026-10-06, R002). После
+    # ожидания перечитываем портфель: параллельный запрос мог уже привязать
+    # к нему оплату, и повторно списывать нельзя.
+    await lock_wallet(db, user.id, "m3")
+    await db.refresh(p)
     parent = None
     if p.is_followup and p.status != "calculated":
         # Право могли израсходовать другим портфелем или снять возвратом,

@@ -41,6 +41,7 @@ from app.config import get_settings
 from app.db import get_db
 from app.m4_models import M4Answer, M4Run, M4Snapshot
 from app.models import REVENUE_MODELS, REVENUE_RANGES, Company, CompanyProfile, User
+from app.wallet_lock import lock_wallet
 
 PROFILE_FILE = Path(__file__).resolve().parents[2] / "content" / "m4" / "company-profile.json"
 
@@ -340,6 +341,11 @@ async def put_answers(run_id: uuid.UUID, body: AnswersIn, user: User = Depends(g
 async def calculate_run(run_id: uuid.UUID, user: User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db)):
     run = await _owned(db, run_id, user)
+    # Расчёты одного пользователя по очереди (аудит 2026-10-06, R002). После
+    # ожидания перечитываем прогон: параллельный запрос мог его уже
+    # рассчитать и списать оплату, тогда здесь 409, а не второе списание.
+    await lock_wallet(db, user.id, "m4")
+    await db.refresh(run)
     if run.status == "calculated":
         raise HTTPException(status_code=409, detail="Диагностика уже рассчитана")
     progress = await _progress(db, run)
