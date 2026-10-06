@@ -66,7 +66,10 @@ git add <files> && git commit -m "..." && git push origin main
 docker compose build backend && docker compose up -d backend      # backend-only
 docker compose build frontend && docker compose up -d frontend    # frontend-only
 docker compose build && docker compose up -d                      # full
+docker builder prune -f                                           # after every build
 ```
+
+After every build run `docker builder prune -f`: each build leaves ~1.5 GB of dangling build cache (2026-10-06: five builds in a day took the disk from 27% to 58%). It removes only cache no image uses, so the next build still reuses current layers. A weekly cron does the same on Sundays. The server has 2 GB RAM plus a 2 GB `/swapfile`; without swap a Next 16 build OOM-killed uvicorn and FastPanel's mysqld.
 
 **Backend source IS mounted** (`docker-compose.yml` mounts `./backend:/app` next to `uploads`). `uvicorn` runs without `--reload`, so a `.py` change needs `docker compose restart backend`, not a rebuild. Rebuild only when dependencies or the Dockerfile change. Frontend is the opposite: it is baked into the image and always needs `build` then `up -d`.
 

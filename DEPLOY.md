@@ -888,6 +888,7 @@ bash /var/www/64dao/deploy/scripts/deploy.sh --mode systemd
 ```bash
 docker compose build frontend
 docker compose up -d --force-recreate frontend
+docker builder prune -f   # каждая сборка оставляет ~1.5 ГБ кэша
 ```
 
 `--force-recreate` обязателен. Без него `docker compose up -d` может оставить

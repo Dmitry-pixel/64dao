@@ -58,6 +58,9 @@ if [ "${MODE}" = "docker" ]; then
     # Сервиса nginx в compose нет: 80/443 держит nginx FastPanel на хосте.
     docker compose up -d --force-recreate backend frontend
 
+    info "Очистка кэша сборки (каждая сборка оставляет ~1.5 ГБ)..."
+    docker builder prune -f >/dev/null
+
     # Ждём что сервисы поднялись
     # healthcheck в compose не задан, поэтому ждём ответа /api/health.
     echo -n "  Ждём backend"
