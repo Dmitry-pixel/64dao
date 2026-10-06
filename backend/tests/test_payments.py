@@ -677,3 +677,52 @@ async def test_order_without_amount_fails_loudly(db_session, test_user):
     with pytest.raises(IntegrityError):
         await db_session.flush()
     await db_session.rollback()
+
+
+# ── Тестовые заказы (аудит 2026-10-06, R009) ──────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_test_order_gives_no_credits(auth_client, db_session, test_user):
+    o = Order(user_id=test_user.id, product="m12", amount=1.00, currency="RUB",
+              status="paid", is_test=True)
+    db_session.add(o)
+    await db_session.flush()
+    resp = await auth_client.get("/api/payments/credits")
+    assert resp.status_code == 200
+    assert resp.json()["credits"] == 0
+    assert await payments_router.pick_order(db_session, test_user.id, "m12") is None
+
+
+@pytest.mark.asyncio
+async def test_test_create_marks_order(admin_client, db_session, test_admin, mock_tochka):
+    from sqlalchemy import select
+    resp = await admin_client.post("/api/payments/test-create?product=m12")
+    assert resp.status_code == 200
+    order = await db_session.scalar(select(Order).where(Order.user_id == test_admin.id))
+    assert order.is_test is True
+    assert float(order.amount) == 1.00
+
+
+@pytest.mark.asyncio
+async def test_admin_orders_list_exposes_is_test(admin_client, db_session, test_user):
+    db_session.add(Order(user_id=test_user.id, product="m12", amount=1.00, currency="RUB",
+                         status="paid", is_test=True))
+    await db_session.flush()
+    resp = await admin_client.get("/api/payments/admin/orders")
+    assert resp.status_code == 200
+    assert [i["is_test"] for i in resp.json()["items"]] == [True]
+
+
+@pytest.mark.asyncio
+async def test_admin_stats_excludes_test_orders(admin_client, db_session, test_user):
+    db_session.add(Order(user_id=test_user.id, product="m12", amount=1.00, currency="RUB",
+                         status="paid", is_test=True))
+    db_session.add(Order(user_id=test_user.id, product="m12", amount=14900.00, currency="RUB",
+                         status="paid"))
+    await db_session.flush()
+    resp = await admin_client.get("/api/admin/stats")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total_orders"] == 1
+    assert body["total_revenue"] == 14900.0
+    assert sum(d["count"] for d in body["orders_by_day"]) == 1

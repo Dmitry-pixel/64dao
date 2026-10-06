@@ -331,6 +331,8 @@ export interface AdminOrder {
   created_at: string
   /** Считается бэкендом по тем же условиям, что проверяет refund_order. */
   can_refund: boolean
+  /** Тестовый платёж на 1 ₽: без кредитов, вне выручки. */
+  is_test: boolean
 }
 
 export interface AdminOrdersResponse {

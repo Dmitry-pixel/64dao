@@ -144,7 +144,8 @@ async def pick_order(db: AsyncSession, user_id) -> Order | None:
 
     orders = (await db.execute(
         select(Order)
-        .where(Order.user_id == user_id, Order.status == "paid", Order.product == PRODUCT)
+        .where(Order.user_id == user_id, Order.status == "paid", Order.product == PRODUCT,
+               Order.is_test.is_(False))
         .order_by(func.coalesce(Order.paid_at, Order.created_at).asc(), Order.id.asc())
     )).scalars().all()
     used = await used_by_orders(db, [o.id for o in orders])
@@ -172,7 +173,8 @@ async def credits(db: AsyncSession, user: User) -> int | None:
     g_used = await used_by_grants(db, [g.id for g in grants])
     total = sum(max(0, g.quota - g_used.get(g.id, 0)) for g in grants)
     orders = (await db.execute(
-        select(Order).where(Order.user_id == user.id, Order.status == "paid", Order.product == PRODUCT)
+        select(Order).where(Order.user_id == user.id, Order.status == "paid", Order.product == PRODUCT,
+                            Order.is_test.is_(False))
     )).scalars().all()
     o_used = await used_by_orders(db, [o.id for o in orders])
     limit = reports_per_order(PRODUCT)

@@ -95,7 +95,7 @@ async def get_stats(
             func.count(Order.id).label("count"),
             func.coalesce(func.sum(Order.amount), 0).label("amount"),
         )
-        .where(Order.created_at >= since)
+        .where(Order.created_at >= since, Order.is_test.is_(False))
         .group_by(cast(Order.created_at, Date))
         .order_by(cast(Order.created_at, Date))
     )
@@ -112,9 +112,12 @@ async def get_stats(
             all_days[key] = {"date": key, "count": int(row.count), "amount": float(row.amount)}
     orders_by_day = list(all_days.values())
 
-    total_orders = await db.scalar(select(func.count(Order.id))) or 0
+    # Тестовые платежи на 1 ₽ в статистику не входят (миграция 046).
+    total_orders = await db.scalar(
+        select(func.count(Order.id)).where(Order.is_test.is_(False))) or 0
     total_revenue = float(await db.scalar(
-        select(func.coalesce(func.sum(Order.amount), 0)).where(Order.status == "paid")
+        select(func.coalesce(func.sum(Order.amount), 0))
+        .where(Order.status == "paid", Order.is_test.is_(False))
     ) or 0)
 
     return AdminStats(

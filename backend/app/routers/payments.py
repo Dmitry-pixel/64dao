@@ -190,7 +190,7 @@ async def pick_order(db: AsyncSession, user_id,
     orders = (await db.execute(
         select(Order)
         .where(Order.user_id == user_id, Order.status == "paid",
-               Order.product == product)
+               Order.product == product, Order.is_test.is_(False))
         .order_by(func.coalesce(Order.paid_at, Order.created_at).asc(),
                   Order.id.asc())
     )).scalars().all()
@@ -248,7 +248,7 @@ async def paid_credits(user_id, db: AsyncSession,
     paid_orders = await db.scalar(
         select(func.count(Order.id))
         .where(Order.user_id == user_id, Order.status == "paid",
-               Order.product == product)
+               Order.product == product, Order.is_test.is_(False))
     ) or 0
 
     if product == "m3":
@@ -258,6 +258,7 @@ async def paid_credits(user_id, db: AsyncSession,
             .where(
                 Order.user_id == user_id,
                 Order.status == "paid",
+                Order.is_test.is_(False),
                 M3Portfolio.status.in_(list(M3_USED_STATUSES)),
             )
         ) or 0
@@ -268,6 +269,7 @@ async def paid_credits(user_id, db: AsyncSession,
             .where(
                 Order.user_id == user_id,
                 Order.status == "paid",
+                Order.is_test.is_(False),
                 Assessment.status.in_(["completed", "paid"]),
                 # Повтор входит в стоимость основной диагностики и кредит не
                 # тратит. Иначе на один заказ приходится 2 прогона из трёх
@@ -489,11 +491,9 @@ async def create_test_payment(
     Работает НЕЗАВИСИМО от pricing.payment_enabled — тестировать нужно
     и до включения оплаты, и после.
 
-    ВНИМАНИЕ: оплаченный тестовый заказ засчитывается как полноценный
-    кредит (paid_orders * reports_per_order), то есть рубль даёт 2 кредита
-    Методов 1 и 2 либо 1 кредит Метода 3. Администратору это безразлично —
-    он проходит мимо кассы, — но баланс в кабинете раздувается. Отдельного
-    признака тестового заказа в схеме нет.
+    Заказ помечается is_test: кредитов он не даёт, в выручку и статистику
+    не входит (миграция 046). Раньше рубль давал 2 кредита Методов 1 и 2
+    либо 1 кредит Метода 3 и попадал в выручку.
     """
     _check_product(product)
     settings = get_settings()
@@ -504,6 +504,7 @@ async def create_test_payment(
         amount=1.00,
         currency="RUB",
         status="pending",
+        is_test=True,
     )
     db.add(order)
     await db.flush()
@@ -846,6 +847,7 @@ async def admin_list_orders(
         "paid_at": o.paid_at.isoformat() if o.paid_at else None,
         "created_at": o.created_at.isoformat(),
         "can_refund": o.status == "paid" and bool(o.tochka_operation_id),
+        "is_test": o.is_test,
     } for o, email in rows]
 
     return {"items": items, "total": total, "limit": limit, "offset": offset}

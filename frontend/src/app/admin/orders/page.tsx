@@ -229,6 +229,9 @@ export default function AdminOrdersPage() {
                   </td>
                   <td style={{ fontFamily: 'sans-serif', fontSize: 13, whiteSpace: 'nowrap' }}>
                     {o.amount.toLocaleString('ru-RU')} {o.currency}
+                    {o.is_test && (
+                      <span className="faint" style={{ marginLeft: 6, fontSize: 11 }}>тест</span>
+                    )}
                   </td>
                   <td>{statusPill(o.status)}</td>
                   <td style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(26,37,64,0.55)' }}>
