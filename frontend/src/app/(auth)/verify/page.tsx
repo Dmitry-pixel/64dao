@@ -64,11 +64,10 @@ function VerifyForm() {
         router.push(maintenanceOn ? '/maintenance' : '/dashboard')
       }
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        setError('Сессия истекла. Войдите заново.')
-        setTimeout(() => router.push('/login'), 1500)
-        return
-      }
+      // 401 здесь значит «неверный или сгоревший код», а не истёкшую сессию:
+      // на этой странице сессии ещё нет. Раньше любой неверный ввод уводил
+      // на /login, и email приходилось вводить заново. Текст ошибки приходит
+      // с бэкенда, включая «Превышено число попыток... Запросите новый код».
       setError(err instanceof ApiError ? err.message : 'Неверный код')
       setDigits(['', '', '', '', ''])
       inputs.current[0]?.focus()

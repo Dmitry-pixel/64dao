@@ -181,24 +181,44 @@ async def create_otp_code(user_id: str, db: AsyncSession) -> str:
     return code
 
 
-async def verify_otp_code(user_id: str, code: str, db: AsyncSession) -> bool:
-    """Проверяет OTP. При успехе помечает как использованный."""
+OTP_OK = "ok"
+OTP_INVALID = "invalid"
+OTP_EXHAUSTED = "exhausted"
+
+
+async def verify_otp_code(user_id: str, code: str, db: AsyncSession) -> str:
+    """Проверяет OTP: OTP_OK, OTP_INVALID или OTP_EXHAUSTED.
+
+    Берётся последний действующий код пользователя (create_otp_code гасит
+    прежние, так что он один), а не код, совпавший с введённым: иначе
+    неверный ввод нечему засчитать. Строка блокируется FOR UPDATE, чтобы
+    параллельные попытки не прочитали один и тот же счётчик.
+
+    Счётчик меняется в сессии, но коммит — забота вызывающего: get_db
+    откатывает транзакцию на исключении, а роутер отвечает 401 именно
+    исключением. Без явного commit перед ним попытка не засчиталась бы.
+    """
     now = datetime.now(UTC)
-    result = await db.execute(
+    otp = await db.scalar(
         select(OtpCode)
         .where(
             OtpCode.user_id == user_id,
-            OtpCode.code    == code,
             OtpCode.used    == False,       # noqa: E712
             OtpCode.expires_at > now,
         )
         .order_by(OtpCode.created_at.desc())
         .limit(1)
+        .with_for_update()
     )
-    otp = result.scalar_one_or_none()
-
     if not otp:
-        return False
+        return OTP_INVALID
 
-    otp.used = True
-    return True
+    if secrets.compare_digest(otp.code, code):
+        otp.used = True
+        return OTP_OK
+
+    otp.attempts += 1
+    if otp.attempts >= settings.otp_max_attempts:
+        otp.used = True
+        return OTP_EXHAUSTED
+    return OTP_INVALID

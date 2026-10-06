@@ -328,3 +328,66 @@ async def test_update_profile_requires_auth(client):
     resp = await client.put("/api/auth/profile", json={
         "full_name": "Имя", "company_name": "Компания"})
     assert resp.status_code == 401
+
+
+# ── Счётчик попыток OTP (аудит 2026-10-06, R003) ──────────────────────────────
+
+@pytest.mark.asyncio
+async def test_verify_correct_code_after_wrong_attempts_within_limit(
+        client, db_session, test_user, mock_email_senders):
+    from app.limiter import limiter
+    limiter.reset()
+    code = await create_otp_code(str(test_user.id), db_session)
+    await db_session.flush()
+    wrong = "00000" if code != "00000" else "11111"
+
+    for _ in range(4):
+        resp = await client.post("/api/auth/verify", json={"email": test_user.email, "code": wrong})
+        assert resp.status_code == 401
+
+    resp = await client.post("/api/auth/verify", json={"email": test_user.email, "code": code})
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_verify_code_burned_after_max_attempts(client, db_session, test_user, mock_email_senders):
+    from app.limiter import limiter
+    limiter.reset()
+    code = await create_otp_code(str(test_user.id), db_session)
+    await db_session.flush()
+    wrong = "00000" if code != "00000" else "11111"
+
+    for _ in range(4):
+        resp = await client.post("/api/auth/verify", json={"email": test_user.email, "code": wrong})
+        assert resp.status_code == 401
+        assert "Превышено" not in resp.json()["detail"]
+
+    resp = await client.post("/api/auth/verify", json={"email": test_user.email, "code": wrong})
+    assert resp.status_code == 401
+    assert "Превышено" in resp.json()["detail"]
+
+    # Верный код после исчерпания попыток уже не принимается.
+    resp = await client.post("/api/auth/verify", json={"email": test_user.email, "code": code})
+    assert resp.status_code == 401
+    assert "auth-token" not in client.cookies
+
+    otp = (await db_session.execute(
+        select(OtpCode).where(OtpCode.user_id == test_user.id))).scalar_one()
+    assert otp.used is True
+    assert otp.attempts == 5
+
+
+@pytest.mark.asyncio
+async def test_new_code_after_burn_works(client, db_session, test_user, mock_email_senders):
+    from app.limiter import limiter
+    limiter.reset()
+    code = await create_otp_code(str(test_user.id), db_session)
+    await db_session.flush()
+    wrong = "00000" if code != "00000" else "11111"
+    for _ in range(5):
+        await client.post("/api/auth/verify", json={"email": test_user.email, "code": wrong})
+
+    fresh = await create_otp_code(str(test_user.id), db_session)
+    await db_session.flush()
+    resp = await client.post("/api/auth/verify", json={"email": test_user.email, "code": fresh})
+    assert resp.status_code == 200

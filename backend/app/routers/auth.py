@@ -8,6 +8,8 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import (
+    OTP_EXHAUSTED,
+    OTP_OK,
     clear_auth_cookie,
     create_otp_code,
     create_token,
@@ -129,9 +131,15 @@ async def verify(
         # Одинаковая ошибка — не раскрываем что email не существует
         raise HTTPException(status_code=401, detail="Неверный или просроченный код")
 
-    # verify_otp_code возвращает bool — обрабатываем явно
-    valid: bool = await verify_otp_code(str(user.id), body.code, db)
-    if not valid:
+    result = await verify_otp_code(str(user.id), body.code, db)
+    if result != OTP_OK:
+        # Счётчик попыток сохраняем до исключения: get_db откатит транзакцию.
+        await db.commit()
+        if result == OTP_EXHAUSTED:
+            raise HTTPException(
+                status_code=401,
+                detail="Превышено число попыток ввода кода. Запросите новый код.",
+            )
         raise HTTPException(status_code=401, detail="Неверный или просроченный код")
 
     token = create_token(str(user.id), user.email, user.role)
