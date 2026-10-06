@@ -17,5 +17,7 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+# Без конфига next start работает с настройками по умолчанию (аудит 2026-10-06, R001)
+COPY --from=builder /app/next.config.js ./next.config.js
 EXPOSE 3000
 CMD ["node", "node_modules/.bin/next", "start", "-p", "3000"]

@@ -2,12 +2,11 @@
 const nextConfig = {
   compress: true,
 
+  // Оптимизатор изображений выключен: next/image в проекте не используется,
+  // а /_next/image в Next 14 несёт критические уязвимости (аудит 2026-10-06, R001).
+  // При unoptimized: true Next отвечает на /_next/image кодом 404.
   images: {
-    remotePatterns: [
-      // Изображения стратегий раздаёт Nginx с VPS напрямую
-      { protocol: 'https', hostname: '64dao.ru' },
-      { protocol: 'http',  hostname: 'localhost' },
-    ],
+    unoptimized: true,
   },
 
   // CORS не нужен: Next.js — только SSR/SPA,
