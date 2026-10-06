@@ -22,7 +22,7 @@ Web app for business strategy diagnostics based on 64 hexagrams / stratagems (I 
 
 ## Stack (actual)
 
-- **Backend:** FastAPI 0.139 · SQLAlchemy 2 async · asyncpg · PostgreSQL 16 · Alembic 1.14 · Pydantic v2 + pydantic-settings · PyJWT 2.13 (HS256) · passlib[bcrypt] · aiosmtplib · slowapi · Playwright 1.49 (Chromium, HTML->PDF).
+- **Backend:** FastAPI 0.139 · SQLAlchemy 2 async · asyncpg · PostgreSQL 16 · Alembic 1.14 · Pydantic v2 + pydantic-settings · PyJWT 2.15 (HS256) · cryptography 50 · aiosmtplib 5 · slowapi · Playwright 1.49 (Chromium, HTML->PDF).
 - **Frontend:** Next.js 14.2.35 App Router · React 18 · TypeScript 5 · Tailwind · react-hook-form + zod · lucide-react. Standalone Docker output.
 - **Infra:** Docker Compose · FastPanel nginx on the host (ports 80/443) · VPS.
 - **Payments:** Точка Банк acquiring (JWT auth, RS256 webhook signature). **No Stripe.**
@@ -103,7 +103,8 @@ curl -sk https://64dao.ru/api/health
   - `@/components/AdminNav` -> `frontend/components/AdminNav.tsx`
 - **Pages:** `src/app/` (App Router). `(auth)` group = login/register/verify/forgot/reset. Admin under `src/app/admin/*`.
 - **Shared components:** `frontend/components/`. NOTE: `frontend/src/components/` is dead code (a stale duplicate `AdminNav.tsx` lives there) — do not import from it; prefer deleting it.
-- `middleware.ts` guards routes; real authorization is enforced server-side via `Depends(require_admin)` / `get_current_user`.
+- `middleware.ts` handles ONLY maintenance mode: it fetches `/api/site-mode` and rewrites to `/maintenance`. It does not guard routes. All authorization is server-side via `Depends(require_admin)` / `get_current_user`.
+- `next.config.js` is copied into the runtime image (`frontend/Dockerfile`). Before 2026-10-06 it was not, and `next start` silently ran with default config. The image optimizer is disabled (`images.unoptimized: true`, `/_next/image` returns 404); `next/image` is not used anywhere. Re-check this before adding `next/image`.
 - `styled-jsx` (`<style jsx>`) works only in Client Components. For Server Component pages, put `@media` rules in `globals.css`.
 - Dynamic `[slug]` routes need `generateStaticParams()` or they go `force-dynamic`/`no-store` and block crawling (see `napkin.md`).
 
@@ -117,6 +118,15 @@ curl -sk https://64dao.ru/api/health
 
 ### Build-time vs runtime env
 `NEXT_PUBLIC_API_URL` is baked into the JS bundle at build time via the `build.args` in `docker-compose.yml` (`https://64dao.ru`). Changing it in `.env.local` at runtime has no effect.
+
+## Money, audit and auth rules (audit 2026-10-06)
+
+- **Wallet lock.** Any code path that consumes a paid unit or an access grant must first call `lock_wallet(db, user.id, wallet)` from `app/wallet_lock.py` (wallets: `m12`, `m3`, `m4`) and re-read the objects it decides on (`db.refresh`). Without it two parallel requests spend the same unit twice. Covered by `tests/test_wallet_lock.py`.
+- **Test orders.** The 1 RUB admin test payment sets `orders.is_test = true`. Every query over paid orders (credits, revenue, stats) must filter `Order.is_test.is_(False)`.
+- **Order status history.** Before changing `order.status`, set `order._status_source = "<source>"` (webhook, status_poll, reconcile_job, admin_reconcile, admin_refund). The `before_flush` listener in `app/audit.py` writes the transition to `audit_events` automatically. It is registered through `app/models.py`, so cron jobs are covered too.
+- **Admin audit log.** `AdminAuditMiddleware` (`app/audit.py`) logs every POST/PUT/PATCH/DELETE made by an admin or during impersonation: route template, path and query params, status code. New admin endpoints are logged automatically. The request body is stored only for routes in `BODY_ROUTES`; never add a route that carries secrets (Tochka token, email templates). Viewer: `/admin/audit`, API `GET /api/admin/audit`.
+- **OTP.** A code allows `otp_max_attempts` (5) wrong tries, then it is burned. `/api/auth/verify` commits the attempt counter before raising 401, because `get_db` rolls back on exceptions. The `/verify` page shows the backend message and stays on the page on 401.
+- **Users are not deleted.** `DELETE /api/admin/users/{id}` still exists in the API and cascades to `orders`. The UI has no button for it; use blocking (`PATCH /users/{id}/status`) instead.
 
 ## Important Constraints
 

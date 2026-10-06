@@ -25,6 +25,7 @@ GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
 ok()   { echo -e "${GREEN}✓${NC} $*"; }
 err()  { echo -e "${RED}✗${NC} $*"; }
 info() { echo -e "  → $*"; }
+warn() { echo -e "${YELLOW}!${NC} $*"; }
 
 echo ""
 echo "╔══════════════════════════════════════════╗"
@@ -54,14 +55,16 @@ if [ "${MODE}" = "docker" ]; then
         sh -c "alembic upgrade head" 2>&1 | tail -5
 
     info "Перезапуск сервисов..."
-    docker compose up -d --force-recreate backend frontend nginx
+    # Сервиса nginx в compose нет: 80/443 держит nginx FastPanel на хосте.
+    docker compose up -d --force-recreate backend frontend
 
     # Ждём что сервисы поднялись
-    echo -n "  Ждём healthy статус"
+    # healthcheck в compose не задан, поэтому ждём ответа /api/health.
+    echo -n "  Ждём backend"
     for i in $(seq 1 30); do
         sleep 2
         echo -n "."
-        if docker compose ps | grep -q "healthy"; then
+        if curl -sf http://localhost:8000/api/health > /dev/null 2>&1; then
             echo ""
             break
         fi
