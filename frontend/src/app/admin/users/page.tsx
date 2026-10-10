@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { adminApi, getMe } from '@/lib/api'
 import { AdminNav, AdminSide } from '@/components/AdminNav'
+import { Pager, usePaged } from '@/components/Pager'
+
+const PAGE_SIZE = 25
 
 export default function AdminUsersPage() {
   const router = useRouter()
@@ -31,11 +34,13 @@ export default function AdminUsersPage() {
     init()
   }, [])
 
+  const q = search.trim().toLowerCase()
   const filtered = users.filter(u =>
-    u.email.includes(search) ||
-    (u.full_name ?? '').toLowerCase().includes(search.toLowerCase()) ||
-    (u.company_name ?? '').toLowerCase().includes(search.toLowerCase())
+    u.email.toLowerCase().includes(q) ||
+    (u.full_name ?? '').toLowerCase().includes(q) ||
+    (u.company_name ?? '').toLowerCase().includes(q)
   )
+  const paged = usePaged(filtered, PAGE_SIZE, q)
 
   async function handleImpersonate(userId: string, email: string) {
     if (!confirm(`Войти в систему от лица ${email}?`)) return
@@ -119,7 +124,7 @@ export default function AdminUsersPage() {
             </div>
           </div>
 
-          <table className="tbl">
+          <table className="tbl" id="users-table" style={{ scrollMarginTop: 80 }}>
             <thead>
               <tr>
                 <th>Email</th>
@@ -133,7 +138,7 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(u => (
+              {paged.pageItems.map(u => (
                 <tr key={u.id} style={{ cursor: u.role !== 'admin' ? 'pointer' : 'default' }}>
                   <td>
                     <Link href={`/admin/user/${u.id}`} title="Карточка пользователя: диагностики и тестовый доступ"
@@ -209,9 +214,16 @@ export default function AdminUsersPage() {
             </tbody>
           </table>
 
-          <div className="row" style={{ justifyContent: 'space-between', marginTop: 18 }}>
-            <span className="faint">Показано {filtered.length} из {users.length}</span>
-          </div>
+          {q && (
+            <div className="faint" style={{ marginTop: 14 }}>Найдено {filtered.length} из {users.length}</div>
+          )}
+          {paged.pages > 1 ? (
+            <Pager page={paged.page} pages={paged.pages} offset={paged.offset}
+              shown={paged.pageItems.length} total={paged.total}
+              onPage={paged.setPage} anchorId="users-table" />
+          ) : !q && (
+            <div className="faint" style={{ marginTop: 18 }}>Всего {users.length}</div>
+          )}
         </div>
       </div>
     </>

@@ -46,18 +46,51 @@ export default function AdminSampleLeadsPage() {
   const router = useRouter()
   const [rows, setRows] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
+  // Очистка доступна только после выгрузки CSV в этой вкладке: иначе легко
+  // стереть контакты, которые ещё никуда не сохранены.
+  const [exported, setExported] = useState(false)
+  const [purging, setPurging] = useState(false)
+  const [notice, setNotice] = useState('')
 
-  useEffect(() => {
-    getMe()
-      .then(me => { if (me.role !== 'admin') router.push('/dashboard') })
-      .catch(() => router.push('/login'))
-
+  const load = () =>
     fetch(`${API}/api/sample-report/leads`, { credentials: 'include' })
       .then(r => (r.ok ? r.json() : []))
       .then((data: Lead[]) => setRows(data))
       .catch(() => {})
       .finally(() => setLoading(false))
+
+  useEffect(() => {
+    getMe()
+      .then(me => { if (me.role !== 'admin') router.push('/dashboard') })
+      .catch(() => router.push('/login'))
+    load()
   }, [])
+
+  async function handlePurge() {
+    // Граница: самая свежая заявка из тех, что видны и выгружены. Заявка,
+    // пришедшая после загрузки страницы, под удаление не попадёт. Строку
+    // времени передаём как пришла с сервера: Date в браузере срезал бы
+    // микросекунды, и граничная запись осталась бы в базе.
+    const upTo = rows.find(r => r.created_at)?.created_at
+    if (!upTo) return
+    if (!confirm(`Удалить ${rows.length} заявок из базы?\n\nУбедитесь, что CSV сохранён. Заявки, пришедшие после открытия страницы, останутся.`)) return
+    setPurging(true)
+    setNotice('')
+    try {
+      const res = await fetch(`${API}/api/sample-report/leads?up_to=${encodeURIComponent(upTo)}`, {
+        method: 'DELETE', credentials: 'include',
+      })
+      if (!res.ok) throw new Error(String(res.status))
+      const data = await res.json()
+      setNotice(`Удалено заявок: ${data.deleted}`)
+      setExported(false)
+      await load()
+    } catch {
+      setNotice('Не удалось очистить список. Попробуйте ещё раз.')
+    } finally {
+      setPurging(false)
+    }
+  }
 
   return (
     <>
@@ -74,10 +107,30 @@ export default function AdminSampleLeadsPage() {
                 {loading ? 'Загружаем…' : `Контакты из форм скачивания примеров отчёта и методики · ${rows.length}`}
               </p>
             </div>
-            <a className="btn btn-primary" href={`${API}/api/sample-report/leads.csv`} style={{ padding: '9px 20px', fontSize: 13, textDecoration: 'none' }}>
-              ↓ Экспорт CSV
-            </a>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <a className="btn btn-primary" href={`${API}/api/sample-report/leads.csv`}
+                onClick={() => setExported(true)}
+                style={{ padding: '9px 20px', fontSize: 13, textDecoration: 'none' }}>
+                ↓ Экспорт CSV
+              </a>
+              <button className="btn btn-danger" style={{ padding: '9px 20px', fontSize: 13 }}
+                disabled={!exported || purging || rows.length === 0}
+                title={exported ? 'Удалить выгруженные заявки' : 'Сначала скачайте CSV'}
+                onClick={handlePurge}>
+                {purging ? 'Удаляем…' : 'Очистить'}
+              </button>
+            </div>
           </div>
+          {rows.length > 0 && !exported && (
+            <p className="faint" style={{ fontFamily: 'sans-serif', fontSize: 12, margin: '-16px 0 18px' }}>
+              Кнопка «Очистить» станет доступна после экспорта CSV.
+            </p>
+          )}
+          {notice && (
+            <div style={{ fontFamily: 'sans-serif', fontSize: 13, marginBottom: 16, color: notice.startsWith('Удалено') ? 'var(--green)' : 'var(--red)' }}>
+              {notice}
+            </div>
+          )}
 
           {loading ? (
             <div style={{ padding: '48px 0', textAlign: 'center', fontFamily: 'sans-serif', fontSize: 14, color: 'var(--text-mute)' }}>Загрузка…</div>

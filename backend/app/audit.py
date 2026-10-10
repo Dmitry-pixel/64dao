@@ -87,6 +87,10 @@ class AdminAuditMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         body = await request.body()
+        # Обращение к state до call_next создаёт scope["state"]: эндпоинт
+        # получает тот же словарь и может положить итог действия в
+        # request.state.audit_result (например, сколько записей удалено).
+        request.state.audit_result = None
         response = await call_next(request)
         try:
             await self._write(request, response.status_code, actor, body)
@@ -115,6 +119,9 @@ class AdminAuditMiddleware(BaseHTTPMiddleware):
             after["path"] = {k: str(v) for k, v in params.items()}
         if request.query_params:
             after["query"] = dict(request.query_params)
+        result = getattr(request.state, "audit_result", None)
+        if result:
+            after["result"] = result
         if action in BODY_ROUTES and body:
             try:
                 after["body"] = json.loads(body[:MAX_BODY])

@@ -194,6 +194,41 @@ async def test_leads_expose_new_columns(client: AsyncClient, admin_client: Async
     assert rows[0]["telegram_address"] == "@ivan"
 
 
+# ── Очистка заявок ───────────────────────────────────────────────────────────
+
+async def _seed_leads(db_session, *days_ago: int) -> list[SampleLead]:
+    from datetime import UTC, datetime, timedelta
+    rows = [SampleLead(name=f"L{d}", channel="email", address=f"l{d}@x.ru",
+                       created_at=datetime.now(UTC) - timedelta(days=d)) for d in days_ago]
+    db_session.add_all(rows)
+    await db_session.flush()
+    return rows
+
+
+@pytest.mark.asyncio
+async def test_purge_leads_up_to_boundary(admin_client: AsyncClient, db_session):
+    old, mid, new = await _seed_leads(db_session, 10, 5, 0)
+    # Админ видел заявки до mid включительно; new пришла позже и должна остаться.
+    from urllib.parse import quote
+    resp = await admin_client.delete(f"/api/sample-report/leads?up_to={quote(mid.created_at.isoformat())}")
+    assert resp.status_code == 200
+    assert resp.json()["deleted"] == 2
+    db_session.expunge_all()
+    left = (await db_session.execute(select(SampleLead))).scalars().all()
+    assert [r.name for r in left] == [new.name]
+
+
+@pytest.mark.asyncio
+async def test_purge_leads_requires_up_to(admin_client: AsyncClient):
+    assert (await admin_client.delete("/api/sample-report/leads")).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_purge_leads_requires_admin(auth_client: AsyncClient):
+    resp = await auth_client.delete("/api/sample-report/leads?up_to=2030-01-01T00:00:00Z")
+    assert resp.status_code == 403
+
+
 # ── Лимит запросов ───────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio

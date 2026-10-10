@@ -1067,3 +1067,47 @@ async def list_audit_events(
         "order": orders.get(e.entity_id or ""),
     } for e in rows]
     return {"items": items, "total": total, "limit": limit, "offset": offset}
+
+
+@router.get("/audit/purge-preview")
+async def audit_purge_preview(
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Сколько записей удалит очистка: кнопка показывает число до подтверждения."""
+    from app.audit_models import AUDIT_RETENTION_DAYS, AuditEvent
+
+    cutoff = datetime.now(UTC) - timedelta(days=AUDIT_RETENTION_DAYS)
+    n = (await db.execute(
+        select(func.count()).select_from(AuditEvent)
+        .where(AuditEvent.kind == "admin", AuditEvent.created_at < cutoff)
+    )).scalar_one()
+    return {"count": n, "retention_days": AUDIT_RETENTION_DAYS, "cutoff": cutoff.isoformat()}
+
+
+@router.delete("/audit")
+async def purge_audit_events(
+    request: Request,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Удаляет действия администратора старше AUDIT_RETENTION_DAYS.
+
+    Срок зашит на сервере, параметром его не сократить: иначе кнопка
+    позволила бы стереть свежий след. История статусов заказов (kind='order')
+    не удаляется: это денежный след для споров и возвратов. Сама очистка
+    попадает в журнал через AdminAuditMiddleware вместе с числом удалённых
+    строк (request.state.audit_result).
+    """
+    from sqlalchemy import delete
+
+    from app.audit_models import AUDIT_RETENTION_DAYS, AuditEvent
+
+    cutoff = datetime.now(UTC) - timedelta(days=AUDIT_RETENTION_DAYS)
+    res = await db.execute(
+        delete(AuditEvent)
+        .where(AuditEvent.kind == "admin", AuditEvent.created_at < cutoff)
+    )
+    deleted = res.rowcount or 0
+    request.state.audit_result = {"deleted": deleted, "retention_days": AUDIT_RETENTION_DAYS}
+    return {"deleted": deleted, "retention_days": AUDIT_RETENTION_DAYS}

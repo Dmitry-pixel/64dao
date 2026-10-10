@@ -5,15 +5,17 @@ GET  /api/sample-report/view       — просмотр inline (открытие
 POST /api/sample-report/request    — заявка (Имя+e-mail+телефон, Max/Telegram по желанию).
 GET  /api/sample-report/leads      — список заявок (admin).
 GET  /api/sample-report/leads.csv  — экспорт CSV (admin).
+DELETE /api/sample-report/leads?up_to=ISO — очистка выгруженных заявок (admin).
 """
 import csv
 import io
 import logging
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_admin
@@ -183,6 +185,27 @@ async def list_leads(
         }
         for r in rows
     ]
+
+
+@router.delete("/leads")
+async def purge_leads(
+    request: Request,
+    up_to: datetime,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Удаляет заявки, созданные не позже up_to.
+
+    up_to обязателен: страница передаёт время самой свежей заявки, которую
+    админ видел и выгрузил. Заявка, пришедшая после загрузки страницы, не
+    попадает под удаление и не теряется. Наивное время считается UTC.
+    """
+    if up_to.tzinfo is None:
+        up_to = up_to.replace(tzinfo=UTC)
+    res = await db.execute(delete(SampleLead).where(SampleLead.created_at <= up_to))
+    deleted = res.rowcount or 0
+    request.state.audit_result = {"deleted": deleted}
+    return {"deleted": deleted}
 
 
 @router.get("/leads.csv")

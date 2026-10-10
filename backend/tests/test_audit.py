@@ -101,3 +101,61 @@ async def test_audit_endpoint_lists_order_events_with_email(admin_client, db_ses
 async def test_audit_endpoint_requires_admin(auth_client):
     resp = await auth_client.get("/api/admin/audit")
     assert resp.status_code == 403
+
+
+# ── Очистка журнала (старше AUDIT_RETENTION_DAYS, только kind='admin') ───────
+# Строки сеются через db_session: эндпоинт работает в той же транзакции
+# теста, и удаление видно только изнутри неё.
+
+async def _seed(db_session, *rows: tuple[str, int]) -> None:
+    """rows: (kind, сколько дней назад)."""
+    from datetime import UTC, datetime, timedelta
+    for kind, days in rows:
+        db_session.add(AuditEvent(kind=kind, action="seed",
+                                  created_at=datetime.now(UTC) - timedelta(days=days)))
+    await db_session.flush()
+
+
+async def _seeds(db_session) -> list[AuditEvent]:
+    return list((await db_session.execute(
+        select(AuditEvent).where(AuditEvent.action == "seed"))).scalars())
+
+
+@pytest.mark.asyncio
+async def test_purge_removes_only_old_admin_events(admin_client, db_session):
+    await _seed(db_session, ("admin", 45), ("admin", 31), ("admin", 5), ("order", 90))
+
+    preview = (await admin_client.get("/api/admin/audit/purge-preview")).json()
+    assert preview["count"] == 2
+    assert preview["retention_days"] == 30
+
+    resp = await admin_client.delete("/api/admin/audit")
+    assert resp.status_code == 200
+    assert resp.json()["deleted"] == 2
+    db_session.expunge_all()
+    assert sorted(e.kind for e in await _seeds(db_session)) == ["admin", "order"]
+
+
+@pytest.mark.asyncio
+async def test_purge_is_logged_with_count(admin_client, db_session):
+    await _seed(db_session, ("admin", 40))
+    await admin_client.delete("/api/admin/audit")
+    logged = [e for e in await _admin_events() if e.action == "DELETE /api/admin/audit"]
+    assert len(logged) == 1
+    assert logged[0].after["result"]["deleted"] == 1
+
+
+@pytest.mark.asyncio
+async def test_purge_ignores_days_param(admin_client, db_session):
+    # Срок зашит на сервере: свежую запись параметром не стереть.
+    await _seed(db_session, ("admin", 2))
+    resp = await admin_client.delete("/api/admin/audit?older_than_days=0")
+    assert resp.json()["deleted"] == 0
+    db_session.expunge_all()
+    assert len(await _seeds(db_session)) == 1
+
+
+@pytest.mark.asyncio
+async def test_purge_requires_admin(auth_client):
+    assert (await auth_client.delete("/api/admin/audit")).status_code == 403
+    assert (await auth_client.get("/api/admin/audit/purge-preview")).status_code == 403

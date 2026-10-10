@@ -10,6 +10,10 @@ import M4ReportCard, { m4RowDate } from '@/components/M4ReportCard'
 import { m4, type M4RunOut } from '@/lib/m4'
 import BuyDiagnostics from '@/components/BuyDiagnostics'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
+import { hexFor, hexNameFor } from '@/components/AdminNav'
+import { Pager, usePaged } from '@/components/Pager'
+
+const PAGE_SIZE = 20
 
 const finChar = (c?: string | null) =>
   c && HEXAGRAM_MAP[c] ? String.fromCodePoint(0x4DC0 + HEXAGRAM_MAP[c].n - 1) : ''
@@ -170,12 +174,6 @@ export default function DashboardPage() {
     router.push('/login')
   }
 
-  if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#e8e4db', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ fontFamily: 'sans-serif', color: 'rgba(26,37,64,0.4)' }}>Загрузка...</p>
-    </div>
-  )
-
   // Счётчики включают портфели Метода 3: список ниже показывает их вместе с
   // диагностиками Методов 1–2, и цифры должны совпадать с тем, что видно.
   const completed = [
@@ -223,6 +221,15 @@ export default function DashboardPage() {
     ...m3Visible.map(p => ({ kind: 'm3' as const, at: m3RowDate(p), p })),
     ...m4Visible.map(r => ({ kind: 'm4' as const, at: m4RowDate(r), r })),
   ].sort((x, y) => new Date(y.at).getTime() - new Date(x.at).getTime())
+  // Хук до раннего return загрузки: порядок хуков не должен зависеть от состояния.
+  const paged = usePaged(rows, PAGE_SIZE, query)
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: '#e8e4db', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ fontFamily: 'sans-serif', color: 'rgba(26,37,64,0.4)' }}>Загрузка...</p>
+    </div>
+  )
+
 
   return (
     <div style={{ minHeight: '100vh', background: '#e8e4db' }}>
@@ -309,8 +316,10 @@ export default function DashboardPage() {
               </button>
             </div>
           ) : (
-            <div style={S.list}>
-              {rows.map((row, i) => {
+            <>
+            <div className="dash-list" id="reports-list" style={{ scrollMarginTop: 24 }}>
+              {paged.pageItems.map((row, j) => {
+                const i = paged.offset + j
                 if (row.kind === 'm4') {
                   return (
                     <M4ReportCard
@@ -334,23 +343,33 @@ export default function DashboardPage() {
                   )
                 }
                 const a = row.a
+                const done = a.status === 'completed' || a.status === 'paid'
+                const combo = a.method1_combination ?? ''
                 return (
-                <div key={a.id} className="dash-card-mobile" style={{ ...S.card, cursor: (a.status === 'completed' || a.status === 'paid') ? 'pointer' : 'default' }}
-                  onClick={() => (a.status === 'completed' || a.status === 'paid') && router.push(`/report/${a.id}`)}>
-                  <div style={S.cardNum}>{String(i + 1).padStart(2, '0')}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={S.cardMeta}>
-                      {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                <div key={a.id} className="dash-card"
+                  style={{ cursor: done ? 'pointer' : 'default' }}
+                  onClick={() => done && router.push(`/report/${a.id}`)}>
+                  <div className="dash-num">{String(i + 1).padStart(2, '0')}</div>
+                  <div className="hex-block">
+                    <span style={{ fontFamily: 'Georgia,serif', fontSize: 40, color: '#1e3a8a', lineHeight: 1, opacity: done ? 1 : 0.35 }}>
+                      {isMethod2(a) ? '䷿' : hexFor(combo)}
+                    </span>
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div className="dash-meta">
+                      {isMethod2(a) ? 'Метод 2 · Бизнес-модель' : (done ? hexNameFor(combo) : 'Метод 1')}
+                      {' · '}
+                      {new Date(a.created_at).toLocaleString('ru-RU', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </div>
-                    <div style={S.cardTitle}>
-                      {a.status === 'completed' || a.status === 'paid'
+                    <div className="dash-title">
+                      {done
                         ? (isMethod2(a)
-                            ? `Бизнес-модель · ${a.company_name || user?.company_name || '—'}`
-                            : `Стратегическая диагностика · ${a.company_name || user?.company_name || '—'}`)
-                        : 'Незавершённая диагностика'}
+                            ? `Бизнес-модель · ${a.company_name || user?.company_name || 'Компания'}`
+                            : `Стратегический профиль компании · ${a.company_name || user?.company_name || 'Компания'}`)
+                        : 'Диагностика в процессе'}
                     </div>
-                    <div style={S.cardDetail}>
-                      {a.reports.length > 0 ? `${a.reports.length} отчёт сформирован` : 'Отчёт формируется'}
+                    <div className="dash-detail">
+                      {!done ? 'Черновик' : a.reports.length > 0 ? 'Завершено' : 'Отчёт формируется'}
                     </div>
                     <FollowupBadge a={a} />
                     <NestedFollowups items={byParent.get(a.id) ?? []} />
@@ -372,23 +391,24 @@ export default function DashboardPage() {
                         )}
                       </div>
                     )}
-                    {(a.status === 'completed' || a.status === 'paid') && !isMethod2(a) && contours.some(c => c.enabled && c.contour !== 'finance') && (
+                    {done && !isMethod2(a) && contours.some(c => c.enabled && c.contour !== 'finance') && (
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(26,37,64,0.08)' }}>
                         <div style={{ fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: 'rgba(26,37,64,0.4)', fontWeight: 700, marginBottom: 6 }}>
-                          Контуры диагностики
+                          Состав диагностики
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, alignItems: 'center' }}>
                           {contours.filter(c => c.enabled && c.contour !== 'finance').map(c => {
                             const passed = (a.passed_contours || []).find(p => p.contour === c.contour)
                             return passed ? (
-                              <span key={c.contour} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.6)', border: '1px solid rgba(26,37,64,0.12)', borderRadius: 4, padding: '3px 8px' }}>
+                              <span key={c.contour} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.65)', border: '1px solid rgba(26,37,64,0.12)', borderRadius: 4, padding: '3px 8px' }}>
                                 {c.title}
-                                <span style={{ fontFamily: 'serif', fontSize: 16, color: '#1e3a8a', lineHeight: 1 }} title={`Текущая · ${passed.combination}`}>
+                                <span style={{ fontFamily: 'serif', fontSize: 16, color: '#1e3a8a', lineHeight: 1 }} title={`${hexNameFor(passed.combination)} · ${passed.combination}`}>
                                   {finChar(passed.combination)}
                                 </span>
                               </span>
                             ) : (
-                              <button key={c.contour} style={S.btnSoft}
+                              <button key={c.contour}
+                                style={{ fontFamily: 'sans-serif', fontSize: 11, color: '#1a2540', background: 'none', border: '1px dashed rgba(26,37,64,0.3)', borderRadius: 4, padding: '3px 10px', cursor: 'pointer' }}
                                 onClick={e => { e.stopPropagation(); router.push(`/assessment/contour/${c.contour}?assessment=${a.id}`) }}>
                                 {c.title} — пройти →
                               </button>
@@ -398,29 +418,44 @@ export default function DashboardPage() {
                       </div>
                     )}
                   </div>
-                  <div className="dash-card-actions-mobile" style={S.cardActions}>
-                    <span style={a.status === 'completed' || a.status === 'paid' ? S.pillDone : S.pillDraft}>
-                      {a.status === 'completed' || a.status === 'paid' ? 'Готов' : 'Черновик'}
+                  <div className="dash-actions">
+                    <span className={`pill pill-${done ? 'completed' : 'draft'}`}>
+                      {done ? 'Готов' : 'Черновик'}
                     </span>
+                    {done && (
+                      <button className="btn btn-ghost" style={{ padding: '7px 14px', fontSize: 12 }}
+                        onClick={e => { e.stopPropagation(); router.push(`/report/${a.id}`) }}>
+                        Смотреть отчёт
+                      </button>
+                    )}
                     {a.reports.length > 0 ? (
                       <a href={`/api/reports/${a.reports[0].id}/download`} target="_blank" rel="noreferrer"
-                        style={S.btnGhost} onClick={e => e.stopPropagation()}>
+                        className="btn btn-primary" style={{ padding: '7px 14px', fontSize: 12, textDecoration: 'none' }}
+                        onClick={e => e.stopPropagation()}>
                         Скачать PDF
                       </a>
                     ) : a.status === 'draft' ? (
-                      <button style={S.btnSoft} onClick={e => { e.stopPropagation(); router.push('/assessment') }}>Продолжить →</button>
+                      <button className="btn btn-ghost" style={{ padding: '7px 14px', fontSize: 12 }}
+                        onClick={e => { e.stopPropagation(); router.push('/assessment') }}>
+                        Продолжить →
+                      </button>
                     ) : (
-                      <span style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)' }}>Генерация...</span>
+                      <span style={{ fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)' }}>Генерация…</span>
                     )}
-                    <button
-                      style={{ ...S.btnGhost, color: '#c0392b', borderColor: 'rgba(192,57,43,0.25)' }}
-                      onClick={e => { e.stopPropagation(); setConfirm({ id: a.id, kind: 'assessment' }) }}
-                    >Удалить</button>
+                    <button className="btn btn-ghost"
+                      style={{ padding: '7px 14px', fontSize: 12, color: '#c0392b', borderColor: 'rgba(192,57,43,0.25)' }}
+                      onClick={e => { e.stopPropagation(); setConfirm({ id: a.id, kind: 'assessment' }) }}>
+                      Удалить
+                    </button>
                   </div>
                 </div>
                 )
               })}
             </div>
+            <Pager page={paged.page} pages={paged.pages} offset={paged.offset}
+              shown={paged.pageItems.length} total={paged.total}
+              onPage={paged.setPage} anchorId="reports-list" />
+            </>
           )}
         </div>
 
@@ -540,16 +575,6 @@ const S: Record<string, React.CSSProperties> = {
   labelRed: { fontFamily: 'sans-serif', fontSize: 9, letterSpacing: 2, textTransform: 'uppercase' as const, color: '#c0392b', fontWeight: 600 },
   grid: { maxWidth: 1200, margin: '0 auto', padding: '0 60px 60px', display: 'grid', gridTemplateColumns: '1fr 320px', gap: 32 },
   listHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  list: { display: 'flex', flexDirection: 'column', gap: 14 },
-  card: { background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(26,37,64,0.1)', borderRadius: 8, padding: '22px 26px', display: 'grid', gridTemplateColumns: '34px 90px 1fr auto', gap: 18, alignItems: 'center' },
-  cardNum: { fontFamily: 'Georgia,serif', fontSize: 22, color: '#c0392b', textAlign: 'center' as const, lineHeight: '1' },
-  cardHex: { fontFamily: 'monospace', fontSize: 13, color: '#1e3a8a', textAlign: 'center' as const, letterSpacing: 2, fontWeight: 700 },
-  cardMeta: { fontFamily: 'sans-serif', fontSize: 11, color: 'rgba(26,37,64,0.4)', letterSpacing: 1, textTransform: 'uppercase' as const, marginBottom: 6 },
-  cardTitle: { fontFamily: 'Georgia,serif', fontSize: 17, color: '#1a2540', marginBottom: 4, fontWeight: 400 },
-  cardDetail: { fontFamily: 'sans-serif', fontSize: 13, color: 'rgba(26,37,64,0.6)', lineHeight: 1.5 },
-  cardActions: { display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 8 },
-  pillDone: { fontFamily: 'sans-serif', fontSize: 11, padding: '3px 10px', borderRadius: 20, background: '#dcfce7', color: '#166534', fontWeight: 500 },
-  pillDraft: { fontFamily: 'sans-serif', fontSize: 11, padding: '3px 10px', borderRadius: 20, background: '#f1f5f9', color: '#475569', fontWeight: 500 },
   emptyCard: { background: 'rgba(255,255,255,0.65)', border: '1px dashed rgba(26,37,64,0.2)', borderRadius: 10, padding: '60px 40px', textAlign: 'center' as const },
   emptyHex: { fontSize: 52, color: '#1e3a8a', marginBottom: 18, display: 'block', fontFamily: 'serif' },
   emptyH3: { fontFamily: 'Georgia,serif', fontSize: 22, fontWeight: 400, marginBottom: 8, color: '#1a2540' },

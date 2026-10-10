@@ -7,7 +7,9 @@
 actor_id — без внешнего ключа намеренно. Журнал пишет middleware в
 отдельной транзакции, и запись не должна зависеть от того, жива ли строка
 пользователя; актёр к тому же сохраняется снимком email (actor_email).
-Журнал только дописывается: ни один код его не правит и не удаляет.
+Журнал только дописывается и не правится. Удаляются только записи
+kind='admin' старше AUDIT_RETENTION_DAYS, вручную из /admin/audit; сама
+очистка пишется в журнал. История статусов заказов не удаляется никогда.
 """
 from __future__ import annotations
 
@@ -19,6 +21,10 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
+
+
+# Сколько дней действия администратора нельзя удалить из журнала.
+AUDIT_RETENTION_DAYS = 30
 
 
 class AuditEvent(Base):

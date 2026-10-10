@@ -4,7 +4,9 @@
  *
  * Пишут его backend-middleware (каждый изменяющий запрос админа или во
  * время имперсонации) и слушатель смены статуса заказа — см. app/audit.py.
- * Страница только читает (аудит 2026-10-06, R015, R006).
+ * Страница читает журнал и умеет удалить действия админа старше 30 дней
+ * (срок задан на сервере). История статусов заказов не удаляется, сама
+ * очистка записывается в журнал с числом удалённых строк.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -39,6 +41,8 @@ const ACTION_LABEL: Record<string, string> = {
   'PUT /api/payments/admin/tax-settings': 'Настройка НДС',
   'PUT /api/admin/email-templates': 'Изменение шаблонов писем',
   'PUT /api/admin/reminders-settings': 'Настройки рассылки',
+  'DELETE /api/admin/audit': 'Очистка журнала',
+  'DELETE /api/sample-report/leads': 'Очистка заявок «Сбор адресов»',
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -68,6 +72,8 @@ function details(e: AuditEventItem): string {
     return `${from}${to}${src}`
   }
   const parts: string[] = []
+  const result = e.after?.result as { deleted?: number } | undefined
+  if (result && typeof result.deleted === 'number') parts.push(`удалено записей: ${result.deleted}`)
   if (e.after?.query) parts.push(JSON.stringify(e.after.query))
   if (e.after?.body) parts.push(JSON.stringify(e.after.body))
   return parts.join(' ').slice(0, 300)
@@ -82,6 +88,8 @@ export default function AdminAuditPage() {
   const [kind, setKind] = useState<'' | 'admin' | 'order'>('')
   const [offset, setOffset] = useState(0)
   const [error, setError] = useState('')
+  const [purging, setPurging] = useState(false)
+  const [notice, setNotice] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -114,6 +122,28 @@ export default function AdminAuditPage() {
     if (ready) load()
   }, [ready, load])
 
+  async function handlePurge() {
+    setNotice('')
+    setError('')
+    try {
+      const { count, retention_days } = await adminApi.auditPurgePreview()
+      if (count === 0) {
+        setNotice(`Записей старше ${retention_days} дней нет. Удалять нечего.`)
+        return
+      }
+      if (!confirm(`Удалить ${count} записей о действиях администратора старше ${retention_days} дней?\n\nИстория статусов заказов останется. Сама очистка будет записана в журнал.`)) return
+      setPurging(true)
+      const res = await adminApi.auditPurge()
+      setNotice(`Удалено записей: ${res.deleted}`)
+      setOffset(0)
+      await load()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Не удалось очистить журнал')
+    } finally {
+      setPurging(false)
+    }
+  }
+
   if (!ready) {
     return (
       <div style={{
@@ -137,7 +167,16 @@ export default function AdminAuditPage() {
               <span className="label-red">Контроль</span>
               <h1>Журнал действий</h1>
             </div>
+            <button className="btn btn-danger" style={{ padding: '8px 16px', fontSize: 12 }}
+              disabled={purging} onClick={handlePurge}
+              title="Удаляются только действия администратора старше 30 дней. История заказов не удаляется.">
+              {purging ? 'Удаляем…' : 'Удалить записи старше 30 дней'}
+            </button>
           </div>
+
+          {notice && (
+            <div style={{ fontFamily: 'sans-serif', fontSize: 13, marginBottom: 16, color: 'var(--green)' }}>{notice}</div>
+          )}
 
           <div className="row" style={{ gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
             {FILTERS.map(f => (

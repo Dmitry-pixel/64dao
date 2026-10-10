@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getMe, getCompanies, logout, type AuthUser, type Company } from '@/lib/api'
 import { AdminNav, AdminSide } from '@/components/AdminNav'
+import { Pager, usePaged } from '@/components/Pager'
 
 // Та же страница для пользователя и администратора. Разница только в обвязке:
 // администратор видит свою верхнюю навигацию и левую колонку админки,
@@ -21,6 +22,8 @@ const M4_LABEL: Record<string, string> = {
 }
 const methodLabel = (method: string, mode?: string | null) =>
   method === 'method4' ? M4_LABEL[mode ?? 'full'] : METHOD_LABEL[method] ?? method
+
+const PAGE_SIZE = 10
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('ru-RU')
 
@@ -51,6 +54,9 @@ export default function CompaniesPage() {
       .finally(() => setLoading(false))
   }, [router])
 
+  // Хук до раннего return загрузки.
+  const paged = usePaged(companies, PAGE_SIZE)
+
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#e8e4db', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ fontFamily: 'sans-serif', color: 'rgba(26,37,64,0.4)' }}>Загрузка…</p>
@@ -71,7 +77,14 @@ export default function CompaniesPage() {
             Пока нет компаний. Пройдите первую диагностику.
           </p>
         </div>
-      ) : companies.map(c => <CompanyCard key={c.id ?? `m3-${c.name}`} c={c} />)}
+      ) : (
+        <div id="companies-list" style={{ scrollMarginTop: 24 }}>
+          {paged.pageItems.map(c => <CompanyCard key={c.id ?? `m3-${c.name}`} c={c} />)}
+          <Pager page={paged.page} pages={paged.pages} offset={paged.offset}
+            shown={paged.pageItems.length} total={paged.total}
+            onPage={paged.setPage} anchorId="companies-list" />
+        </div>
+      )}
       <p style={{ fontFamily: 'sans-serif', fontSize: 12, color: 'rgba(26,37,64,0.5)', margin: '20px 0 0', lineHeight: 1.6 }}>
         Диагностики сгруппированы по названию компании. «Динамика» открывается со второй
         стратегической диагностики. Удалённые диагностики и черновики здесь не показываются.

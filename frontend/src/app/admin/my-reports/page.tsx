@@ -10,8 +10,10 @@ import M3ReportCard, { m3RowDate } from '@/components/M3ReportCard'
 import M4ReportCard, { m4RowDate } from '@/components/M4ReportCard'
 import { m4, type M4RunOut } from '@/lib/m4'
 import { AdminNav, AdminSide, hexFor, hexNameFor } from '@/components/AdminNav'
+import { Pager, usePaged } from '@/components/Pager'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
+const PAGE_SIZE = 20
 
 export default function AdminMyReportsPage() {
   const router = useRouter()
@@ -89,12 +91,6 @@ export default function AdminMyReportsPage() {
   }
 
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', color: 'var(--text-mute)' }}>
-      Загрузка…
-    </div>
-  )
-
   // Счётчики включают портфели Метода 3 — они в том же списке ниже.
   const completed = assessments.filter(a => a.status === 'completed' || a.status === 'paid').length
     + m3.filter(p => p.status === 'calculated').length
@@ -134,6 +130,16 @@ export default function AdminMyReportsPage() {
     ...m3Visible.map(p => ({ kind: 'm3' as const, at: m3RowDate(p), p })),
     ...m4Visible.map(r => ({ kind: 'm4' as const, at: m4RowDate(r), r })),
   ].sort((x, y) => new Date(y.at).getTime() - new Date(x.at).getTime())
+  // Хук вызывается до раннего return загрузки: порядок хуков не должен
+  // зависеть от состояния.
+  const paged = usePaged(rows, PAGE_SIZE, query)
+
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif', color: 'var(--text-mute)' }}>
+      Загрузка…
+    </div>
+  )
+
 
   return (
     <>
@@ -186,8 +192,10 @@ export default function AdminMyReportsPage() {
               </Link>
             </div>
           ) : (
-            <div className="dash-list">
-              {rows.map((row, i) => {
+            <>
+            <div className="dash-list" id="reports-list" style={{ scrollMarginTop: 80 }}>
+              {paged.pageItems.map((row, j) => {
+                const i = paged.offset + j
                 if (row.kind === 'm4') {
                   return (
                     <M4ReportCard
@@ -316,6 +324,10 @@ export default function AdminMyReportsPage() {
                 )
               })}
             </div>
+            <Pager page={paged.page} pages={paged.pages} offset={paged.offset}
+              shown={paged.pageItems.length} total={paged.total}
+              onPage={paged.setPage} anchorId="reports-list" />
+            </>
           )}
         </div>
       </div>

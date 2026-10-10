@@ -382,6 +382,12 @@ export const adminApi = {
     qs.set('offset', String(params.offset ?? 0))
     return request<AuditResponse>(`/api/admin/audit?${qs.toString()}`)
   },
+  // Очистка: только действия админа старше срока хранения (30 дней, срок
+  // задан на сервере). История статусов заказов не удаляется.
+  auditPurgePreview: () =>
+    request<{ count: number; retention_days: number; cutoff: string }>('/api/admin/audit/purge-preview'),
+  auditPurge: () =>
+    request<{ deleted: number; retention_days: number }>('/api/admin/audit', { method: 'DELETE' }),
 
   orders: (params: { status?: string; q?: string; limit?: number; offset?: number } = {}) => {
     const qs = new URLSearchParams()
