@@ -10,8 +10,10 @@ import asyncpg
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import DBAPIError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.audit import AdminAuditMiddleware
 from app.config import get_settings
@@ -209,6 +211,30 @@ app.include_router(decisions.admin_router)
 #
 # Если появится загрузка изображений — монтировать ТОЛЬКО подкаталог
 # images/, никогда не родительский.
+#
+# 2026-10-14: такой потребитель нашёлся. Текст «О нас» (uploads/docs/about.json,
+# правится в /admin/documents/about) ссылается на
+# https://64dao.ru/uploads/images/university-logos.png, и после снятия
+# монтирования картинка на /about пропала. Монтируется только images/ и
+# только файлы изображений: JSON и любой другой тип там отдаются как 404,
+# даже если окажутся в каталоге по ошибке.
+IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif"}
+
+
+class ImagesOnly(StaticFiles):
+    async def get_response(self, path: str, scope):
+        if Path(path).suffix.lower() not in IMAGE_SUFFIXES:
+            raise StarletteHTTPException(status_code=404)
+        return await super().get_response(path, scope)
+
+
+app.mount(
+    "/uploads/images",
+    # check_dir=False: каталога может не быть (тесты, свежий сервер); тогда
+    # каждый запрос — 404, а не падение приложения на старте.
+    ImagesOnly(directory=str(Path(settings.uploads_dir).parent / "images"), check_dir=False),
+    name="uploads-images",
+)
 
 # ── Health ────────────────────────────────────────────────────────────────────
 @app.get("/api/health", tags=["health"])
