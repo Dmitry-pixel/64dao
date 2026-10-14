@@ -154,6 +154,9 @@ export function AdminSide({ current }: AdminSideProps) {
       <Link href="/companies" className={current === 'companies' ? 'on' : ''}>
         Мои компании
       </Link>
+      <Link href="/admin/m3-transitions" className={current === 'm3-transitions' ? 'on' : ''}>
+        Переходы Метода 3
+      </Link>
 
       <h4>Документы</h4>
       <Link href="/admin/documents/user-agreement" className={current === 'doc-user-agreement' ? 'on' : ''}>Пользовательское соглашение</Link>

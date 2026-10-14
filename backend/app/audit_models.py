@@ -22,7 +22,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
 
-
 # Сколько дней действия администратора нельзя удалить из журнала.
 AUDIT_RETENTION_DAYS = 30
 

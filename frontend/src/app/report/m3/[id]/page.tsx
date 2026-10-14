@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import M3Checklist from '@/components/m3/M3Checklist'
+import DecisionLog from '@/components/DecisionLog'
 import PortfolioMap from '@/components/m3/PortfolioMap'
 import {
   LINE_TITLES, PROFITABILITY_LABELS,
@@ -749,6 +750,8 @@ export default function M3ReportPage() {
         onToggle={handleToggle}
         onDecide={handleDecide}
       />
+
+      <DecisionLog method="m3" sourceId={id} />
 
       </>)}
       <h2 id="m3-notes" style={{ ...S.h2, scrollMarginTop: 20 }}>Оговорки по данным</h2>

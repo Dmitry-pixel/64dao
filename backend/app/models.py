@@ -486,6 +486,9 @@ class AccessGrant(Base):
 # модели без приложения, и без этого их смены статуса не попали бы в журнал.
 import app.audit  # noqa: E402,F401
 from app.audit_models import AuditEvent  # noqa: E402,F401
+
+# Журнал решений клиента по отчётам (Decision Log).
+from app.decision_models import Decision  # noqa: E402,F401
 from app.m3_models import (  # noqa: E402,F401
     M3Answer,
     M3ChecklistStep,

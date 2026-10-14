@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import DecisionLog from '@/components/DecisionLog'
 import { m4, type M4CardText, type M4Dynamics, type M4Report, type M4ReportAction } from '@/lib/m4'
 import { M4, STATE_COLOR, STATE_LABEL } from '@/components/m4/styles'
 import M4Wheel from '@/components/m4/M4Wheel'
@@ -328,6 +329,8 @@ export default function M4ReportPage() {
           )}
         </div>
       </section>
+
+      {full && <DecisionLog method="m4" sourceId={id} />}
 
       {!full && (
         <section style={R.section}>

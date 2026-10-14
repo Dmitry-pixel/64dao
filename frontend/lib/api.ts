@@ -628,3 +628,66 @@ export interface CreditsBreakdown {
   grant_credits: number
   grant_expires_at: string | null
 }
+
+// ── Журнал решений (Decision Log) ─────────────────────────────────────────────
+
+export type DecisionMethod = 'm1' | 'm3' | 'm4'
+export type DecisionOutcome = 'done' | 'partial' | 'not_done'
+
+export interface Decision {
+  id: string
+  method: DecisionMethod
+  source_id: string
+  scenario: string
+  actions: string | null
+  expected: string | null
+  outcome: DecisionOutcome | null
+  outcome_note: string | null
+  outcome_at: string | null
+  created_at: string | null
+}
+
+export const decisionsApi = {
+  list: (method: DecisionMethod, sourceId: string) =>
+    request<{ items: Decision[]; editable: boolean }>(
+      `/api/decisions?method=${method}&source_id=${encodeURIComponent(sourceId)}`),
+  create: (body: { method: DecisionMethod; source_id: string; scenario: string; actions?: string; expected?: string }) =>
+    request<Decision>('/api/decisions', { method: 'POST', body: JSON.stringify(body) }),
+  // outcome: '' снимает отметку («что произошло» ещё неизвестно).
+  update: (id: string, body: Partial<{ scenario: string; actions: string; expected: string; outcome: DecisionOutcome | ''; outcome_note: string }>) =>
+    request<Decision>(`/api/decisions/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  remove: (id: string) => request<void>(`/api/decisions/${id}`, { method: 'DELETE' }),
+}
+
+// ── Переходы Метода 3 (админка) ───────────────────────────────────────────────
+
+export interface M3TransitionDirection {
+  name: string
+  type: string
+  type_title: string
+  prev_symbols: string
+  now_symbols: string
+  changed: number[]
+  borderline: number[]
+  scale: string
+  where: string
+  direction: string
+  target: string
+  risk: string
+  intent: { value: string; met: number[]; missed: number[] }
+}
+
+export interface M3TransitionPair {
+  user_email: string
+  company_name: string | null
+  previous: { id: string; calculated_at: string }
+  current: { id: string; calculated_at: string; is_followup: boolean }
+  directions: M3TransitionDirection[]
+  added: string[]
+  removed: string[]
+  decisions: Decision[]
+}
+
+export function getM3Transitions() {
+  return request<{ items: M3TransitionPair[] }>('/api/admin/m3-transitions')
+}

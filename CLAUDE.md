@@ -94,7 +94,7 @@ curl -sk https://64dao.ru/api/health
 - **Entry:** `main.py` — mounts routers, CORS (exact `app_url`, no trailing slash), slowapi rate limiter, global exception handler, `/api/health`, static `/uploads` mount, lifespan.
 - **Auth:** `auth.py` — OTP email flow (regular users are passwordless), JWT in httpOnly+secure+samesite cookie `auth-token`; admin impersonation token carries `impersonated_by`; user-enumeration timing jitter on login.
 - **Rate limiter:** `limiter.py` — keys by real client IP via `X-Real-IP` (set by nginx `/api`), not the proxy IP. Do not revert to bare `get_remote_address` or the limit becomes global.
-- **Routers:** `routers/` — `auth`, `assessments`, `reports`, `admin`, `strategies`, `documents`, `payments`, `pricing`, `contact`, `support`, `social_links`, `sample_report`, `site_mode` (each `/api/<name>`).
+- **Routers:** `routers/` — `auth`, `assessments`, `reports`, `admin`, `strategies`, `documents`, `payments`, `pricing`, `contact`, `support`, `social_links`, `sample_report`, `site_mode`, `decisions` (each `/api/<name>`).
 - **Models:** `models.py` — `User`, `OtpCode`, `Strategy`, `Assessment`, `Report`, `Order`.
 - **PDF:** `pdf.py` — Playwright renders HTML -> PDF. Report sections 01-04 are synchronized between HTML and PDF. Do not modify the combination-assembly or the U+4DC0..U+4DFF hexagram-symbol logic.
 - **Payments:** `tochka_client.py` (`create_payment_with_receipt`, `get_payment_status`, `refund_payment`, `verify_and_decode_webhook`). Webhook body is a bare RS256 JWT string (Content-Type text/plain), verified against Точка's public key — not JSON.
@@ -110,6 +110,10 @@ curl -sk https://64dao.ru/api/health
 - `next.config.js` is copied into the runtime image (`frontend/Dockerfile`). Before 2026-10-06 it was not, and `next start` silently ran with default config. The image optimizer is disabled (`images.unoptimized: true`, `/_next/image` returns 404); `next/image` is not used anywhere. Re-check this before adding `next/image`.
 - `styled-jsx` (`<style jsx>`) works only in Client Components. For Server Component pages, put `@media` rules in `globals.css`.
 - Dynamic `[slug]` routes need `generateStaticParams()` or they go `force-dynamic`/`no-store` and block crawling (see `napkin.md`).
+
+### Decision Log and Method 3 transitions
+- `decisions` table (`app/decision_models.py`, migration 048): what the client decided after a report (Method 1, Method 3, Method 4 full run only) and the outcome before the repeat. `source_id` has no FK; `method` says which table it points to, ownership is checked in `routers/decisions.py`. Admin can read, not write.
+- `app/m3_transition.py`: pure classifier of a Method 3 direction between two measurements (types T1-T10, axes, borderline lines below `MIN_DELTA`, intent from checklist steps marked done). Shown only to the admin at `/admin/m3-transitions`; client texts are written later from real repeats. Rules draft: project doc `claude/m3-transition-rules-draft.md`.
 
 ### Admin impersonation
 `POST /api/admin/impersonate/{user_id}` (admin-only) · `POST /api/admin/impersonate/stop` · `GET /api/admin/impersonate/status` (both current-user, work while impersonating).

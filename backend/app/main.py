@@ -25,6 +25,7 @@ from app.routers import (
     checklist,
     companies,
     contact,
+    decisions,
     documents,
     fin_content,
     m3,
@@ -186,6 +187,10 @@ app.include_router(m3.admin_router)
 # маршруты появятся вместе с анкетой.
 app.include_router(m4_admin.router)
 app.include_router(m4.router)
+
+# Журнал решений клиента и сводка переходов Метода 3 для администратора.
+app.include_router(decisions.router)
+app.include_router(decisions.admin_router)
 
 # ── Статика /uploads снята намеренно ──────────────────────────────────────────
 # Здесь монтировался родительский каталог uploads целиком. Вместе с ним

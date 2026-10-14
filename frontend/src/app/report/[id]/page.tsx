@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import DecisionLog from '@/components/DecisionLog'
 import { getMe, getAssessment, getBaseQuestions, reportDownloadUrl, listContours, getCompanies, isMethod2, type AuthUser, type Assessment, type ContourInfo, type Company } from '@/lib/api'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
 import { TargetHexagramBlock } from '@/components/TargetHexagramBlock'
@@ -442,7 +443,7 @@ export default function ReportPage() {
               )
             })()}
 
-
+            <DecisionLog method="m1" sourceId={assessment.id} />
           </>)}
         </div>
       </div>
