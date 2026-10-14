@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { sendOTP } from '@/lib/api'
 import { AuthSide, SocialRow } from '@/components/Logo'
+import { safeNext } from '@/lib/next-path'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -17,7 +18,10 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await sendOTP(email)
-      router.push(`/verify?email=${encodeURIComponent(email)}`)
+      // ?next= переносится на страницу кода: после входа вернём туда,
+      // откуда человек пришёл (например, по ссылке из письма).
+      const next = safeNext(new URLSearchParams(window.location.search).get('next'))
+      router.push(`/verify?email=${encodeURIComponent(email)}${next ? `&next=${encodeURIComponent(next)}` : ''}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка отправки')
     } finally {

@@ -172,6 +172,16 @@ export default function DecisionLog({ method, sourceId }: { method: DecisionMeth
 
   useEffect(() => { if (sourceId) load() }, [sourceId, load])
 
+  // Ссылка из письма-напоминания ведёт на #decision-log. Отчёт рисуется
+  // после загрузки данных, поэтому браузер сам к якорю не прокручивает:
+  // делаем это, когда блок появился.
+  const loaded = items !== null
+  useEffect(() => {
+    if (!loaded || typeof window === 'undefined' || window.location.hash !== '#decision-log') return
+    const t = setTimeout(() => document.getElementById('decision-log')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300)
+    return () => clearTimeout(t)
+  }, [loaded])
+
   if (items === null) return null
   // Чужой отчёт без записей: показывать администратору пустой блок незачем.
   if (!editable && items.length === 0) return null

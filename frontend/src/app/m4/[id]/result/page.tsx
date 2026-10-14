@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import DecisionLog from '@/components/DecisionLog'
+import { loginUrlHere } from '@/lib/next-path'
 import { m4, type M4CardText, type M4Dynamics, type M4Report, type M4ReportAction } from '@/lib/m4'
 import { M4, STATE_COLOR, STATE_LABEL } from '@/components/m4/styles'
 import M4Wheel from '@/components/m4/M4Wheel'
@@ -159,8 +160,9 @@ export default function M4ReportPage() {
     if (!id) return
     m4.report(id)
       .then(setRep)
-      .catch((e: any) => setError(typeof e?.message === 'string' ? e.message : 'Не удалось загрузить отчёт.'))
-  }, [id])
+      .catch((e: any) => e?.status === 401 ? router.push(loginUrlHere())
+        : setError(typeof e?.message === 'string' ? e.message : 'Не удалось загрузить отчёт.'))
+  }, [id, router])
 
   if (error) return (
     <div style={M4.page}><div style={M4.stage}>

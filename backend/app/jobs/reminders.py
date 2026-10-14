@@ -66,9 +66,19 @@ async def run_repeat_reminders(session: AsyncSession,
     sent = 0
     for company, user, last_at in rows:
         days_since = max(1, (now - last_at).days)
+        # Журнал решений стоит только под отчётом Метода 1 (у Метода 2 его
+        # нет), поэтому ссылка ведёт на последнюю диагностику Метода 1.
+        last_m1 = await session.scalar(
+            select(Assessment.id)
+            .where(Assessment.company_id == company.id, Assessment.method == "method1",
+                   Assessment.status.in_(("completed", "paid")), Assessment.deleted_at.is_(None))
+            .order_by(Assessment.created_at.desc())
+            .limit(1)
+        )
         try:
             await email_mod.send_repeat_diagnostic_email(
-                user.email, user.full_name, company.name, days_since)
+                user.email, user.full_name, company.name, days_since,
+                report_path=f"/report/{last_m1}" if last_m1 else None)
         except Exception:
             logger.exception("repeat reminder failed: user=%s company=%s", user.id, company.id)
             continue
@@ -78,7 +88,8 @@ async def run_repeat_reminders(session: AsyncSession,
     return sent
 
 
-async def _send_latest(session: AsyncSession, key: str, items, company_of, days: int) -> int:
+async def _send_latest(session: AsyncSession, key: str, items, company_of, days: int,
+                       report_path=None) -> int:
     """Общий ход для Методов 3 и 4: по каждой компании берётся последняя
     рассчитанная диагностика; письмо уходит, если с неё прошло не меньше
     days дней и по ней письма ещё не было. Отметка ставится на эту
@@ -108,7 +119,8 @@ async def _send_latest(session: AsyncSession, key: str, items, company_of, days:
         name = getattr(item, "company_name", None) or getattr(item, "_company_name", None)
         try:
             await email_mod.send_repeat_method_email(
-                key, user.email, user.full_name, name, max(1, (now - at).days), followup.get(k, False))
+                key, user.email, user.full_name, name, max(1, (now - at).days), followup.get(k, False),
+                report_path=report_path(item) if report_path else None)
         except Exception:
             logger.exception("%s reminder failed: user=%s item=%s", key, user.id, item.id)
             continue
@@ -130,7 +142,8 @@ async def run_m3_repeat_reminders(session: AsyncSession, days: int | None = None
                M3Portfolio.deleted_at.is_(None))
     )).all()
     return await _send_latest(session, "repeat_m3", rows,
-                              lambda p: (p.company_name or "").strip().lower(), days)
+                              lambda p: (p.company_name or "").strip().lower(), days,
+                              report_path=lambda p: f"/report/m3/{p.id}")
 
 
 async def run_m4_repeat_reminders(session: AsyncSession, days: int | None = None) -> int:
@@ -149,7 +162,8 @@ async def run_m4_repeat_reminders(session: AsyncSession, days: int | None = None
     for run, user, cname in rows:
         run._company_name = cname
         items.append((run, user))
-    return await _send_latest(session, "repeat_m4", items, lambda r: r.company_id, days)
+    return await _send_latest(session, "repeat_m4", items, lambda r: r.company_id, days,
+                              report_path=lambda r: f"/m4/{r.id}/result")
 
 
 async def main() -> None:

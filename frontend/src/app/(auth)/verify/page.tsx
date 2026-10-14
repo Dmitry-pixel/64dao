@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { verifyOTP, resendOTP, ApiError } from '@/lib/api'
 import { AuthSide } from '@/components/Logo'
+import { safeNext } from '@/lib/next-path'
 
 const dark = '#1a2540'
 const blue = '#1e3a8a'
@@ -13,6 +14,7 @@ function VerifyForm() {
   const router  = useRouter()
   const params  = useSearchParams()
   const email   = params.get('email') ?? ''
+  const next    = safeNext(params.get('next'))
 
   const [digits,   setDigits]   = useState(['', '', '', '', ''])
   const [loading,  setLoading]  = useState(false)
@@ -49,7 +51,7 @@ function VerifyForm() {
     try {
       const { role } = await verifyOTP(email, code)
       if (role === 'admin') {
-        router.push('/admin')
+        router.push(next ?? '/admin')
       } else {
         let maintenanceOn = false
         try {
@@ -62,7 +64,7 @@ function VerifyForm() {
         } catch {
           maintenanceOn = false
         }
-        router.push(maintenanceOn ? '/maintenance' : '/dashboard')
+        router.push(maintenanceOn ? '/maintenance' : (next ?? '/dashboard'))
       }
     } catch (err) {
       // 401 здесь значит «неверный или сгоревший код», а не истёкшую сессию:

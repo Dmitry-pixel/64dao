@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import M3Checklist from '@/components/m3/M3Checklist'
 import DecisionLog from '@/components/DecisionLog'
+import { loginUrlHere } from '@/lib/next-path'
 import PortfolioMap from '@/components/m3/PortfolioMap'
 import {
   LINE_TITLES, PROFITABILITY_LABELS,
@@ -308,12 +309,12 @@ export default function M3ReportPage() {
 
   useEffect(() => {
     if (!id) return
-    load().catch((e: any) => setLoadError(
+    load().catch((e: any) => e?.status === 401 ? router.push(loginUrlHere()) : setLoadError(
       e?.status === 404 ? 'Отчёт не найден.'
         : e?.status === 400 ? 'Портфель ещё не рассчитан.'
         : e?.message || 'Не удалось загрузить отчёт.',
     ))
-  }, [id, load])
+  }, [id, load, router])
 
   const shares = useMemo(() => {
     const out: Record<string, number | null> = {}

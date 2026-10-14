@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import DecisionLog from '@/components/DecisionLog'
+import { loginUrlHere } from '@/lib/next-path'
 import { getMe, getAssessment, getBaseQuestions, reportDownloadUrl, listContours, getCompanies, isMethod2, type AuthUser, type Assessment, type ContourInfo, type Company } from '@/lib/api'
 import { HEXAGRAM_MAP } from '@/lib/hexagrams'
 import { TargetHexagramBlock } from '@/components/TargetHexagramBlock'
@@ -108,7 +109,7 @@ export default function ReportPage() {
             .catch(() => {})
         }
       })
-      .catch(() => router.push('/login'))
+      .catch(() => router.push(loginUrlHere()))
       .finally(() => setLoading(false))
   }, [router, assessmentId])
 

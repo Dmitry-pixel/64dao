@@ -169,8 +169,27 @@ async def send_sample_report_email(
     )
 
 
+def decisions_part(report_path: str | None) -> str:
+    """Абзац со ссылкой на журнал решений под прошлым отчётом.
+
+    Пусто, если отчёта нет: тогда в письме не остаётся висящей фразы.
+    #decision-log прокручивает страницу отчёта к журналу (DecisionLog.tsx).
+    """
+    if not report_path:
+        return ""
+    url = f"{settings.app_url.rstrip('/')}{report_path}#decision-log"
+    return (
+        "<p>Перед повтором загляните в "
+        f"<a href=\"{url}\">журнал решений</a> под прошлым отчётом: отметьте, "
+        "что из задуманного получилось, или запишите, что делали за это время. "
+        "Это займёт пару минут и поможет связать изменения в компании "
+        "с принятыми решениями.</p>"
+    )
+
+
 async def send_repeat_method_email(
     key: str, to: str, name: str | None, company_name: str | None, days_since: int, followup: bool,
+    report_path: str | None = None,
 ) -> None:
     """«Пора повторить» для Методов 3 и 4 (шаблоны repeat_m3 / repeat_m4).
     Отдельный шаблон на метод: письмо Метода 1 говорит о жизненном цикле,
@@ -184,6 +203,7 @@ async def send_repeat_method_email(
         "company_part": company_part,
         "days_since": days_since,
         "followup_part": " Повтор входит в стоимость первой диагностики." if followup else "",
+        "decisions_part": decisions_part(report_path),
         "app_url": settings.app_url.rstrip("/"),
     })
     if settings.debug:
@@ -193,7 +213,8 @@ async def send_repeat_method_email(
 
 
 async def send_repeat_diagnostic_email(
-    to: str, name: str | None, company_name: str | None, days_since: int
+    to: str, name: str | None, company_name: str | None, days_since: int,
+    report_path: str | None = None,
 ) -> None:
     """«Пора повторить диагностику» через N дней. Текст правится в админке."""
     name_part = f", {name}" if name else ""
@@ -204,6 +225,7 @@ async def send_repeat_diagnostic_email(
         "company": company_name or "",
         "company_part": company_part,
         "days_since": days_since,
+        "decisions_part": decisions_part(report_path),
         "app_url": settings.app_url.rstrip("/"),
     })
     if settings.debug:
