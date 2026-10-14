@@ -109,7 +109,10 @@ export default function ReportPage() {
             .catch(() => {})
         }
       })
-      .catch(() => router.push(loginUrlHere()))
+      // На вход уводит только 401 (нет сессии). Несуществующий или чужой
+      // отчёт (404, 422) показывает «Отчёт не найден»: иначе после входа
+      // возврат на ту же страницу снова уводил бы на вход, и так по кругу.
+      .catch((e: { status?: number }) => { if (e?.status === 401) router.push(loginUrlHere()) })
       .finally(() => setLoading(false))
   }, [router, assessmentId])
 
